@@ -97,6 +97,13 @@ export function denseCafeExtraction(filename = "reel_cafeteria_18s.mp4") {
   };
 }
 
+export type TranscriptSeg = {
+  start_ms: number;
+  end_ms: number;
+  speaker: string;
+  text: string;
+};
+
 export function structuralExtraction(input: {
   filename: string;
   origin: "file" | "url" | "zip";
@@ -109,6 +116,8 @@ export function structuralExtraction(input: {
     audioCodec?: string;
     scenes: { startMs: number; endMs: number }[];
   };
+  transcript?: TranscriptSeg[];
+  audioMeta?: { language?: string | null; speakers?: string[]; diarization?: string };
 }) {
   const durationMs = input.probe?.durationMs ?? 0;
   const scenes =
@@ -121,31 +130,41 @@ export function structuralExtraction(input: {
       ]
     : [{ startMs: 0, endMs: 0 }];
 
+  const transcript = input.transcript ?? [];
   const timeline = scenes.map((s, i) => ({
     id: `seg_${String(i + 1).padStart(2, "0")}`,
     start_ms: s.startMs,
     end_ms: s.endMs,
     start: msToClock(s.startMs),
     end: msToClock(s.endMs),
+    speech: transcript.filter((t) => t.start_ms < s.endMs && t.end_ms > s.startMs),
     dense_caption:
       "Hueco para el módulo de visión (Qwen-VL / Moondream). Aquí iría una descripción tan densa como para regenerar el plano.",
     visual_status: "awaiting_vlm_module",
   }));
 
+  const spoken = transcript.map((t) => `${t.speaker}: ${t.text}`).join(" ");
   const reconstructable_script = [
     input.probe ?
       `Vídeo ${input.probe.width}×${input.probe.height} a ${input.probe.fps} fps, ${msToClock(durationMs)}.`
     : `Fuente ${input.origin}: ${input.filename}. Sin sonda de media (no se pudo leer el archivo).`,
     `${scenes.length} escena(s) detectada(s) por corte.`,
-    "Falta el módulo de descripción visual y el de transcripción/diarización para cerrar el texto reconstruible.",
-  ].join(" ");
+    spoken ? `Lo que se oye: ${spoken}` : "Sin transcripción (no hubo habla o falló Whisper).",
+    input.audioMeta?.speakers?.length ?
+      `Speakers: ${input.audioMeta.speakers.join(", ")} (${input.audioMeta.diarization || "local"}).`
+    : "",
+    "Falta el módulo de descripción visual para cerrar el texto reconstruible.",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return {
     extraction: {
       goal: "video_to_reconstructable_text",
-      quality: "structural_pending_vlm",
-      language: "es",
+      quality: transcript.length ? "audio_ready_pending_vlm" : "structural_pending_vlm",
+      language: input.audioMeta?.language || "es",
       vision_model: null,
+      audio_engine: "faster-whisper",
     },
     source: {
       type: input.origin,
@@ -163,16 +182,17 @@ export function structuralExtraction(input: {
           input.probe.height > input.probe.width ? "vertical" : "horizontal",
       }
     : null,
-    one_line: reconstructable_script,
+    one_line: spoken || reconstructable_script,
     reconstructable_script,
     timeline,
-    transcript: [],
+    transcript,
+    speakers: input.audioMeta?.speakers ?? [],
     music: {
       identified: false,
       description_for_reconstruction: "Módulo de música no enganchado.",
     },
     if_you_regenerate: {
-      must_keep: ["duración y formato reales de la sonda"],
+      must_keep: ["duración y formato reales de la sonda", ...(spoken ? ["el texto hablado"] : [])],
       will_probably_fail: ["apariencia, caras, canción, texto en pantalla"],
     },
   };

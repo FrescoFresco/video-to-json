@@ -1,5 +1,5 @@
 import { denseCafeExtraction, structuralExtraction } from "./demo-extraction";
-import type { ProbeResult, StudioModule } from "./types";
+import type { AudioExtract, ProbeResult, StudioModule } from "./types";
 
 export function pickByPath(obj: unknown, path: string): unknown {
   const raw = path.replace(/^\$sources\./, "");
@@ -41,6 +41,7 @@ export function outputsForItem(opts: {
   origin: "file" | "url" | "zip";
   modules: StudioModule[];
   probe?: ProbeResult;
+  audio?: AudioExtract | null;
   useFixture: boolean;
 }) {
   const moduleOutputs: Record<string, unknown> = {};
@@ -61,17 +62,38 @@ export function outputsForItem(opts: {
           end: s.endMs / 1000,
         })),
       };
+    } else if (mod.id === "audio-local") {
+      moduleOutputs[mod.id] = opts.audio ?? {
+        _status: "missing",
+        note: "Sube un archivo de vídeo o audio para transcribir.",
+      };
+    } else if (mod.id === "moss" && opts.audio) {
+      moduleOutputs[mod.id] = {
+        data: {
+          segments: opts.audio.segments.map((s) => ({
+            start: s.start,
+            end: s.end,
+            speaker: s.speaker,
+            text: s.text,
+          })),
+        },
+        _note: "Salida local (faster-whisper). El repo MOSS se puede enganchar después.",
+      };
     } else if (mod.id === "visual-reconstruction") {
       moduleOutputs[mod.id] = opts.useFixture ?
         {
           data: {
-            segments: (denseCafeExtraction(opts.name).timeline as { start_ms: number; end_ms: number; dense_caption?: string }[]).map(
-              (t) => ({
-                start: t.start_ms / 1000,
-                end: t.end_ms / 1000,
-                description: t.dense_caption,
-              })
-            ),
+            segments: (
+              denseCafeExtraction(opts.name).timeline as {
+                start_ms: number;
+                end_ms: number;
+                dense_caption?: string;
+              }[]
+            ).map((t) => ({
+              start: t.start_ms / 1000,
+              end: t.end_ms / 1000,
+              description: t.dense_caption,
+            })),
           },
         }
       : {
@@ -84,7 +106,13 @@ export function outputsForItem(opts: {
             })),
           },
         };
-    } else {
+    } else if (mod.id === "moss") {
+      moduleOutputs[mod.id] = {
+        ...((mod.sample as object) || {}),
+        _status: mod.status,
+        _repo: mod.repoUrl ?? null,
+      };
+    } else if (!["media-probe", "scene-cuts"].includes(mod.id)) {
       moduleOutputs[mod.id] = {
         ...((mod.sample as object) || {}),
         _status: mod.status,
@@ -99,6 +127,19 @@ export function outputsForItem(opts: {
       filename: opts.name,
       origin: opts.origin,
       probe: opts.probe,
+      transcript: opts.audio?.segments.map((s) => ({
+        start_ms: s.start_ms,
+        end_ms: s.end_ms,
+        speaker: s.speaker,
+        text: s.text,
+      })),
+      audioMeta: opts.audio ?
+        {
+          language: opts.audio.language,
+          speakers: opts.audio.speakers,
+          diarization: opts.audio.diarization,
+        }
+      : undefined,
     });
 
   return { moduleOutputs, extraction };

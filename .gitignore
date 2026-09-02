@@ -42,3 +42,8 @@ next-env.d.ts
 
 # local agent dumps
 /agent-tools
+
+# python audio pipeline
+.venv/
+.cache/
+*.wav

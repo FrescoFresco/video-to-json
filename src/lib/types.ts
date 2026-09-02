@@ -78,6 +78,25 @@ export type ViewName =
   | "composer"
   | "settings";
 
+export type AudioExtract = {
+  engine: string;
+  model: string;
+  language: string | null;
+  language_probability: number | null;
+  speakers: string[];
+  speaker_count: number;
+  diarization: string;
+  segments: Array<{
+    start: number;
+    end: number;
+    start_ms: number;
+    end_ms: number;
+    speaker: string;
+    text: string;
+  }>;
+  error?: string;
+};
+
 export type ProbeResult = {
   filename: string;
   durationMs: number;

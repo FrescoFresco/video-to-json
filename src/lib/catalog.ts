@@ -29,6 +29,20 @@ export const SUGGESTED_MODULES: StudioModule[] = [
     sample: { scenes: [{ start: 0, end: 3.2 }] },
   },
   {
+    id: "audio-local",
+    name: "Transcribe + Diarize",
+    kind: "builtin",
+    category: "Audio",
+    repoUrl: "https://github.com/SYSTRAN/faster-whisper",
+    description:
+      "Conectado: extrae el audio con ffmpeg, transcribe con Whisper (local, CPU) y agrupa speakers. Sube un vídeo y corre de verdad.",
+    enabled: true,
+    status: "ready",
+    sample: {
+      segments: [{ start: 0.48, end: 3.21, speaker: "S01", text: "Hola." }],
+    },
+  },
+  {
     id: "visual-reconstruction",
     name: "Visual Reconstruction",
     kind: "builtin",
@@ -57,8 +71,8 @@ export const SUGGESTED_MODULES: StudioModule[] = [
     category: "Audio",
     repoUrl: "https://github.com/OpenMOSS/MOSS-Transcribe-Diarize",
     description:
-      "Transcripción + speakers + timestamps + eventos acústicos, Apache 2.0. Requiere GPU.",
-    enabled: true,
+      "Repo OSS de transcripción+diarización en un paso (GPU). Mientras tanto el módulo local Whisper cubre el audio.",
+    enabled: false,
     status: "unwired",
     sample: {
       data: {
@@ -127,7 +141,24 @@ export const DEFAULT_CONFIG = {
     media: "$sources.media-probe",
     scenes: "$sources.scene-cuts.scenes",
     visual: "$sources.visual-reconstruction.data.segments",
-    audio: "$sources.moss.data",
+    audio: "$sources.audio-local.segments",
     tracking: "$sources.sam2.data.tracks",
   },
 };
+
+export function mergeModules(saved?: StudioModule[]): StudioModule[] {
+  const prev = new Map((saved ?? []).map((m) => [m.id, m]));
+  const merged = SUGGESTED_MODULES.map((s) => {
+    const old = prev.get(s.id);
+    if (!old) return s;
+    return {
+      ...s,
+      enabled: s.id === "audio-local" ? true : old.enabled,
+      status: s.id === "audio-local" ? "ready" : old.status,
+    };
+  });
+  for (const m of saved ?? []) {
+    if (!SUGGESTED_MODULES.some((s) => s.id === m.id)) merged.push(m);
+  }
+  return merged;
+}

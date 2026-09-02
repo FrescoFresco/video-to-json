@@ -38,6 +38,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { treeFrom } from "@/lib/compose";
+import { msToClock } from "@/lib/demo-extraction";
 import { useStudio } from "@/lib/store";
 import type { JobStatus, StoredVideo, ViewName } from "@/lib/types";
 
@@ -544,7 +545,7 @@ function HomeView({
             Extrae datos estructurados de un vídeo.
           </h1>
           <p className="mt-3.5 mb-7 text-[clamp(15px,1.4vw,18px)] text-[#75757d]">
-            Archivos o links. El sistema hace el resto — el destino es un texto tan denso que se pueda imaginar el plano.
+            Archivos o links. Sube un vídeo y Whisper transcribe y diariza en local. El destino sigue siendo un texto denso.
           </p>
           <div
             tabIndex={0}
@@ -586,7 +587,7 @@ function HomeView({
                 ref={inputRef}
                 type="file"
                 multiple
-                accept="video/*,.zip,.txt,.csv"
+                accept="video/*,audio/*,.zip,.txt,.csv,.mp4,.mov,.webm,.mp3,.wav,.m4a"
                 className="hidden"
                 onChange={async (e) => {
                   const files = [...(e.target.files || [])];
@@ -770,6 +771,20 @@ function VideoDetail({
             <p className="mb-2 text-xs font-semibold tracking-wide text-[#75757d] uppercase">Guion reconstruible</p>
             <p className="text-sm leading-relaxed">{String(video.extraction.reconstructable_script || video.extraction.one_line || "")}</p>
           </div>
+          {Array.isArray(video.extraction.transcript) && video.extraction.transcript.length > 0 && (
+            <div className="border-t border-[#e7e7eb] py-6">
+              <p className="mb-2 text-xs font-semibold tracking-wide text-[#75757d] uppercase">Transcripción</p>
+              <div className="grid gap-3">
+                {(video.extraction.transcript as { start_ms: number; speaker: string; text: string }[]).map((t, i) => (
+                  <div key={i} className="grid grid-cols-[72px_48px_minmax(0,1fr)] gap-2 text-sm">
+                    <span className="text-[12px] text-[#75757d]">{msToClock(t.start_ms)}</span>
+                    <span className="font-medium">{t.speaker}</span>
+                    <span>{t.text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
       {tab === "results" && (

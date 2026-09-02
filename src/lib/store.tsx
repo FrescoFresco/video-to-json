@@ -9,10 +9,11 @@ import {
   useRef,
   useState,
 } from "react";
-import { DEFAULT_CONFIG, SUGGESTED_MODULES } from "./catalog";
+import { DEFAULT_CONFIG, mergeModules, SUGGESTED_MODULES } from "./catalog";
 import { outputsForItem } from "./compose";
 import { denseCafeExtraction } from "./demo-extraction";
 import type {
+  AudioExtract,
   Batch,
   ConfigVersion,
   OutputConfig,
@@ -147,7 +148,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         setPersist({
           ...defaultPersist,
           ...parsed,
-          modules: parsed.modules?.length ? parsed.modules : SUGGESTED_MODULES,
+          modules: mergeModules(parsed.modules),
         });
       }
     } catch {
@@ -246,12 +247,41 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         }));
 
         let probe: ProbeResult | undefined;
-        if (spec.file && spec.file.type.startsWith("video")) {
+        let audio: AudioExtract | null = null;
+        let audioError: string | null = null;
+        const file = spec.file;
+        const looksMedia = Boolean(
+          file &&
+            (file.type.startsWith("video") ||
+              file.type.startsWith("audio") ||
+              /\.(mp4|mov|mkv|webm|avi|mp3|wav|m4a|aac|ogg)$/i.test(spec.name))
+        );
+        if (looksMedia && file) {
+          setPersist((p) => ({
+            ...p,
+            batches: p.batches.map((b) =>
+              b.id !== batchId ? b : {
+                ...b,
+                items: b.items.map((it, i) =>
+                  i === index ? { ...it, stage: "Audio: Whisper + diarización", progress: 40 } : it
+                ),
+              }
+            ),
+          }));
           try {
             const fd = new FormData();
-            fd.append("file", spec.file);
-            const res = await fetch("/api/probe", { method: "POST", body: fd });
-            if (res.ok) probe = (await res.json()) as ProbeResult;
+            fd.append("file", file);
+            const res = await fetch("/api/process", { method: "POST", body: fd });
+            if (res.ok) {
+              const data = (await res.json()) as {
+                probe?: ProbeResult;
+                audio?: AudioExtract | null;
+                audioError?: string | null;
+              };
+              probe = data.probe;
+              audio = data.audio ?? null;
+              audioError = data.audioError ?? null;
+            }
           } catch {
             probe = undefined;
           }
@@ -275,6 +305,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
           origin: spec.type,
           modules: persistRef.current.modules,
           probe,
+          audio,
           useFixture,
         });
 
@@ -299,6 +330,14 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
               status: probe ? "ready" : "error",
             },
             { time: clock(), title: "Scene Cuts", meta: probe ? `${probe.scenes.length} cortes` : "n/a", status: "ready" },
+            {
+              time: clock(),
+              title: "Transcribe + Diarize",
+              meta: audio ?
+                `${audio.segments.length} frases · ${audio.speakers.join(", ") || "S01"} · ${audio.model}`
+              : audioError || (looksMedia ? "sin habla / error" : "sin archivo local"),
+              status: audio ? "ready" : looksMedia && audioError ? "error" : "ready",
+            },
             {
               time: clock(),
               title: "Visual Reconstruction",
