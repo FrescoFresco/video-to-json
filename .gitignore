@@ -43,6 +43,9 @@ next-env.d.ts
 # local agent dumps
 /agent-tools
 
+# persisted jobs / JSON results (vídeos temporales no se guardan)
+/data/
+
 # local python for video speech
 .venv/
 video-py/

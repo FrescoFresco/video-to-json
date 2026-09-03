@@ -8,7 +8,7 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   const { id } = await context.params;
-  const result = getJobResult(id);
+  const result = await getJobResult(id);
   if (!result) {
     return NextResponse.json({ error: "Resultado no disponible" }, { status: 404 });
   }

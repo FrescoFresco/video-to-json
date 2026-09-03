@@ -496,8 +496,12 @@ function SettingsView() {
         body="Con Docker: un comando y ya tienes Node, ffmpeg, Whisper y OCR. Sin Docker, el mismo script prepara el entorno local y levanta la app en el puerto 43141."
       />
       <EmptyCard
+        title="Resultados guardados"
+        body="Los trabajos y el JSON viven en disco (data/jobs). El archivo de vídeo no se guarda: se procesa en temporal y se borra. Al reiniciar, la lista y el JSON siguen ahí."
+      />
+      <EmptyCard
         title="Paso siguiente"
-        body="Webhook al terminar + persistencia de resultados, sin romper la instalación simple ni el contrato de módulos."
+        body="Webhook al terminar: avisar a otra app cuando el JSON esté listo, sin tener que preguntar cada dos segundos."
       />
     </div>
   );

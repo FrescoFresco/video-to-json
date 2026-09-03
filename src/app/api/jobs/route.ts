@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 
 export async function GET() {
-  return NextResponse.json({ jobs: listJobs() });
+  return NextResponse.json({ jobs: await listJobs() });
 }
 
 export async function POST(request: Request) {
@@ -28,6 +28,6 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE() {
-  clearJobs();
+  await clearJobs();
   return NextResponse.json({ ok: true });
 }

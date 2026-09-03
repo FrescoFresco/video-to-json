@@ -2,14 +2,19 @@ import { writeFile, mkdir } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import type { StoredVideo, VideoJobResult } from "@/lib/types";
+import {
+  clearJobsFromDisk,
+  loadAllJobsFromDisk,
+  persistJob,
+  type JobRecord,
+} from "./job-persistence";
 import { processVideoFile } from "./process-video";
-
-type JobRecord = StoredVideo & {
-  result?: VideoJobResult;
-};
 
 type JobStore = {
   jobs: Map<string, JobRecord>;
+  loaded: boolean;
+  loadPromise?: Promise<void>;
+  persistTimers: Map<string, ReturnType<typeof setTimeout>>;
 };
 
 const globalForJobs = globalThis as typeof globalThis & {
@@ -20,9 +25,23 @@ function getStore(): JobStore {
   if (!globalForJobs.__vxJobStore) {
     globalForJobs.__vxJobStore = {
       jobs: new Map<string, JobRecord>(),
+      loaded: false,
+      persistTimers: new Map(),
     };
   }
   return globalForJobs.__vxJobStore;
+}
+
+async function ensureLoaded() {
+  const store = getStore();
+  if (store.loaded) return;
+  if (!store.loadPromise) {
+    store.loadPromise = loadAllJobsFromDisk().then((jobs) => {
+      store.jobs = jobs;
+      store.loaded = true;
+    });
+  }
+  await store.loadPromise;
 }
 
 function clock() {
@@ -33,31 +52,56 @@ function createId() {
   return `job_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function updateJob(id: string, patch: Partial<JobRecord>) {
+function schedulePersist(job: JobRecord, immediate = false) {
+  const store = getStore();
+  const existing = store.persistTimers.get(job.id);
+  if (existing) clearTimeout(existing);
+
+  const write = () => {
+    store.persistTimers.delete(job.id);
+    void persistJob(job).catch(() => undefined);
+  };
+
+  if (immediate) {
+    write();
+    return;
+  }
+
+  // Progreso frecuente: no saturar disco.
+  store.persistTimers.set(job.id, setTimeout(write, 400));
+}
+
+function updateJob(id: string, patch: Partial<JobRecord>, immediate = false) {
   const store = getStore();
   const current = store.jobs.get(id);
   if (!current) return;
-  store.jobs.set(id, { ...current, ...patch });
+  const next = { ...current, ...patch };
+  store.jobs.set(id, next);
+  schedulePersist(next, immediate);
 }
 
-export function listJobs(): StoredVideo[] {
+export async function listJobs(): Promise<StoredVideo[]> {
+  await ensureLoaded();
   return [...getStore().jobs.values()]
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .map(({ result, ...job }) => job);
 }
 
-export function getJob(id: string): StoredVideo | null {
+export async function getJob(id: string): Promise<StoredVideo | null> {
+  await ensureLoaded();
   const job = getStore().jobs.get(id);
   if (!job) return null;
   const { result, ...rest } = job;
   return rest;
 }
 
-export function getJobResult(id: string): VideoJobResult | null {
+export async function getJobResult(id: string): Promise<VideoJobResult | null> {
+  await ensureLoaded();
   return getStore().jobs.get(id)?.result ?? null;
 }
 
 export async function createJobFromUpload(file: File): Promise<StoredVideo> {
+  await ensureLoaded();
   const id = createId();
   const createdAt = new Date().toISOString();
   const dir = path.join(os.tmpdir(), "vx-jobs");
@@ -76,6 +120,7 @@ export async function createJobFromUpload(file: File): Promise<StoredVideo> {
   };
 
   getStore().jobs.set(id, job);
+  schedulePersist(job, true);
 
   void processVideoFile(tempPath, file.name, (progress, stage) => {
     const current = getStore().jobs.get(id);
@@ -87,51 +132,64 @@ export async function createJobFromUpload(file: File): Promise<StoredVideo> {
     });
   })
     .then((result) => {
-      updateJob(id, {
-        status: "ready",
-        progress: 100,
-        stage: "Listo",
-        probe: result.probe,
-        extraction: result.extraction,
-        result,
-        activity: [
-          ...(getStore().jobs.get(id)?.activity ?? []),
-          {
-            time: clock(),
-            title: "Media",
-            detail: `${result.probe.width}×${result.probe.height} · ${Math.round(result.probe.durationMs / 1000)} s`,
-            status: "ready",
-          },
-          ...result.modules.map((mod) => ({
-            time: clock(),
-            title: mod.title,
-            detail: mod.error ? `${mod.summary}: ${mod.error}` : mod.summary,
-            status: (mod.status === "error" ? "error" : "ready") as StoredVideo["status"],
-          })),
-        ],
-      });
+      updateJob(
+        id,
+        {
+          status: "ready",
+          progress: 100,
+          stage: "Listo",
+          probe: result.probe,
+          extraction: result.extraction,
+          result,
+          activity: [
+            ...(getStore().jobs.get(id)?.activity ?? []),
+            {
+              time: clock(),
+              title: "Media",
+              detail: `${result.probe.width}×${result.probe.height} · ${Math.round(result.probe.durationMs / 1000)} s`,
+              status: "ready",
+            },
+            ...result.modules.map((mod) => ({
+              time: clock(),
+              title: mod.title,
+              detail: mod.error ? `${mod.summary}: ${mod.error}` : mod.summary,
+              status: (mod.status === "error" ? "error" : "ready") as StoredVideo["status"],
+            })),
+          ],
+        },
+        true
+      );
     })
     .catch((error) => {
-      updateJob(id, {
-        status: "error",
-        progress: 100,
-        stage: "Error",
-        error: error instanceof Error ? error.message : "No se pudo procesar el vídeo",
-        activity: [
-          ...(getStore().jobs.get(id)?.activity ?? []),
-          {
-            time: clock(),
-            title: "Procesamiento",
-            detail: error instanceof Error ? error.message : "No se pudo procesar el vídeo",
-            status: "error",
-          },
-        ],
-      });
+      updateJob(
+        id,
+        {
+          status: "error",
+          progress: 100,
+          stage: "Error",
+          error: error instanceof Error ? error.message : "No se pudo procesar el vídeo",
+          activity: [
+            ...(getStore().jobs.get(id)?.activity ?? []),
+            {
+              time: clock(),
+              title: "Procesamiento",
+              detail: error instanceof Error ? error.message : "No se pudo procesar el vídeo",
+              status: "error",
+            },
+          ],
+        },
+        true
+      );
     });
 
-  return getJob(id) as StoredVideo;
+  return (await getJob(id)) as StoredVideo;
 }
 
-export function clearJobs() {
-  getStore().jobs.clear();
+export async function clearJobs() {
+  await ensureLoaded();
+  const store = getStore();
+  for (const timer of store.persistTimers.values()) clearTimeout(timer);
+  store.persistTimers.clear();
+  store.jobs.clear();
+  await clearJobsFromDisk();
 }

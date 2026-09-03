@@ -41,13 +41,14 @@ RUN python3 -m venv video-py \
   && video-py/bin/pip install --no-cache-dir -r requirements-video.txt
 
 ENV VIDEO_VENV_DIR=video-py
+ENV VX_DATA_DIR=/data/jobs
 
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY scripts ./scripts
 
-RUN mkdir -p /data/hf /data/cache \
+RUN mkdir -p /data/hf /data/cache /data/jobs \
   && chown -R node:node /app /data
 
 USER node
