@@ -26,6 +26,8 @@ python3 -m venv .venv
 npm run dev -- --port 43141 --hostname 0.0.0.0
 ```
 
+La primera vez que corre `npm run dev`, Next.js **compila** (puede tardar un minuto y parecer colgado). Luego recarga más rápido. **Procesar un vídeo** es otro cuello de botella: Whisper y el OCR van en CPU, sin GPU; un clip corto puede llevar bastante, y la primera transcripción descarga el modelo `base`.
+
 ## Idea de módulos
 
 Contrato único: **entra un vídeo, sale JSON**.
