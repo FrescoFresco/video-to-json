@@ -29,7 +29,11 @@ function getStore(): JobStore {
       persistTimers: new Map(),
     };
   }
-  return globalForJobs.__vxJobStore;
+  const store = globalForJobs.__vxJobStore;
+  // HMR / reinicios parciales pueden dejar el store a medias.
+  if (!store.jobs) store.jobs = new Map();
+  if (!store.persistTimers) store.persistTimers = new Map();
+  return store;
 }
 
 async function ensureLoaded() {

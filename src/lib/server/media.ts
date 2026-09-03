@@ -152,12 +152,16 @@ export async function transcribeVideoSpeech(
 }
 
 function resolvePythonBin() {
-  if (process.env.VIDEO_PYTHON && existsSync(process.env.VIDEO_PYTHON)) {
+  if (process.env.VIDEO_PYTHON && existsSync(/*turbopackIgnore: true*/ process.env.VIDEO_PYTHON)) {
     return process.env.VIDEO_PYTHON;
   }
-  // Directorio local del pipeline (no usar un literal de symlink que Turbopack intente seguir).
-  const dir = process.env.VIDEO_VENV_DIR || "video-py";
-  return path.join(process.cwd(), dir, "bin", "python");
+  // Buscar venvs conocidos sin hardcodear un único path (Turbopack no debe seguir symlinks).
+  const candidates = [process.env.VIDEO_VENV_DIR, "video-py", ".venv"].filter(Boolean) as string[];
+  for (const dir of candidates) {
+    const bin = path.join(/*turbopackIgnore: true*/ process.cwd(), dir, "bin", "python");
+    if (existsSync(/*turbopackIgnore: true*/ bin)) return bin;
+  }
+  return path.join(/*turbopackIgnore: true*/ process.cwd(), "video-py", "bin", "python");
 }
 
 function pythonBin() {
