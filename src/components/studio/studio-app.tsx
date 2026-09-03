@@ -115,8 +115,6 @@ export function StudioApp() {
         <div className="grid justify-items-center gap-1">
           {nav("home", <Home className="size-[17px]" />)}
           {nav("videos", <Video className="size-[17px]" />)}
-        </div>
-        <div className="mt-auto grid justify-items-center">
           {nav("settings", <Settings className="size-[17px]" />)}
         </div>
       </aside>
