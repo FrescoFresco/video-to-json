@@ -23,7 +23,7 @@ npm install
 python3 -m venv .venv
 .venv/bin/pip install -r requirements-video.txt
 # la primera transcripción descarga el modelo Whisper `base`
-npm run dev -- --port 43141 --hostname 127.0.0.1
+npm run dev -- --port 43141 --hostname 0.0.0.0
 ```
 
 ## Idea de módulos
