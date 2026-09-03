@@ -10,7 +10,7 @@ export type StudioModule = {
   id: string;
   name: string;
   kind: ModuleKind;
-  category: "Audio" | "Vision" | "Video" | "Music" | "Media" | "Custom";
+  category: "Vision" | "Video" | "Speech" | "Custom";
   repoUrl?: string;
   description: string;
   enabled: boolean;
@@ -78,14 +78,15 @@ export type ViewName =
   | "composer"
   | "settings";
 
-export type AudioExtract = {
+/** Speech detected inside a video. Not a standalone audio product. */
+export type VideoSpeech = {
   engine: string;
   model: string;
   language: string | null;
-  language_probability: number | null;
+  language_probability?: number | null;
   speakers: string[];
   speaker_count: number;
-  diarization: string;
+  diarization?: string;
   segments: Array<{
     start: number;
     end: number;
@@ -104,7 +105,7 @@ export type ProbeResult = {
   height: number;
   fps: number;
   videoCodec?: string;
-  audioCodec?: string;
+  soundtrackCodec?: string;
   scenes: { startMs: number; endMs: number }[];
   frameCountHint?: number;
 };

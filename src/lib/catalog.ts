@@ -1,13 +1,13 @@
 import type { StudioModule } from "./types";
 
-/** Suggested open-source repos. The app does not hardcode their internals. */
+/** Suggested open-source video extractors. The app only consumes JSON. */
 export const SUGGESTED_MODULES: StudioModule[] = [
   {
     id: "media-probe",
     name: "Media Probe",
     kind: "builtin",
-    category: "Media",
-    description: "ffprobe local: duración, resolución, fps y códecs.",
+    category: "Video",
+    description: "ffprobe local: duración, resolución, fps y códecs del vídeo.",
     enabled: true,
     status: "ready",
     sample: {
@@ -23,19 +23,19 @@ export const SUGGESTED_MODULES: StudioModule[] = [
     category: "Video",
     repoUrl: "https://github.com/Breakthrough/PySceneDetect",
     description:
-      "Cortes de plano. Aquí se usa el filtro scene de ffmpeg; el repo PySceneDetect se puede enganchar igual.",
+      "Cortes de plano del vídeo. Aquí se usa el filtro scene de ffmpeg; PySceneDetect se engancha igual.",
     enabled: true,
     status: "ready",
     sample: { scenes: [{ start: 0, end: 3.2 }] },
   },
   {
-    id: "audio-local",
-    name: "Transcribe + Diarize",
+    id: "speech-in-video",
+    name: "Habla del vídeo",
     kind: "builtin",
-    category: "Audio",
+    category: "Speech",
     repoUrl: "https://github.com/SYSTRAN/faster-whisper",
     description:
-      "Conectado: extrae el audio con ffmpeg, transcribe con Whisper (local, CPU) y agrupa speakers. Sube un vídeo y corre de verdad.",
+      "Lee lo que se dice en el vídeo (Whisper local, CPU) y agrupa quién habla. Solo acepta vídeos.",
     enabled: true,
     status: "ready",
     sample: {
@@ -49,7 +49,7 @@ export const SUGGESTED_MODULES: StudioModule[] = [
     category: "Vision",
     repoUrl: "https://github.com/QwenLM/Qwen2.5-VL",
     description:
-      "Describe cada escena en texto denso. En esta máquina no corre el VLM; el Composer deja el hueco y un guion estructural. Engancha Qwen-VL o Moondream en tu GPU.",
+      "Describe cada plano. En esta máquina no corre el VLM; el Composer deja el hueco. Engancha Qwen-VL o Moondream en una GPU.",
     enabled: true,
     status: "unwired",
     sample: {
@@ -68,10 +68,10 @@ export const SUGGESTED_MODULES: StudioModule[] = [
     id: "moss",
     name: "MOSS Transcribe Diarize",
     kind: "repo",
-    category: "Audio",
+    category: "Speech",
     repoUrl: "https://github.com/OpenMOSS/MOSS-Transcribe-Diarize",
     description:
-      "Repo OSS de transcripción+diarización en un paso (GPU). Mientras tanto el módulo local Whisper cubre el audio.",
+      "Repo OSS para transcribir y diarizar el habla del vídeo en GPU. Mientras tanto cubre el módulo local.",
     enabled: false,
     status: "unwired",
     sample: {
@@ -91,9 +91,9 @@ export const SUGGESTED_MODULES: StudioModule[] = [
     id: "whisperx",
     name: "WhisperX",
     kind: "repo",
-    category: "Audio",
+    category: "Speech",
     repoUrl: "https://github.com/m-bain/whisperX",
-    description: "Whisper local + diarización. Alternativa OSS a MOSS.",
+    description: "Transcripción alineada del habla del vídeo. Alternativa OSS a MOSS.",
     enabled: false,
     status: "unwired",
     sample: { segments: [{ start: 0.5, end: 3.1, speaker: "SPEAKER_00", text: "…" }] },
@@ -104,32 +104,21 @@ export const SUGGESTED_MODULES: StudioModule[] = [
     kind: "repo",
     category: "Vision",
     repoUrl: "https://github.com/facebookresearch/sam2",
-    description: "Máscaras y tracking. No es el objetivo: aporta dónde está cada cosa.",
+    description: "Máscaras y tracking en el fotograma. Aporta dónde está cada cosa.",
     enabled: false,
     status: "unwired",
     sample: { data: { tracks: [{ entity_id: "entity_001", start: 0.3, end: 8.7 }] } },
   },
   {
     id: "panns",
-    name: "PANNs Sound Events",
+    name: "Eventos del plano",
     kind: "repo",
-    category: "Audio",
+    category: "Video",
     repoUrl: "https://github.com/qiuqiangkong/audioset_tagging_cnn",
-    description: "Eventos de sonido (risa, máquina, tráfico) sin API de pago.",
+    description: "Qué ocurre en el vídeo más allá del habla: risa, máquina, tráfico.",
     enabled: false,
     status: "unwired",
     sample: { events: [{ label: "laughter", start: 3.3, end: 3.8 }] },
-  },
-  {
-    id: "demucs",
-    name: "Demucs",
-    kind: "repo",
-    category: "Audio",
-    repoUrl: "https://github.com/facebookresearch/demucs",
-    description: "Separa la voz (voice.wav) antes de transcribir.",
-    enabled: false,
-    status: "unwired",
-    sample: { artifacts: ["voice.wav"] },
   },
 ];
 
@@ -141,7 +130,7 @@ export const DEFAULT_CONFIG = {
     media: "$sources.media-probe",
     scenes: "$sources.scene-cuts.scenes",
     visual: "$sources.visual-reconstruction.data.segments",
-    audio: "$sources.audio-local.segments",
+    speech: "$sources.speech-in-video.segments",
     tracking: "$sources.sam2.data.tracks",
   },
 };
@@ -153,8 +142,8 @@ export function mergeModules(saved?: StudioModule[]): StudioModule[] {
     if (!old) return s;
     return {
       ...s,
-      enabled: s.id === "audio-local" ? true : old.enabled,
-      status: s.id === "audio-local" ? "ready" : old.status,
+      enabled: s.id === "speech-in-video" ? true : old.enabled,
+      status: s.id === "speech-in-video" ? "ready" : old.status,
     };
   });
   for (const m of saved ?? []) {

@@ -3,7 +3,7 @@ import { promisify } from "node:util";
 import { readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import type { AudioExtract, ProbeResult } from "@/lib/types";
+import type { ProbeResult, VideoSpeech } from "@/lib/types";
 
 const execFileAsync = promisify(execFile);
 
@@ -40,7 +40,7 @@ function parseScenes(stderr: string, durationMs: number) {
   return scenes.length ? scenes : [{ startMs: 0, endMs: durationMs }];
 }
 
-export async function probeMedia(filePath: string, filename: string): Promise<ProbeResult> {
+export async function probeVideo(filePath: string, filename: string): Promise<ProbeResult> {
   const { stdout } = await execFileAsync(
     "ffprobe",
     ["-v", "error", "-print_format", "json", "-show_format", "-show_streams", filePath],
@@ -48,12 +48,15 @@ export async function probeMedia(filePath: string, filename: string): Promise<Pr
   );
   const probe = JSON.parse(stdout) as ProbeJson;
   const video = probe.streams?.find((s) => s.codec_type === "video");
-  const audio = probe.streams?.find((s) => s.codec_type === "audio");
-  const durationSec = Number(video?.duration || probe.format?.duration || 0);
+  const soundtrack = probe.streams?.find((s) => s.codec_type === "audio");
+  if (!video) {
+    throw new Error("Este archivo no es un vídeo.");
+  }
+  const durationSec = Number(video.duration || probe.format?.duration || 0);
   const durationMs = Math.round(durationSec * 1000);
 
   let scenes = [{ startMs: 0, endMs: durationMs || 0 }];
-  if (video && durationMs) {
+  if (durationMs) {
     try {
       const { stderr } = await execFileAsync(
         "ffmpeg",
@@ -69,38 +72,55 @@ export async function probeMedia(filePath: string, filename: string): Promise<Pr
   return {
     filename,
     durationMs,
-    width: video?.width ?? 0,
-    height: video?.height ?? 0,
-    fps: Math.round(parseFps(video?.r_frame_rate) * 100) / 100,
-    videoCodec: video?.codec_name,
-    audioCodec: audio?.codec_name,
+    width: video.width ?? 0,
+    height: video.height ?? 0,
+    fps: Math.round(parseFps(video.r_frame_rate) * 100) / 100,
+    videoCodec: video.codec_name,
+    soundtrackCodec: soundtrack?.codec_name,
     scenes,
   };
 }
 
-export async function extractAudioJson(
-  mediaPath: string,
+/** Transcribe speech that is already in the video. Intermediate WAV is not a product. */
+export async function transcribeVideoSpeech(
+  videoPath: string,
   wavPath: string,
   outJson: string
-): Promise<AudioExtract> {
+): Promise<VideoSpeech> {
   try {
     await execFileAsync(
       "ffmpeg",
-      ["-y", "-i", mediaPath, "-vn", "-ac", "1", "-ar", "16000", "-af", "loudnorm=I=-16:TP=-1.5:LRA=11", "-c:a", "pcm_s16le", wavPath],
+      [
+        "-y",
+        "-i",
+        videoPath,
+        "-vn",
+        "-ac",
+        "1",
+        "-ar",
+        "16000",
+        "-af",
+        "loudnorm=I=-16:TP=-1.5:LRA=11",
+        "-c:a",
+        "pcm_s16le",
+        wavPath,
+      ],
       { timeout: 60000 }
     );
   } catch {
     await execFileAsync(
       "ffmpeg",
-      ["-y", "-i", mediaPath, "-vn", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", wavPath],
+      ["-y", "-i", videoPath, "-vn", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", wavPath],
       { timeout: 60000 }
     );
   }
 
   const python = path.join(process.cwd(), ".venv", "bin", "python");
-  const script = path.join(process.cwd(), "scripts", "audio_extract.py");
+  const script = path.join(process.cwd(), "scripts", "from_video_speech.py");
   if (!existsSync(python)) {
-    throw new Error("Falta .venv. Ejecuta: python3 -m venv .venv && .venv/bin/pip install -r requirements-audio.txt");
+    throw new Error(
+      "Falta .venv. Ejecuta: python3 -m venv .venv && .venv/bin/pip install -r requirements-video.txt"
+    );
   }
   const model = process.env.WHISPER_MODEL || "base";
   await execFileAsync(python, [script, wavPath, model, outJson], {
@@ -112,5 +132,5 @@ export async function extractAudioJson(
     },
   });
   const raw = await readFile(outJson, "utf8");
-  return JSON.parse(raw) as AudioExtract;
+  return JSON.parse(raw) as VideoSpeech;
 }

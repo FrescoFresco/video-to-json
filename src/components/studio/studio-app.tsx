@@ -41,6 +41,7 @@ import { treeFrom } from "@/lib/compose";
 import { msToClock } from "@/lib/demo-extraction";
 import { useStudio } from "@/lib/store";
 import type { JobStatus, StoredVideo, ViewName } from "@/lib/types";
+import { isUrlListFile, isVideoFile, isVideoZip } from "@/lib/video-file";
 
 function downloadJson(name: string, obj: unknown) {
   const blob = new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" });
@@ -248,16 +249,16 @@ export function StudioApp() {
       <Dialog open={helpOpen} onOpenChange={setHelpOpen}>
         <DialogContent className="max-w-[700px]">
           <DialogHeader>
-            <DialogTitle>Opciones de importación</DialogTitle>
+            <DialogTitle>Cómo entra un vídeo</DialogTitle>
           </DialogHeader>
-          <p className="text-[12.5px] text-[#75757d]">Una sola entrada, varios formatos.</p>
+          <p className="text-[12.5px] text-[#75757d]">Este estudio solo procesa vídeos.</p>
           <div className="border-t border-[#e7e7eb] py-4">
             <p className="mb-2 text-xs font-semibold tracking-wide text-[#75757d] uppercase">Archivos</p>
-            <p>Vídeo, ZIP, TXT y CSV.</p>
+            <p>MP4, MOV, MKV, WebM. Un ZIP de vídeos, o un TXT/CSV con URLs de vídeos.</p>
           </div>
           <div className="border-t border-[#e7e7eb] py-4">
             <p className="mb-2 text-xs font-semibold tracking-wide text-[#75757d] uppercase">URLs en lote</p>
-            <p className="text-[12.5px] text-[#75757d]">Pega varios links o un TXT/CSV que los contenga.</p>
+            <p className="text-[12.5px] text-[#75757d]">Pega varios links de vídeo o un TXT/CSV que los contenga.</p>
             <pre className="mt-3 overflow-auto rounded-xl bg-[#151517] p-4 font-mono text-[12.5px] leading-[1.55] text-[#e9e9ed]">{`https://instagram.com/reel/...
 https://tiktok.com/@.../video/...
 https://facebook.com/...`}</pre>
@@ -440,17 +441,17 @@ function HomeView({
   async function ingestFiles(files: File[]) {
     const items: { name: string; type: "file" | "url" | "zip"; file?: File }[] = [];
     for (const file of files) {
-      const lower = file.name.toLowerCase();
-      if (lower.endsWith(".txt") || lower.endsWith(".csv")) {
+      if (isUrlListFile(file.name)) {
         const urls = extractUrls(await file.text());
-        if (urls.length) urls.forEach((url) => items.push({ name: url, type: "url" }));
-        else items.push({ name: file.name, type: "file", file });
-      } else {
-        items.push({
-          name: file.name,
-          type: lower.endsWith(".zip") ? "zip" : "file",
-          file,
-        });
+        urls.forEach((url) => items.push({ name: url, type: "url" }));
+        continue;
+      }
+      if (isVideoZip(file.name)) {
+        items.push({ name: file.name, type: "zip", file });
+        continue;
+      }
+      if (isVideoFile(file)) {
+        items.push({ name: file.name, type: "file", file });
       }
     }
     if (items.length) await s.createBatch(items);
@@ -545,7 +546,7 @@ function HomeView({
             Extrae datos estructurados de un vídeo.
           </h1>
           <p className="mt-3.5 mb-7 text-[clamp(15px,1.4vw,18px)] text-[#75757d]">
-            Archivos o links. Sube un vídeo y Whisper transcribe y diariza en local. El destino sigue siendo un texto denso.
+            Suelta vídeos. Sale un JSON denso: qué se ve, cuándo, qué se dice, quién habla.
           </p>
           <div
             tabIndex={0}
@@ -581,13 +582,13 @@ function HomeView({
               <div className="grid size-[46px] place-items-center rounded-[14px] bg-[#f5f5f7]">
                 <Upload className="size-[21px]" />
               </div>
-              <div className="text-lg font-semibold">Añade archivos o links</div>
-              <div className="text-[13px] text-[#75757d]">Vídeo · ZIP · TXT/CSV · URLs</div>
+              <div className="text-lg font-semibold">Añade vídeos o links</div>
+              <div className="text-[13px] text-[#75757d]">MP4 · MOV · WebM · URLs de vídeo</div>
               <input
                 ref={inputRef}
                 type="file"
                 multiple
-                accept="video/*,audio/*,.zip,.txt,.csv,.mp4,.mov,.webm,.mp3,.wav,.m4a"
+                accept="video/*,.mp4,.mov,.mkv,.webm,.m4v,.zip,.txt,.csv"
                 className="hidden"
                 onChange={async (e) => {
                   const files = [...(e.target.files || [])];

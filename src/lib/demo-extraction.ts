@@ -20,7 +20,7 @@ export function denseCafeExtraction(filename = "reel_cafeteria_18s.mp4") {
       aspect_ratio: "9:16",
       fps: 30,
       video_codec: "h264",
-      audio_codec: "aac",
+      soundtrack_codec: "aac",
       orientation: "vertical",
     },
     one_line:
@@ -113,11 +113,11 @@ export function structuralExtraction(input: {
     height: number;
     fps: number;
     videoCodec?: string;
-    audioCodec?: string;
+    soundtrackCodec?: string;
     scenes: { startMs: number; endMs: number }[];
   };
   transcript?: TranscriptSeg[];
-  audioMeta?: { language?: string | null; speakers?: string[]; diarization?: string };
+  speechMeta?: { language?: string | null; speakers?: string[]; diarization?: string };
 }) {
   const durationMs = input.probe?.durationMs ?? 0;
   const scenes =
@@ -149,9 +149,9 @@ export function structuralExtraction(input: {
       `Vídeo ${input.probe.width}×${input.probe.height} a ${input.probe.fps} fps, ${msToClock(durationMs)}.`
     : `Fuente ${input.origin}: ${input.filename}. Sin sonda de media (no se pudo leer el archivo).`,
     `${scenes.length} escena(s) detectada(s) por corte.`,
-    spoken ? `Lo que se oye: ${spoken}` : "Sin transcripción (no hubo habla o falló Whisper).",
-    input.audioMeta?.speakers?.length ?
-      `Speakers: ${input.audioMeta.speakers.join(", ")} (${input.audioMeta.diarization || "local"}).`
+    spoken ? `Lo que se dice en el vídeo: ${spoken}` : "Sin habla transcrita en este vídeo.",
+    input.speechMeta?.speakers?.length ?
+      `Speakers: ${input.speechMeta.speakers.join(", ")} (${input.speechMeta.diarization || "local"}).`
     : "",
     "Falta el módulo de descripción visual para cerrar el texto reconstruible.",
   ]
@@ -161,10 +161,10 @@ export function structuralExtraction(input: {
   return {
     extraction: {
       goal: "video_to_reconstructable_text",
-      quality: transcript.length ? "audio_ready_pending_vlm" : "structural_pending_vlm",
-      language: input.audioMeta?.language || "es",
+      quality: transcript.length ? "speech_ready_pending_vlm" : "structural_pending_vlm",
+      language: input.speechMeta?.language || "es",
       vision_model: null,
-      audio_engine: "faster-whisper",
+      speech_engine: "faster-whisper",
     },
     source: {
       type: input.origin,
@@ -177,7 +177,7 @@ export function structuralExtraction(input: {
         resolution: { width: input.probe.width, height: input.probe.height },
         fps: input.probe.fps,
         video_codec: input.probe.videoCodec,
-        audio_codec: input.probe.audioCodec,
+        soundtrack_codec: input.probe.soundtrackCodec,
         orientation:
           input.probe.height > input.probe.width ? "vertical" : "horizontal",
       }
@@ -186,7 +186,7 @@ export function structuralExtraction(input: {
     reconstructable_script,
     timeline,
     transcript,
-    speakers: input.audioMeta?.speakers ?? [],
+    speakers: input.speechMeta?.speakers ?? [],
     music: {
       identified: false,
       description_for_reconstruction: "Módulo de música no enganchado.",

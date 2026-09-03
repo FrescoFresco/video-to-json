@@ -13,17 +13,18 @@ import { DEFAULT_CONFIG, mergeModules, SUGGESTED_MODULES } from "./catalog";
 import { outputsForItem } from "./compose";
 import { denseCafeExtraction } from "./demo-extraction";
 import type {
-  AudioExtract,
   Batch,
   ConfigVersion,
   OutputConfig,
   ProbeResult,
   StoredVideo,
   StudioModule,
+  VideoSpeech,
   ViewName,
 } from "./types";
+import { isVideoFile } from "./video-file";
 
-const KEY = "vx-studio-v1";
+const KEY = "vx-studio-video-v2";
 
 type Persist = {
   modules: StudioModule[];
@@ -247,23 +248,18 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         }));
 
         let probe: ProbeResult | undefined;
-        let audio: AudioExtract | null = null;
-        let audioError: string | null = null;
+        let speech: VideoSpeech | null = null;
+        let speechError: string | null = null;
         const file = spec.file;
-        const looksMedia = Boolean(
-          file &&
-            (file.type.startsWith("video") ||
-              file.type.startsWith("audio") ||
-              /\.(mp4|mov|mkv|webm|avi|mp3|wav|m4a|aac|ogg)$/i.test(spec.name))
-        );
-        if (looksMedia && file) {
+        const looksVideo = Boolean(file && isVideoFile(file));
+        if (looksVideo && file) {
           setPersist((p) => ({
             ...p,
             batches: p.batches.map((b) =>
               b.id !== batchId ? b : {
                 ...b,
                 items: b.items.map((it, i) =>
-                  i === index ? { ...it, stage: "Audio: Whisper + diarización", progress: 40 } : it
+                  i === index ? { ...it, stage: "Habla del vídeo", progress: 40 } : it
                 ),
               }
             ),
@@ -272,18 +268,22 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
             const fd = new FormData();
             fd.append("file", file);
             const res = await fetch("/api/process", { method: "POST", body: fd });
+            const data = (await res.json()) as {
+              probe?: ProbeResult;
+              speech?: VideoSpeech | null;
+              speechError?: string | null;
+              error?: string;
+            };
             if (res.ok) {
-              const data = (await res.json()) as {
-                probe?: ProbeResult;
-                audio?: AudioExtract | null;
-                audioError?: string | null;
-              };
               probe = data.probe;
-              audio = data.audio ?? null;
-              audioError = data.audioError ?? null;
+              speech = data.speech ?? null;
+              speechError = data.speechError ?? null;
+            } else {
+              speechError = data.error || "No se pudo procesar el vídeo";
             }
           } catch {
             probe = undefined;
+            speechError = "No se pudo procesar el vídeo";
           }
         }
 
@@ -305,7 +305,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
           origin: spec.type,
           modules: persistRef.current.modules,
           probe,
-          audio,
+          speech,
           useFixture,
         });
 
@@ -332,11 +332,11 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
             { time: clock(), title: "Scene Cuts", meta: probe ? `${probe.scenes.length} cortes` : "n/a", status: "ready" },
             {
               time: clock(),
-              title: "Transcribe + Diarize",
-              meta: audio ?
-                `${audio.segments.length} frases · ${audio.speakers.join(", ") || "S01"} · ${audio.model}`
-              : audioError || (looksMedia ? "sin habla / error" : "sin archivo local"),
-              status: audio ? "ready" : looksMedia && audioError ? "error" : "ready",
+              title: "Habla del vídeo",
+              meta: speech ?
+                `${speech.segments.length} frases · ${speech.speakers.join(", ") || "S01"} · ${speech.model}`
+              : speechError || (looksVideo ? "sin habla transcrita" : "sin archivo de vídeo"),
+              status: speech ? "ready" : looksVideo && speechError ? "error" : "ready",
             },
             {
               time: clock(),

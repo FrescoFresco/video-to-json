@@ -1,5 +1,5 @@
 import { denseCafeExtraction, structuralExtraction } from "./demo-extraction";
-import type { AudioExtract, ProbeResult, StudioModule } from "./types";
+import type { ProbeResult, StudioModule, VideoSpeech } from "./types";
 
 export function pickByPath(obj: unknown, path: string): unknown {
   const raw = path.replace(/^\$sources\./, "");
@@ -41,7 +41,7 @@ export function outputsForItem(opts: {
   origin: "file" | "url" | "zip";
   modules: StudioModule[];
   probe?: ProbeResult;
-  audio?: AudioExtract | null;
+  speech?: VideoSpeech | null;
   useFixture: boolean;
 }) {
   const moduleOutputs: Record<string, unknown> = {};
@@ -53,7 +53,7 @@ export function outputsForItem(opts: {
         height: opts.probe.height,
         fps: opts.probe.fps,
         video_codec: opts.probe.videoCodec,
-        audio_codec: opts.probe.audioCodec,
+        soundtrack_codec: opts.probe.soundtrackCodec,
       };
     } else if (mod.id === "scene-cuts" && opts.probe) {
       moduleOutputs[mod.id] = {
@@ -62,22 +62,22 @@ export function outputsForItem(opts: {
           end: s.endMs / 1000,
         })),
       };
-    } else if (mod.id === "audio-local") {
-      moduleOutputs[mod.id] = opts.audio ?? {
+    } else if (mod.id === "speech-in-video") {
+      moduleOutputs[mod.id] = opts.speech ?? {
         _status: "missing",
-        note: "Sube un archivo de vídeo o audio para transcribir.",
+        note: "Sube un vídeo para transcribir lo que se dice en el plano.",
       };
-    } else if (mod.id === "moss" && opts.audio) {
+    } else if (mod.id === "moss" && opts.speech) {
       moduleOutputs[mod.id] = {
         data: {
-          segments: opts.audio.segments.map((s) => ({
+          segments: opts.speech.segments.map((s) => ({
             start: s.start,
             end: s.end,
             speaker: s.speaker,
             text: s.text,
           })),
         },
-        _note: "Salida local (faster-whisper). El repo MOSS se puede enganchar después.",
+        _note: "Salida local (faster-whisper sobre el vídeo). El repo MOSS se puede enganchar después.",
       };
     } else if (mod.id === "visual-reconstruction") {
       moduleOutputs[mod.id] = opts.useFixture ?
@@ -127,17 +127,17 @@ export function outputsForItem(opts: {
       filename: opts.name,
       origin: opts.origin,
       probe: opts.probe,
-      transcript: opts.audio?.segments.map((s) => ({
+      transcript: opts.speech?.segments.map((s) => ({
         start_ms: s.start_ms,
         end_ms: s.end_ms,
         speaker: s.speaker,
         text: s.text,
       })),
-      audioMeta: opts.audio ?
+      speechMeta: opts.speech ?
         {
-          language: opts.audio.language,
-          speakers: opts.audio.speakers,
-          diarization: opts.audio.diarization,
+          language: opts.speech.language,
+          speakers: opts.speech.speakers,
+          diarization: opts.speech.diarization,
         }
       : undefined,
     });

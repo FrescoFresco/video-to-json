@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Video Extraction Studio",
   description:
-    "De vídeo a texto reconstruible. Módulos open source, Composer de JSON, sin APIs de pago.",
+    "Solo vídeos: de vídeo a texto reconstruible. Módulos open source, Composer de JSON, sin APIs de pago.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
