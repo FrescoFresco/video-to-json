@@ -1,9 +1,9 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import type { ProbeResult, VideoSpeech } from "@/lib/types";
+import type { OnScreenText, ProbeResult, VideoSpeech } from "@/lib/types";
 
 const execFileAsync = promisify(execFile);
 
@@ -133,4 +133,65 @@ export async function transcribeVideoSpeech(
   });
   const raw = await readFile(outJson, "utf8");
   return JSON.parse(raw) as VideoSpeech;
+}
+
+function pythonBin() {
+  return path.join(process.cwd(), ".venv", "bin", "python");
+}
+
+function framePlan(scenes: { startMs: number; endMs: number }[], durationMs: number) {
+  const maxFrames = 12;
+  if (scenes.length >= 2) {
+    return scenes.slice(0, maxFrames);
+  }
+  const step = Math.max(800, Math.round(durationMs / maxFrames) || 800);
+  const out: { startMs: number; endMs: number }[] = [];
+  for (let t = 0; t < Math.max(durationMs, 1) && out.length < maxFrames; t += step) {
+    out.push({ startMs: t, endMs: Math.min(durationMs, t + step) });
+  }
+  return out.length ? out : [{ startMs: 0, endMs: durationMs }];
+}
+
+export async function extractSceneFrames(
+  videoPath: string,
+  scenes: { startMs: number; endMs: number }[],
+  durationMs: number,
+  outDir: string
+) {
+  await mkdir(outDir, { recursive: true });
+  const plan = framePlan(scenes, durationMs);
+  const frames: { path: string; start_ms: number; end_ms: number }[] = [];
+  for (const [i, scene] of plan.entries()) {
+    const mid = (scene.startMs + scene.endMs) / 2 / 1000;
+    const file = path.join(outDir, `f${String(i).padStart(3, "0")}.jpg`);
+    await execFileAsync(
+      "ffmpeg",
+      ["-y", "-ss", String(Math.max(0, mid)), "-i", videoPath, "-frames:v", "1", "-q:v", "3", file],
+      { timeout: 15000 }
+    );
+    if (existsSync(file)) {
+      frames.push({ path: file, start_ms: scene.startMs, end_ms: scene.endMs });
+    }
+  }
+  return frames;
+}
+
+export async function readOnScreenText(
+  frames: { path: string; start_ms: number; end_ms: number }[],
+  manifestPath: string,
+  outJson: string
+): Promise<OnScreenText> {
+  const python = pythonBin();
+  const script = path.join(process.cwd(), "scripts", "from_video_ocr.py");
+  if (!existsSync(python)) {
+    throw new Error(
+      "Falta .venv. Ejecuta: python3 -m venv .venv && .venv/bin/pip install -r requirements-video.txt"
+    );
+  }
+  await writeFile(manifestPath, JSON.stringify({ frames }), "utf8");
+  await execFileAsync(python, [script, manifestPath, outJson], {
+    timeout: 180000,
+    maxBuffer: 8 * 1024 * 1024,
+  });
+  return JSON.parse(await readFile(outJson, "utf8")) as OnScreenText;
 }

@@ -49,7 +49,7 @@ export const SUGGESTED_MODULES: StudioModule[] = [
     category: "Vision",
     repoUrl: "https://github.com/QwenLM/Qwen2.5-VL",
     description:
-      "Describe cada plano. En esta máquina no corre el VLM; el Composer deja el hueco. Engancha Qwen-VL o Moondream en una GPU.",
+      "Describe cada plano (encuadre, luz, ropa, objetos). En esta máquina no hay GPU: el Composer deja el hueco. Engancha Qwen2.5-VL 3B o Moondream.",
     enabled: true,
     status: "unwired",
     sample: {
@@ -110,6 +110,66 @@ export const SUGGESTED_MODULES: StudioModule[] = [
     sample: { data: { tracks: [{ entity_id: "entity_001", start: 0.3, end: 8.7 }] } },
   },
   {
+    id: "on-screen-text",
+    name: "Texto en pantalla",
+    kind: "builtin",
+    category: "Vision",
+    repoUrl: "https://github.com/PaddlePaddle/PaddleOCR",
+    description:
+      "Conectado: RapidOCR (PP-OCR en ONNX, CPU) lee logos, stickers y subtítulos quemados. PaddleOCR se puede sustituir con el mismo JSON.",
+    enabled: true,
+    status: "ready",
+    sample: {
+      items: [
+        { text: "AURA", start_ms: 15800, end_ms: 18240, conf: 0.99, role: "logo" },
+        { text: "café de especialidad", start_ms: 15800, end_ms: 18240, conf: 0.97, role: "overlay" },
+      ],
+    },
+  },
+  {
+    id: "objects-in-video",
+    name: "Objetos en el plano",
+    kind: "repo",
+    category: "Vision",
+    repoUrl: "https://github.com/ultralytics/ultralytics",
+    description:
+      "YOLO11 / YOLO-World: qué hay y dónde, con id en el tiempo. El Composer espera tracks JSON. Engánchalo en GPU o con yolov8n ONNX.",
+    enabled: true,
+    status: "unwired",
+    sample: {
+      tracks: [
+        {
+          entity_id: "cup_01",
+          label: "cup",
+          start: 0.0,
+          end: 12.1,
+          bbox: [0.42, 0.55, 0.71, 0.88],
+        },
+        {
+          entity_id: "person_01",
+          label: "person",
+          start: 0.0,
+          end: 15.8,
+          bbox: [0.18, 0.12, 0.82, 0.99],
+        },
+      ],
+    },
+  },
+  {
+    id: "moondream",
+    name: "Moondream",
+    kind: "repo",
+    category: "Vision",
+    repoUrl: "https://github.com/vikhyat/moondream",
+    description:
+      "VLM pequeño para captions por escena. Alternativa ligera a Qwen2.5-VL cuando haya GPU.",
+    enabled: false,
+    status: "unwired",
+    sample: {
+      segments: [{ start: 0, end: 3.2, description: "Woman in a bright cafe holding a latte." }],
+    },
+  },
+  {
     id: "panns",
     name: "Eventos del plano",
     kind: "repo",
@@ -131,6 +191,8 @@ export const DEFAULT_CONFIG = {
     scenes: "$sources.scene-cuts.scenes",
     visual: "$sources.visual-reconstruction.data.segments",
     speech: "$sources.speech-in-video.segments",
+    on_screen_text: "$sources.on-screen-text.items",
+    objects: "$sources.objects-in-video.tracks",
     tracking: "$sources.sam2.data.tracks",
   },
 };
@@ -142,8 +204,8 @@ export function mergeModules(saved?: StudioModule[]): StudioModule[] {
     if (!old) return s;
     return {
       ...s,
-      enabled: s.id === "speech-in-video" ? true : old.enabled,
-      status: s.id === "speech-in-video" ? "ready" : old.status,
+      enabled: s.id === "speech-in-video" || s.id === "on-screen-text" ? true : old.enabled,
+      status: s.id === "speech-in-video" || s.id === "on-screen-text" ? "ready" : old.status,
     };
   });
   for (const m of saved ?? []) {

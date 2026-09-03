@@ -1,5 +1,5 @@
 import { denseCafeExtraction, structuralExtraction } from "./demo-extraction";
-import type { ProbeResult, StudioModule, VideoSpeech } from "./types";
+import type { OnScreenText, ProbeResult, StudioModule, VideoSpeech } from "./types";
 
 export function pickByPath(obj: unknown, path: string): unknown {
   const raw = path.replace(/^\$sources\./, "");
@@ -42,6 +42,7 @@ export function outputsForItem(opts: {
   modules: StudioModule[];
   probe?: ProbeResult;
   speech?: VideoSpeech | null;
+  onScreenText?: OnScreenText | null;
   useFixture: boolean;
 }) {
   const moduleOutputs: Record<string, unknown> = {};
@@ -66,6 +67,11 @@ export function outputsForItem(opts: {
       moduleOutputs[mod.id] = opts.speech ?? {
         _status: "missing",
         note: "Sube un vídeo para transcribir lo que se dice en el plano.",
+      };
+    } else if (mod.id === "on-screen-text") {
+      moduleOutputs[mod.id] = opts.onScreenText ?? {
+        _status: "missing",
+        note: "Sube un vídeo para leer el texto en pantalla.",
       };
     } else if (mod.id === "moss" && opts.speech) {
       moduleOutputs[mod.id] = {
@@ -140,6 +146,8 @@ export function outputsForItem(opts: {
           diarization: opts.speech.diarization,
         }
       : undefined,
+      onScreenText: opts.onScreenText?.items,
+      brands: opts.onScreenText?.brands,
     });
 
   return { moduleOutputs, extraction };

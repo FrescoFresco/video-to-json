@@ -786,6 +786,21 @@ function VideoDetail({
               </div>
             </div>
           )}
+          {Array.isArray(video.extraction.on_screen_text) &&
+            (video.extraction.on_screen_text as { text: string }[]).length > 0 && (
+            <div className="border-t border-[#e7e7eb] py-6">
+              <p className="mb-2 text-xs font-semibold tracking-wide text-[#75757d] uppercase">Texto en pantalla</p>
+              <div className="grid gap-3">
+                {(video.extraction.on_screen_text as { start_ms: number; text: string; role?: string }[]).map((t, i) => (
+                  <div key={i} className="grid grid-cols-[72px_88px_minmax(0,1fr)] gap-2 text-sm">
+                    <span className="text-[12px] text-[#75757d]">{msToClock(t.start_ms)}</span>
+                    <span className="font-medium">{t.role || "overlay"}</span>
+                    <span>{t.text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
       {tab === "results" && (

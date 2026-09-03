@@ -118,6 +118,15 @@ export function structuralExtraction(input: {
   };
   transcript?: TranscriptSeg[];
   speechMeta?: { language?: string | null; speakers?: string[]; diarization?: string };
+  onScreenText?: Array<{
+    text: string;
+    start_ms: number;
+    end_ms: number;
+    conf?: number;
+    role?: string;
+    bbox?: number[];
+  }>;
+  brands?: string[];
 }) {
   const durationMs = input.probe?.durationMs ?? 0;
   const scenes =
@@ -131,6 +140,7 @@ export function structuralExtraction(input: {
     : [{ startMs: 0, endMs: 0 }];
 
   const transcript = input.transcript ?? [];
+  const overlays = input.onScreenText ?? [];
   const timeline = scenes.map((s, i) => ({
     id: `seg_${String(i + 1).padStart(2, "0")}`,
     start_ms: s.startMs,
@@ -138,6 +148,7 @@ export function structuralExtraction(input: {
     start: msToClock(s.startMs),
     end: msToClock(s.endMs),
     speech: transcript.filter((t) => t.start_ms < s.endMs && t.end_ms > s.startMs),
+    on_screen_text: overlays.filter((t) => t.start_ms < s.endMs && t.end_ms > s.startMs),
     dense_caption:
       "Hueco para el módulo de visión (Qwen-VL / Moondream). Aquí iría una descripción tan densa como para regenerar el plano.",
     visual_status: "awaiting_vlm_module",
@@ -150,6 +161,7 @@ export function structuralExtraction(input: {
     : `Fuente ${input.origin}: ${input.filename}. Sin sonda de media (no se pudo leer el archivo).`,
     `${scenes.length} escena(s) detectada(s) por corte.`,
     spoken ? `Lo que se dice en el vídeo: ${spoken}` : "Sin habla transcrita en este vídeo.",
+    overlays.length ? `Texto en pantalla: ${overlays.map((t) => t.text).join(" · ")}` : "",
     input.speechMeta?.speakers?.length ?
       `Speakers: ${input.speechMeta.speakers.join(", ")} (${input.speechMeta.diarization || "local"}).`
     : "",
@@ -161,10 +173,11 @@ export function structuralExtraction(input: {
   return {
     extraction: {
       goal: "video_to_reconstructable_text",
-      quality: transcript.length ? "speech_ready_pending_vlm" : "structural_pending_vlm",
+      quality: transcript.length || overlays.length ? "partial_pending_vlm" : "structural_pending_vlm",
       language: input.speechMeta?.language || "es",
       vision_model: null,
       speech_engine: "faster-whisper",
+      ocr_engine: overlays.length ? "rapidocr-onnxruntime" : null,
     },
     source: {
       type: input.origin,
@@ -182,18 +195,24 @@ export function structuralExtraction(input: {
           input.probe.height > input.probe.width ? "vertical" : "horizontal",
       }
     : null,
-    one_line: spoken || reconstructable_script,
+    one_line: spoken || overlays.map((t) => t.text).join(" · ") || reconstructable_script,
     reconstructable_script,
     timeline,
     transcript,
+    on_screen_text: overlays,
     speakers: input.speechMeta?.speakers ?? [],
+    brand: input.brands?.length ? { names: input.brands } : null,
     music: {
       identified: false,
       description_for_reconstruction: "Módulo de música no enganchado.",
     },
     if_you_regenerate: {
-      must_keep: ["duración y formato reales de la sonda", ...(spoken ? ["el texto hablado"] : [])],
-      will_probably_fail: ["apariencia, caras, canción, texto en pantalla"],
+      must_keep: [
+        "duración y formato reales de la sonda",
+        ...(spoken ? ["el texto hablado"] : []),
+        ...(overlays.length ? ["el texto en pantalla"] : []),
+      ],
+      will_probably_fail: ["apariencia, caras, canción"],
     },
   };
 }

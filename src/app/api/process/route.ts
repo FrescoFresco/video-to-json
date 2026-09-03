@@ -1,8 +1,8 @@
-import { writeFile, unlink, mkdir } from "node:fs/promises";
+import { writeFile, unlink, mkdir, rm } from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 import { NextResponse } from "next/server";
-import { probeVideo, transcribeVideoSpeech } from "@/lib/server/media";
+import { extractSceneFrames, probeVideo, readOnScreenText, transcribeVideoSpeech } from "@/lib/server/media";
 import { isVideoFile } from "@/lib/video-file";
 
 export const runtime = "nodejs";
@@ -27,6 +27,9 @@ export async function POST(request: Request) {
   const videoPath = path.join(dir, stamp);
   const wavPath = path.join(dir, `${stamp}.wav`);
   const jsonPath = path.join(dir, `${stamp}.json`);
+  const ocrJsonPath = path.join(dir, `${stamp}.ocr.json`);
+  const manifestPath = path.join(dir, `${stamp}.frames.json`);
+  const framesDir = path.join(dir, `${stamp}-frames`);
 
   try {
     await writeFile(videoPath, Buffer.from(await file.arrayBuffer()));
@@ -40,7 +43,16 @@ export async function POST(request: Request) {
       speechError = error instanceof Error ? error.message : "No se pudo leer el habla del vídeo";
     }
 
-    return NextResponse.json({ probe, speech, speechError });
+    let onScreenText = null;
+    let ocrError: string | null = null;
+    try {
+      const frames = await extractSceneFrames(videoPath, probe.scenes, probe.durationMs, framesDir);
+      onScreenText = await readOnScreenText(frames, manifestPath, ocrJsonPath);
+    } catch (error) {
+      ocrError = error instanceof Error ? error.message : "No se pudo leer el texto en pantalla";
+    }
+
+    return NextResponse.json({ probe, speech, speechError, onScreenText, ocrError });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "No se pudo procesar el vídeo" },
@@ -50,5 +62,8 @@ export async function POST(request: Request) {
     await unlink(videoPath).catch(() => undefined);
     await unlink(wavPath).catch(() => undefined);
     await unlink(jsonPath).catch(() => undefined);
+    await unlink(ocrJsonPath).catch(() => undefined);
+    await unlink(manifestPath).catch(() => undefined);
+    await rm(framesDir, { recursive: true, force: true }).catch(() => undefined);
   }
 }

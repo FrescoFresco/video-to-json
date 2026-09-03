@@ -98,6 +98,23 @@ export type VideoSpeech = {
   error?: string;
 };
 
+export type OnScreenText = {
+  engine: string;
+  backend?: string;
+  swap_in?: string;
+  frame_count: number;
+  items: Array<{
+    text: string;
+    start_ms: number;
+    end_ms: number;
+    conf: number;
+    bbox?: number[];
+    role?: string;
+  }>;
+  brands?: string[];
+  error?: string;
+};
+
 export type ProbeResult = {
   filename: string;
   durationMs: number;

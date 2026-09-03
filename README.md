@@ -9,9 +9,10 @@ Un **módulo** es un nombre (y, si quieres, un repo). La app espera **JSON**. El
 - UI: Home, lotes, Vídeos, Módulos, Composer, Ajustes.
 - Solo se aceptan vídeos (`video/*`, `.mp4`, `.mov`, `.mkv`, `.webm`). Un ZIP de vídeos o un TXT/CSV de URLs de vídeo.
 - Sonda real con **ffprobe / ffmpeg** (metadatos y cortes de plano).
-- Habla **del propio vídeo**: Whisper local (`faster-whisper`, CPU) + agrupación de speakers. No se suben pistas sueltas.
+- Habla **del propio vídeo**: Whisper local (`faster-whisper`, CPU) + agrupación de speakers.
+- **Texto en pantalla conectado:** RapidOCR (PP-OCR ONNX, CPU) sobre fotogramas del vídeo.
+- Módulos listos para enganchar: Qwen2.5-VL / Moondream (descripción de plano, GPU), YOLO / YOLO-World (objetos).
 - Ejemplo denso (`reel_cafeteria_18s.mp4`) para ver el JSON objetivo.
-- El VLM de describir escenas **aún no corre** (hace falta GPU).
 
 ## Cómo arrancar
 
@@ -33,8 +34,10 @@ Contrato único: **entra un vídeo, sale JSON**.
 |---|---|
 | Media Probe | duración, tamaño, códecs |
 | Scene Cuts | cuándo cambia el plano |
-| Visual Reconstruction | describir cada escena (IA / Qwen-VL) |
+| Visual Reconstruction | describir cada escena — Qwen2.5-VL / Moondream (GPU) |
 | Habla del vídeo | **conectado** — Whisper local sobre el vídeo |
+| Texto en pantalla | **conectado** — RapidOCR / PaddleOCR |
+| Objetos en el plano | YOLO11 / YOLO-World (sample hasta enganchar) |
 | Eventos del plano | risa, máquina, tráfico |
 
 ## Licencia de esta app

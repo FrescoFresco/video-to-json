@@ -15,6 +15,7 @@ import { denseCafeExtraction } from "./demo-extraction";
 import type {
   Batch,
   ConfigVersion,
+  OnScreenText,
   OutputConfig,
   ProbeResult,
   StoredVideo,
@@ -24,7 +25,7 @@ import type {
 } from "./types";
 import { isVideoFile } from "./video-file";
 
-const KEY = "vx-studio-video-v2";
+const KEY = "vx-studio-video-v3";
 
 type Persist = {
   modules: StudioModule[];
@@ -250,6 +251,8 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         let probe: ProbeResult | undefined;
         let speech: VideoSpeech | null = null;
         let speechError: string | null = null;
+        let onScreenText: OnScreenText | null = null;
+        let ocrError: string | null = null;
         const file = spec.file;
         const looksVideo = Boolean(file && isVideoFile(file));
         if (looksVideo && file) {
@@ -272,12 +275,16 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
               probe?: ProbeResult;
               speech?: VideoSpeech | null;
               speechError?: string | null;
+              onScreenText?: OnScreenText | null;
+              ocrError?: string | null;
               error?: string;
             };
             if (res.ok) {
               probe = data.probe;
               speech = data.speech ?? null;
               speechError = data.speechError ?? null;
+              onScreenText = data.onScreenText ?? null;
+              ocrError = data.ocrError ?? null;
             } else {
               speechError = data.error || "No se pudo procesar el vídeo";
             }
@@ -306,6 +313,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
           modules: persistRef.current.modules,
           probe,
           speech,
+          onScreenText,
           useFixture,
         });
 
@@ -337,6 +345,20 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
                 `${speech.segments.length} frases · ${speech.speakers.join(", ") || "S01"} · ${speech.model}`
               : speechError || (looksVideo ? "sin habla transcrita" : "sin archivo de vídeo"),
               status: speech ? "ready" : looksVideo && speechError ? "error" : "ready",
+            },
+            {
+              time: clock(),
+              title: "Texto en pantalla",
+              meta: onScreenText ?
+                `${onScreenText.items.length} textos · ${onScreenText.engine}`
+              : ocrError || (looksVideo ? "sin texto leído" : "sin archivo de vídeo"),
+              status: onScreenText ? "ready" : looksVideo && ocrError ? "error" : "ready",
+            },
+            {
+              time: clock(),
+              title: "Objetos en el plano",
+              meta: "YOLO no enganchado · sample en Composer",
+              status: "ready",
             },
             {
               time: clock(),
