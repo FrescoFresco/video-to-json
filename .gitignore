@@ -46,4 +46,5 @@ next-env.d.ts
 # local python for video speech
 .venv/
 video-py/
+video-py
 .cache/
