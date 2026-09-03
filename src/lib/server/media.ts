@@ -107,12 +107,28 @@ export async function transcribeVideoSpeech(
       ],
       { timeout: 60000 }
     );
-  } catch {
-    await execFileAsync(
-      "ffmpeg",
-      ["-y", "-i", videoPath, "-vn", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", wavPath],
-      { timeout: 60000 }
-    );
+  } catch (first) {
+    try {
+      await execFileAsync(
+        "ffmpeg",
+        ["-y", "-i", videoPath, "-vn", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", wavPath],
+        { timeout: 60000 }
+      );
+    } catch (second) {
+      const msg = `${first instanceof Error ? first.message : ""} ${second instanceof Error ? second.message : ""}`;
+      if (/does not contain any stream/i.test(msg)) {
+        return {
+          engine: "faster-whisper",
+          model: process.env.WHISPER_MODEL || "base",
+          language: null,
+          speakers: [],
+          speaker_count: 0,
+          diarization: "none",
+          segments: [],
+        };
+      }
+      throw second;
+    }
   }
 
   const python = path.join(process.cwd(), ".venv", "bin", "python");

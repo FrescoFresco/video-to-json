@@ -62,10 +62,14 @@ def main():
 
     merged: list[dict] = []
     for row in raw:
-        prev = merged[-1] if merged else None
-        if prev and prev["norm"] == row["norm"] and row["start_ms"] <= prev["end_ms"] + 400:
-            prev["end_ms"] = max(prev["end_ms"], row["end_ms"])
-            prev["conf"] = max(prev["conf"], row["conf"])
+        found = None
+        for prev in reversed(merged):
+            if prev["norm"] == row["norm"] and row["start_ms"] <= prev["end_ms"] + 900:
+                found = prev
+                break
+        if found:
+            found["end_ms"] = max(found["end_ms"], row["end_ms"])
+            found["conf"] = max(found["conf"], row["conf"])
             continue
         merged.append(dict(row))
 
