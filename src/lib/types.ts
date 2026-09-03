@@ -108,3 +108,12 @@ export type StoredVideo = {
   extraction?: VideoExtraction;
   activity: ActivityEvent[];
 };
+
+export type VideoJobResult = {
+  probe: ProbeResult;
+  speech: VideoSpeech | null;
+  speechError: string | null;
+  onScreenText: OnScreenText | null;
+  ocrError: string | null;
+  extraction: VideoExtraction;
+};

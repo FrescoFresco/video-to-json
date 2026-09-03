@@ -240,7 +240,7 @@ function HomeView() {
         />
         <EmptyCard
           title="Cómo se guarda"
-          body="El historial de esta versión vive en tu navegador. Luego se puede mover a servidor."
+          body="Los trabajos viven en memoria del servidor mientras la app está encendida. Más adelante se puede mover a base de datos."
         />
       </div>
 
@@ -512,7 +512,7 @@ function SettingsView() {
       />
       <EmptyCard
         title="Paso siguiente"
-        body="Cuando quieras, el siguiente salto es mover el historial a una base de datos real en servidor y dejar de depender del navegador."
+        body="Cuando quieras, el siguiente salto es guardar trabajos y resultados en una base de datos real y almacenamiento persistente."
       />
     </div>
   );
