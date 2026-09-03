@@ -1,18 +1,22 @@
 # Video Extraction Studio
 
-De **vídeo a texto reconstruible**. Solo vídeos. No es un editor y no es un producto de audio: importas un vídeo (archivo o URL) y sales con un JSON denso — qué se ve, cuándo, qué se dice, quién habla, texto en pantalla — pensado para imaginarse el plano.
+Base limpia para una app web de extracción de vídeo. Esta versión **no inventa resultados**: solo muestra lo que realmente se ha podido sacar del archivo.
 
-Un **módulo** es un nombre (y, si quieres, un repo). La app espera **JSON**. El **Composer** mapea esas fuentes a un `final.json`.
+## Qué hace ahora
 
-## Qué hay ahora
+- Acepta vídeos locales (`video/*`, `.mp4`, `.mov`, `.mkv`, `.webm`).
+- Extrae metadatos reales con `ffprobe` / `ffmpeg`.
+- Detecta cortes de plano.
+- Transcribe el habla del propio vídeo con `faster-whisper` en CPU.
+- Lee texto en pantalla con RapidOCR en CPU.
+- Deja explícitas las capacidades que aún no existen en este build.
 
-- UI: Home, lotes, Vídeos, Módulos, Composer, Ajustes.
-- Solo se aceptan vídeos (`video/*`, `.mp4`, `.mov`, `.mkv`, `.webm`). Un ZIP de vídeos o un TXT/CSV de URLs de vídeo.
-- Sonda real con **ffprobe / ffmpeg** (metadatos y cortes de plano).
-- Habla **del propio vídeo**: Whisper local (`faster-whisper`, CPU) + agrupación de speakers.
-- **Texto en pantalla conectado:** RapidOCR (PP-OCR ONNX, CPU) sobre fotogramas del vídeo.
-- Módulos listos para enganchar: Qwen2.5-VL / Moondream (descripción de plano, GPU), YOLO / YOLO-World (objetos).
-- Ejemplo denso (`reel_cafeteria_18s.mp4`) para ver el JSON objetivo.
+## Qué no hace todavía
+
+- Descripción visual del plano.
+- Tracking de objetos o personas.
+- Análisis de música o ambiente.
+- Usuarios, base de datos o almacenamiento en servidor.
 
 ## Cómo arrancar
 
@@ -22,26 +26,13 @@ Hace falta Node, `ffmpeg`/`ffprobe` y Python 3.12.
 npm install
 python3 -m venv .venv
 .venv/bin/pip install -r requirements-video.txt
-# la primera transcripción descarga el modelo Whisper `base`
-npm run dev -- --port 43141 --hostname 0.0.0.0
+npm run dev
 ```
 
-La primera vez que corre `npm run dev`, Next.js **compila** (puede tardar un minuto y parecer colgado). Luego recarga más rápido. **Procesar un vídeo** es otro cuello de botella: Whisper y el OCR van en CPU, sin GPU; un clip corto puede llevar bastante, y la primera transcripción descarga el modelo `base`.
+Abre `http://localhost:43141`.
 
-## Idea de módulos
+## Notas de rendimiento
 
-Contrato único: **entra un vídeo, sale JSON**.
-
-| Módulo | Rol |
-|---|---|
-| Media Probe | duración, tamaño, códecs |
-| Scene Cuts | cuándo cambia el plano |
-| Visual Reconstruction | describir cada escena — Qwen2.5-VL / Moondream (GPU) |
-| Habla del vídeo | **conectado** — Whisper local sobre el vídeo |
-| Texto en pantalla | **conectado** — RapidOCR / PaddleOCR |
-| Objetos en el plano | YOLO11 / YOLO-World (sample hasta enganchar) |
-| Eventos del plano | risa, máquina, tráfico |
-
-## Licencia de esta app
-
-El código de este repo es el estudio. Cada modelo que enganches trae la suya. No hay APIs de pago.
+- La primera vez que corre `npm run dev`, Next.js compila y puede tardar.
+- La primera transcripción descarga el modelo Whisper `base`.
+- El procesado real de vídeo es lento porque Whisper y OCR van en CPU, sin GPU.

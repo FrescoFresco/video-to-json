@@ -1,218 +1,62 @@
-/** Example of a well-done extraction — the reconstruction target. */
+import type { OnScreenText, ProbeResult, VideoExtraction, VideoSpeech } from "./types";
 
-export function denseCafeExtraction(filename = "reel_cafeteria_18s.mp4") {
+export function buildVideoExtraction(input: {
+  filename: string;
+  processedAt: string;
+  probe: ProbeResult;
+  speech?: VideoSpeech | null;
+  onScreenText?: OnScreenText | null;
+}): VideoExtraction {
+  const transcript = input.speech?.segments ?? [];
+  const onScreenText = input.onScreenText?.items ?? [];
+  const brands = input.onScreenText?.brands ?? [];
+
   return {
-    extraction: {
-      goal: "video_to_reconstructable_text",
-      quality: "dense_time_aligned",
-      language: "es",
-      vision_model: "demo-fixture",
-    },
     source: {
-      type: "url",
-      platform: "instagram",
-      filename,
+      filename: input.filename,
+      processed_at: input.processedAt,
     },
     media: {
-      duration_ms: 18240,
-      duration: "00:18.240",
-      resolution: { width: 1080, height: 1920 },
-      aspect_ratio: "9:16",
-      fps: 30,
-      video_codec: "h264",
-      soundtrack_codec: "aac",
-      orientation: "vertical",
+      duration_ms: input.probe.durationMs,
+      duration: msToClock(input.probe.durationMs),
+      width: input.probe.width,
+      height: input.probe.height,
+      fps: input.probe.fps,
+      video_codec: input.probe.videoCodec,
+      soundtrack_codec: input.probe.soundtrackCodec,
+      orientation:
+        input.probe.height === input.probe.width ? "square" :
+        input.probe.height > input.probe.width ? "vertical"
+        : "horizontal",
     },
-    one_line:
-      "Una mujer en una cafetería lumínica enseña un café con latte art de corazón, mira a cámara, ríe, y cierra con el logo de una marca.",
-    reconstructable_script:
-      "Plano vertical 9:16, 18 segundos. Interior de cafetería a contraluz: ventanales a la izquierda, madera clara, plantas. Mujer ~28 años, camisa blanca de lino, vaqueros claros, taza beige con corazón de leche. Luz de mañana, flare suave. Dice «Mira lo que está pasando aquí.», ríe. Fuera de campo un hombre: «¿En serio?». Pop acústico ~96 BPM sin identificar. Corte a macro del latte. Vuelve a ella: «Pruébalo.» Cierre negro, wordmark AURA, «café de especialidad».",
-    timeline: [
-      {
-        id: "seg_01",
-        start_ms: 0,
-        end_ms: 480,
-        dense_caption:
-          "Encuadre vertical de una mujer en cafetería luminosa. Luz fuerte a la izquierda. Taza con corazón de leche. Sin logos.",
-      },
-      {
-        id: "seg_02",
-        start_ms: 480,
-        end_ms: 3210,
-        speech: [
-          {
-            speaker: "S01",
-            text: "Mira lo que está pasando aquí.",
-            language: "es",
-          },
-        ],
-        dense_caption: "Levanta la mirada a cámara y habla. El encuadre no corta.",
-      },
-      {
-        id: "seg_03",
-        start_ms: 3210,
-        end_ms: 3800,
-        sound_events: [{ label: "laughter", source: "S01" }],
-        dense_caption: "Risa corta, dientes visibles, taza apenas se inclina.",
-      },
-      {
-        id: "seg_04",
-        start_ms: 7200,
-        end_ms: 12100,
-        dense_caption:
-          "Corte a macro de la taza. Producto hero: cerámica, espuma, corazón simétrico.",
-      },
-      {
-        id: "seg_05",
-        start_ms: 15800,
-        end_ms: 18240,
-        on_screen_text: [
-          { text: "AURA", role: "logo" },
-          { text: "café de especialidad", role: "tagline" },
-        ],
-        dense_caption: "Pantalla negra de cierre. Logo AURA centrado.",
-      },
-    ],
-    transcript: [
-      { start_ms: 480, end_ms: 3210, speaker: "S01", text: "Mira lo que está pasando aquí." },
-      { start_ms: 4120, end_ms: 4980, speaker: "S02", text: "¿En serio?" },
-      { start_ms: 13940, end_ms: 14780, speaker: "S01", text: "Pruébalo." },
-    ],
-    music: {
-      identified: false,
-      description_for_reconstruction:
-        "pop acústico diurno, guitarra + palmas, ~96 BPM, sin letra cantada",
-    },
-    brand: { name: "AURA", category: "café de especialidad" },
-    if_you_regenerate: {
-      must_keep: [
-        "vertical 9:16",
-        "cafetería de mañana",
-        "taza con corazón",
-        "frase inicial",
-        "cierre AURA",
-      ],
-      will_probably_fail: ["el mismo rostro", "la misma canción bit a bit"],
-    },
-  };
-}
-
-export type TranscriptSeg = {
-  start_ms: number;
-  end_ms: number;
-  speaker: string;
-  text: string;
-};
-
-export function structuralExtraction(input: {
-  filename: string;
-  origin: "file" | "url" | "zip";
-  probe?: {
-    durationMs: number;
-    width: number;
-    height: number;
-    fps: number;
-    videoCodec?: string;
-    soundtrackCodec?: string;
-    scenes: { startMs: number; endMs: number }[];
-  };
-  transcript?: TranscriptSeg[];
-  speechMeta?: { language?: string | null; speakers?: string[]; diarization?: string };
-  onScreenText?: Array<{
-    text: string;
-    start_ms: number;
-    end_ms: number;
-    conf?: number;
-    role?: string;
-    bbox?: number[];
-  }>;
-  brands?: string[];
-}) {
-  const durationMs = input.probe?.durationMs ?? 0;
-  const scenes =
-    input.probe?.scenes?.length ?
-      input.probe.scenes
-    : durationMs > 0 ?
-      [
-        { startMs: 0, endMs: Math.round(durationMs * 0.4) },
-        { startMs: Math.round(durationMs * 0.4), endMs: durationMs },
-      ]
-    : [{ startMs: 0, endMs: 0 }];
-
-  const transcript = input.transcript ?? [];
-  const overlays = input.onScreenText ?? [];
-  const timeline = scenes.map((s, i) => ({
-    id: `seg_${String(i + 1).padStart(2, "0")}`,
-    start_ms: s.startMs,
-    end_ms: s.endMs,
-    start: msToClock(s.startMs),
-    end: msToClock(s.endMs),
-    speech: transcript.filter((t) => t.start_ms < s.endMs && t.end_ms > s.startMs),
-    on_screen_text: overlays.filter((t) => t.start_ms < s.endMs && t.end_ms > s.startMs),
-    dense_caption:
-      "Hueco para el módulo de visión (Qwen-VL / Moondream). Aquí iría una descripción tan densa como para regenerar el plano.",
-    visual_status: "awaiting_vlm_module",
-  }));
-
-  const spoken = transcript.map((t) => `${t.speaker}: ${t.text}`).join(" ");
-  const reconstructable_script = [
-    input.probe ?
-      `Vídeo ${input.probe.width}×${input.probe.height} a ${input.probe.fps} fps, ${msToClock(durationMs)}.`
-    : `Fuente ${input.origin}: ${input.filename}. Sin sonda de media (no se pudo leer el archivo).`,
-    `${scenes.length} escena(s) detectada(s) por corte.`,
-    spoken ? `Lo que se dice en el vídeo: ${spoken}` : "Sin habla transcrita en este vídeo.",
-    overlays.length ? `Texto en pantalla: ${overlays.map((t) => t.text).join(" · ")}` : "",
-    input.speechMeta?.speakers?.length ?
-      `Speakers: ${input.speechMeta.speakers.join(", ")} (${input.speechMeta.diarization || "local"}).`
-    : "",
-    "Falta el módulo de descripción visual para cerrar el texto reconstruible.",
-  ]
-    .filter(Boolean)
-    .join(" ");
-
-  return {
-    extraction: {
-      goal: "video_to_reconstructable_text",
-      quality: transcript.length || overlays.length ? "partial_pending_vlm" : "structural_pending_vlm",
-      language: input.speechMeta?.language || "es",
-      vision_model: null,
-      speech_engine: "faster-whisper",
-      ocr_engine: overlays.length ? "rapidocr-onnxruntime" : null,
-    },
-    source: {
-      type: input.origin,
-      filename: input.filename,
-    },
-    media: input.probe ?
-      {
-        duration_ms: input.probe.durationMs,
-        duration: msToClock(input.probe.durationMs),
-        resolution: { width: input.probe.width, height: input.probe.height },
-        fps: input.probe.fps,
-        video_codec: input.probe.videoCodec,
-        soundtrack_codec: input.probe.soundtrackCodec,
-        orientation:
-          input.probe.height > input.probe.width ? "vertical" : "horizontal",
-      }
-    : null,
-    one_line: spoken || overlays.map((t) => t.text).join(" · ") || reconstructable_script,
-    reconstructable_script,
-    timeline,
+    scenes: input.probe.scenes.map((scene, index) => ({
+      id: `scene_${String(index + 1).padStart(3, "0")}`,
+      start_ms: scene.startMs,
+      end_ms: scene.endMs,
+      start: msToClock(scene.startMs),
+      end: msToClock(scene.endMs),
+    })),
     transcript,
-    on_screen_text: overlays,
-    speakers: input.speechMeta?.speakers ?? [],
-    brand: input.brands?.length ? { names: input.brands } : null,
-    music: {
-      identified: false,
-      description_for_reconstruction: "Módulo de música no enganchado.",
+    on_screen_text: onScreenText,
+    speakers: input.speech?.speakers ?? [],
+    brands,
+    engines: {
+      speech: input.speech?.engine ?? null,
+      ocr: input.onScreenText?.engine ?? null,
     },
-    if_you_regenerate: {
-      must_keep: [
-        "duración y formato reales de la sonda",
-        ...(spoken ? ["el texto hablado"] : []),
-        ...(overlays.length ? ["el texto en pantalla"] : []),
-      ],
-      will_probably_fail: ["apariencia, caras, canción"],
+    capabilities: {
+      visual_description: {
+        available: false,
+        reason: "Esta versión aún no describe lo que se ve en el plano.",
+      },
+      object_tracking: {
+        available: false,
+        reason: "Esta versión aún no sigue objetos o personas en el tiempo.",
+      },
+      music_analysis: {
+        available: false,
+        reason: "Esta versión aún no identifica música o ambiente sonoro.",
+      },
     },
   };
 }

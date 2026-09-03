@@ -1,84 +1,7 @@
 export type JobStatus = "queued" | "processing" | "ready" | "error";
 
-export type SourceKind = "file" | "url" | "zip";
+export type ViewName = "home" | "videos" | "video-detail" | "settings";
 
-export type ModuleKind = "builtin" | "repo";
-
-export type ModuleStatus = "ready" | "unwired" | "error";
-
-export type StudioModule = {
-  id: string;
-  name: string;
-  kind: ModuleKind;
-  category: "Vision" | "Video" | "Speech" | "Custom";
-  repoUrl?: string;
-  description: string;
-  enabled: boolean;
-  status: ModuleStatus;
-  sample: unknown;
-};
-
-export type BatchItem = {
-  id: string;
-  name: string;
-  type: SourceKind;
-  progress: number;
-  status: JobStatus;
-  stage: string;
-  videoId?: string;
-};
-
-export type Batch = {
-  id: string;
-  number: number;
-  status: "processing" | "complete";
-  items: BatchItem[];
-};
-
-export type StoredVideo = {
-  id: string;
-  name: string;
-  origin: SourceKind;
-  createdAt: string;
-  status: JobStatus;
-  meta: string;
-  durationMs?: number;
-  extraction: Record<string, unknown>;
-  moduleOutputs: Record<string, unknown>;
-  activity: ActivityEvent[];
-};
-
-export type ActivityEvent = {
-  time: string;
-  title: string;
-  meta: string;
-  status: JobStatus;
-  error?: unknown;
-};
-
-export type OutputConfig = {
-  config_id: string;
-  version: string;
-  name: string;
-  output: Record<string, string>;
-};
-
-export type ConfigVersion = {
-  version: string;
-  date: string;
-  current: boolean;
-  config: OutputConfig;
-};
-
-export type ViewName =
-  | "home"
-  | "videos"
-  | "video-detail"
-  | "modules"
-  | "composer"
-  | "settings";
-
-/** Speech detected inside a video. Not a standalone audio product. */
 export type VideoSpeech = {
   engine: string;
   model: string;
@@ -115,6 +38,13 @@ export type OnScreenText = {
   error?: string;
 };
 
+export type ActivityEvent = {
+  time: string;
+  title: string;
+  detail: string;
+  status: JobStatus;
+};
+
 export type ProbeResult = {
   filename: string;
   durationMs: number;
@@ -125,4 +55,56 @@ export type ProbeResult = {
   soundtrackCodec?: string;
   scenes: { startMs: number; endMs: number }[];
   frameCountHint?: number;
+};
+
+export type VideoExtraction = {
+  source: {
+    filename: string;
+    processed_at: string;
+  };
+  media: {
+    duration_ms: number;
+    duration: string;
+    width: number;
+    height: number;
+    fps: number;
+    video_codec?: string;
+    soundtrack_codec?: string;
+    orientation: "vertical" | "horizontal" | "square";
+  };
+  scenes: Array<{
+    id: string;
+    start_ms: number;
+    end_ms: number;
+    start: string;
+    end: string;
+  }>;
+  transcript: VideoSpeech["segments"];
+  on_screen_text: OnScreenText["items"];
+  speakers: string[];
+  brands: string[];
+  engines: {
+    speech: string | null;
+    ocr: string | null;
+  };
+  capabilities: {
+    visual_description: { available: false; reason: string };
+    object_tracking: { available: false; reason: string };
+    music_analysis: { available: false; reason: string };
+  };
+};
+
+export type StoredVideo = {
+  id: string;
+  name: string;
+  createdAt: string;
+  status: JobStatus;
+  progress: number;
+  stage: string;
+  error?: string;
+  probe?: ProbeResult;
+  speech?: VideoSpeech | null;
+  onScreenText?: OnScreenText | null;
+  extraction?: VideoExtraction;
+  activity: ActivityEvent[];
 };
