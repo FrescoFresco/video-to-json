@@ -548,6 +548,9 @@ function HomeView({
           <p className="mt-3.5 mb-7 text-[clamp(15px,1.4vw,18px)] text-[#75757d]">
             Suelta vídeos. Sale un JSON denso: qué se ve, cuándo, qué se dice, quién habla.
           </p>
+          <p className="mb-7 text-[13px] text-[#75757d]">
+            La primera vez que arrancas Next compila y puede tardar un minuto. Procesar un MP4 es otra cosa: Whisper corre en CPU, sin GPU.
+          </p>
           <div
             tabIndex={0}
             onDragEnter={(e) => {

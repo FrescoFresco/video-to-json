@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
     "*.cursor.com",
   ],
   experimental: {
+    optimizePackageImports: ["lucide-react"],
     proxyClientMaxBodySize: "80mb",
   },
 };
