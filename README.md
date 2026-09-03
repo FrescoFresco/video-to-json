@@ -41,18 +41,23 @@ Producción local:
 ## Qué hace hoy
 
 - Acepta vídeos (`MP4`, `MOV`, `MKV`, `WebM`).
-- Metadatos y cortes de plano (`ffprobe` / `ffmpeg`).
-- Transcripción del habla (`faster-whisper` en CPU).
-- Texto en pantalla (RapidOCR en CPU).
+- Pipeline por **módulos** registrados (mismo contrato para todos).
+- Módulos actuales: cortes de plano, habla (`faster-whisper`), texto en pantalla (RapidOCR).
+- La UI y el JSON solo muestran lo que cada módulo devuelve (`summary`, `items`, `data`).
 - Trabajos en memoria del servidor (se borran al reiniciar).
-- El archivo de vídeo se procesa en temporal y se elimina al terminar.
+- API: `POST/GET /api/jobs`, `GET /api/jobs/:id/result`, `GET /api/modules`.
 
 ## Qué aún no hace
 
-- Descripción visual del plano.
-- Tracking de personas u objetos.
-- Análisis de música o ambiente.
+- Descripción visual, tracking o música (no están registrados como módulos).
+- Webhook al terminar / API key.
 - Base de datos persistente.
+
+## Añadir otro módulo / repo
+
+1. Implementa el contrato `ExtractionModuleDefinition` (`id`, `title`, `stage`, `run`).
+2. Regístralo en `src/lib/server/modules/index.ts`.
+3. La UI y `GET /api/jobs/:id/result` lo recogen solos — sin tocar pantallas fijas.
 
 ## Variables útiles
 

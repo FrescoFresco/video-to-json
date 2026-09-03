@@ -2,6 +2,7 @@ export type JobStatus = "queued" | "processing" | "ready" | "error";
 
 export type ViewName = "home" | "videos" | "video-detail" | "settings";
 
+/** Salida cruda de Whisper (interna al módulo speech). */
 export type VideoSpeech = {
   engine: string;
   model: string;
@@ -21,6 +22,7 @@ export type VideoSpeech = {
   error?: string;
 };
 
+/** Salida cruda de OCR (interna al módulo on_screen_text). */
 export type OnScreenText = {
   engine: string;
   backend?: string;
@@ -57,6 +59,31 @@ export type ProbeResult = {
   frameCountHint?: number;
 };
 
+/** Fila genérica para UI / consumidores: cualquier módulo puede emitirlas. */
+export type ModuleItem = {
+  start_ms?: number;
+  end_ms?: number;
+  label?: string;
+  text: string;
+};
+
+/**
+ * Contrato de un módulo de extracción.
+ * Añadir otro repo = implementar esto y registrarlo; la UI no conoce el módulo.
+ */
+export type ExtractionModule = {
+  id: string;
+  title: string;
+  engine?: string | null;
+  status: "ok" | "empty" | "error";
+  /** Texto corto que define el propio módulo (p. ej. "3 segmentos"). */
+  summary: string;
+  error?: string;
+  items: ModuleItem[];
+  /** Payload crudo del motor, para APIs / otros sistemas. */
+  data?: unknown;
+};
+
 export type VideoExtraction = {
   source: {
     filename: string;
@@ -72,26 +99,8 @@ export type VideoExtraction = {
     soundtrack_codec?: string;
     orientation: "vertical" | "horizontal" | "square";
   };
-  scenes: Array<{
-    id: string;
-    start_ms: number;
-    end_ms: number;
-    start: string;
-    end: string;
-  }>;
-  transcript: VideoSpeech["segments"];
-  on_screen_text: OnScreenText["items"];
-  speakers: string[];
-  brands: string[];
-  engines: {
-    speech: string | null;
-    ocr: string | null;
-  };
-  capabilities: {
-    visual_description: { available: false; reason: string };
-    object_tracking: { available: false; reason: string };
-    music_analysis: { available: false; reason: string };
-  };
+  /** Solo módulos que se ejecutaron. Si no está instalado, no aparece. */
+  modules: ExtractionModule[];
 };
 
 export type StoredVideo = {
@@ -103,17 +112,12 @@ export type StoredVideo = {
   stage: string;
   error?: string;
   probe?: ProbeResult;
-  speech?: VideoSpeech | null;
-  onScreenText?: OnScreenText | null;
   extraction?: VideoExtraction;
   activity: ActivityEvent[];
 };
 
 export type VideoJobResult = {
   probe: ProbeResult;
-  speech: VideoSpeech | null;
-  speechError: string | null;
-  onScreenText: OnScreenText | null;
-  ocrError: string | null;
+  modules: ExtractionModule[];
   extraction: VideoExtraction;
 };

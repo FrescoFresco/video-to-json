@@ -14,9 +14,9 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { msToClock } from "@/lib/demo-extraction";
+import { msToClock } from "@/lib/extraction";
 import { useStudio } from "@/lib/store";
-import type { JobStatus, StoredVideo, ViewName } from "@/lib/types";
+import type { ExtractionModule, JobStatus, StoredVideo, ViewName } from "@/lib/types";
 
 function downloadJson(name: string, obj: unknown) {
   const blob = new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" });
@@ -176,8 +176,8 @@ function HomeView() {
             De vídeo a JSON. Instala, sube y listo.
           </h1>
           <p className="mt-4 text-[clamp(15px,1.4vw,18px)] text-[#75757d]">
-            Software pensado para instalarse de un golpe. Hoy saca metadatos, cortes,
-            habla y texto en pantalla — solo datos reales, nada inventado.
+            Software pensado para instalarse de un golpe. Cada módulo de extracción
+            escribe su bloque en el JSON; la interfaz solo muestra lo que ese módulo devuelve.
           </p>
 
           <div
@@ -365,59 +365,25 @@ function VideoDetail({ video }: { video: StoredVideo }) {
                 <Metric label="Duración" value={extraction.media.duration} />
                 <Metric label="Resolución" value={`${extraction.media.width}×${extraction.media.height}`} />
                 <Metric label="FPS" value={String(extraction.media.fps)} />
-                <Metric label="Cortes" value={String(extraction.scenes.length)} />
+                <Metric label="Módulos" value={String(extraction.modules.length)} />
               </div>
 
               <section className="rounded-2xl border border-[#e7e7eb] bg-white p-5">
-                <div className="text-sm font-semibold">Qué sí salió de este vídeo</div>
+                <div className="text-sm font-semibold">Módulos de este vídeo</div>
+                <p className="mt-1 text-[12.5px] text-[#75757d]">
+                  El resumen lo aporta cada módulo. Si mañana añades otro, aparece aquí igual.
+                </p>
                 <div className="mt-4 grid gap-3 md:grid-cols-3">
-                  <CapabilityCard title="Habla del vídeo" body={`${extraction.transcript.length} segmentos`} />
-                  <CapabilityCard title="Texto en pantalla" body={`${extraction.on_screen_text.length} detecciones`} />
-                  <CapabilityCard title="Marcas" body={extraction.brands.length ? extraction.brands.join(", ") : "Ninguna"} />
-                </div>
-              </section>
-
-              <section className="rounded-2xl border border-[#e7e7eb] bg-white p-5">
-                <div className="text-sm font-semibold">Escenas detectadas</div>
-                <div className="mt-4 grid gap-2">
-                  {extraction.scenes.map((scene) => (
-                    <div key={scene.id} className="grid grid-cols-[110px_110px_minmax(0,1fr)] gap-3 text-sm">
-                      <span className="text-[#75757d]">{scene.id}</span>
-                      <span>{scene.start}</span>
-                      <span>{scene.end}</span>
-                    </div>
+                  {extraction.modules.map((mod) => (
+                    <ModuleSummaryCard key={mod.id} module={mod} />
                   ))}
                 </div>
               </section>
 
               <section className="grid gap-5 lg:grid-cols-2">
-                <DataList
-                  title="Transcripción"
-                  empty="No se detectó habla en este vídeo."
-                  rows={extraction.transcript.map((item) => ({
-                    left: msToClock(item.start_ms),
-                    middle: item.speaker,
-                    right: item.text,
-                  }))}
-                />
-                <DataList
-                  title="Texto en pantalla"
-                  empty="No se detectó texto en pantalla."
-                  rows={extraction.on_screen_text.map((item) => ({
-                    left: msToClock(item.start_ms),
-                    middle: item.role || "texto",
-                    right: item.text,
-                  }))}
-                />
-              </section>
-
-              <section className="rounded-2xl border border-[#e7e7eb] bg-white p-5">
-                <div className="text-sm font-semibold">Todavía no disponible</div>
-                <div className="mt-4 grid gap-3 md:grid-cols-3">
-                  <CapabilityCard title="Descripción visual" body={extraction.capabilities.visual_description.reason} />
-                  <CapabilityCard title="Tracking de objetos" body={extraction.capabilities.object_tracking.reason} />
-                  <CapabilityCard title="Música" body={extraction.capabilities.music_analysis.reason} />
-                </div>
+                {extraction.modules.map((mod) => (
+                  <ModuleItemsList key={`${mod.id}-items`} module={mod} />
+                ))}
               </section>
             </div>
           )}
@@ -459,36 +425,51 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
-function CapabilityCard({ title, body }: { title: string; body: string }) {
+function ModuleSummaryCard({ module }: { module: ExtractionModule }) {
+  const tone =
+    module.status === "error" ? "text-[#b42318]" :
+    module.status === "empty" ? "text-[#75757d]" :
+    "text-[#177245]";
+
   return (
     <div className="rounded-xl border border-[#e7e7eb] bg-[#fbfbfc] p-4">
-      <div className="text-sm font-medium">{title}</div>
-      <div className="mt-2 text-[12.5px] leading-relaxed text-[#75757d]">{body}</div>
+      <div className="text-sm font-medium">{module.title}</div>
+      <div className={`mt-2 text-[12.5px] leading-relaxed ${tone}`}>
+        {module.summary}
+      </div>
+      {module.engine ? (
+        <div className="mt-2 text-[11px] text-[#9a9aa3]">{module.engine}</div>
+      ) : null}
+      {module.error ? (
+        <div className="mt-2 text-[12px] leading-relaxed text-[#b42318]">{module.error}</div>
+      ) : null}
     </div>
   );
 }
 
-function DataList({
-  title,
-  empty,
-  rows,
-}: {
-  title: string;
-  empty: string;
-  rows: Array<{ left: string; middle: string; right: string }>;
-}) {
+function ModuleItemsList({ module }: { module: ExtractionModule }) {
   return (
     <section className="rounded-2xl border border-[#e7e7eb] bg-white p-5">
-      <div className="text-sm font-semibold">{title}</div>
-      {rows.length === 0 ? (
-        <p className="mt-4 text-sm text-[#75757d]">{empty}</p>
+      <div className="flex items-baseline justify-between gap-3">
+        <div className="text-sm font-semibold">{module.title}</div>
+        <div className="text-[12px] text-[#75757d]">{module.summary}</div>
+      </div>
+      {module.items.length === 0 ? (
+        <p className="mt-4 text-sm text-[#75757d]">
+          {module.error || "Este módulo no devolvió filas para este vídeo."}
+        </p>
       ) : (
         <div className="mt-4 grid gap-3">
-          {rows.map((row, index) => (
-            <div key={`${row.left}-${index}`} className="grid grid-cols-[72px_72px_minmax(0,1fr)] gap-3 text-sm">
-              <span className="text-[#75757d]">{row.left}</span>
-              <span className="font-medium">{row.middle}</span>
-              <span>{row.right}</span>
+          {module.items.map((item, index) => (
+            <div
+              key={`${module.id}-${index}`}
+              className="grid grid-cols-[72px_72px_minmax(0,1fr)] gap-3 text-sm"
+            >
+              <span className="text-[#75757d]">
+                {typeof item.start_ms === "number" ? msToClock(item.start_ms) : "—"}
+              </span>
+              <span className="font-medium">{item.label || "—"}</span>
+              <span>{item.text}</span>
             </div>
           ))}
         </div>
@@ -507,16 +488,16 @@ function SettingsView() {
         </p>
       </div>
       <EmptyCard
+        title="Módulos, no pantallas fijas"
+        body="La interfaz no hardcodea «habla» o «OCR». Cada módulo registrado escribe su bloque (id, summary, items, data) y la UI lo pinta. Para añadir otro repo, regístralo en el mismo contrato."
+      />
+      <EmptyCard
         title="Cómo se arranca"
         body="Con Docker: un comando y ya tienes Node, ffmpeg, Whisper y OCR. Sin Docker, el mismo script prepara el entorno local y levanta la app en el puerto 43141."
       />
       <EmptyCard
-        title="Sin resultados inventados"
-        body="Si una capacidad no existe aún, no aparece con sample. Solo verás datos reales o un aviso claro de que todavía no está implementada."
-      />
-      <EmptyCard
         title="Paso siguiente"
-        body="Cuando quieras, el siguiente salto es guardar trabajos y resultados de forma persistente — sin obligar a nadie a pelearse con dependencias sueltas."
+        body="Webhook al terminar + persistencia de resultados, sin romper la instalación simple ni el contrato de módulos."
       />
     </div>
   );

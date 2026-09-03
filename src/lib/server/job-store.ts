@@ -92,36 +92,22 @@ export async function createJobFromUpload(file: File): Promise<StoredVideo> {
         progress: 100,
         stage: "Listo",
         probe: result.probe,
-        speech: result.speech,
-        onScreenText: result.onScreenText,
         extraction: result.extraction,
         result,
         activity: [
-          ...((getStore().jobs.get(id)?.activity ?? [])),
+          ...(getStore().jobs.get(id)?.activity ?? []),
           {
             time: clock(),
-            title: "Media Probe",
+            title: "Media",
             detail: `${result.probe.width}×${result.probe.height} · ${Math.round(result.probe.durationMs / 1000)} s`,
             status: "ready",
           },
-          {
+          ...result.modules.map((mod) => ({
             time: clock(),
-            title: "Habla del vídeo",
-            detail:
-              result.speech && result.speech.segments.length > 0 ?
-                `${result.speech.segments.length} segmentos · ${result.speech.model}`
-              : result.speechError || "Sin habla detectada",
-            status: "ready",
-          },
-          {
-            time: clock(),
-            title: "Texto en pantalla",
-            detail:
-              result.onScreenText && result.onScreenText.items.length > 0 ?
-                `${result.onScreenText.items.length} textos · ${result.onScreenText.engine}`
-              : result.ocrError || "Sin texto detectado",
-            status: "ready",
-          },
+            title: mod.title,
+            detail: mod.error ? `${mod.summary}: ${mod.error}` : mod.summary,
+            status: (mod.status === "error" ? "error" : "ready") as StoredVideo["status"],
+          })),
         ],
       });
     })
@@ -132,7 +118,7 @@ export async function createJobFromUpload(file: File): Promise<StoredVideo> {
         stage: "Error",
         error: error instanceof Error ? error.message : "No se pudo procesar el vídeo",
         activity: [
-          ...((getStore().jobs.get(id)?.activity ?? [])),
+          ...(getStore().jobs.get(id)?.activity ?? []),
           {
             time: clock(),
             title: "Procesamiento",
