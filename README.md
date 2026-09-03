@@ -42,7 +42,7 @@ Producción local:
 
 - Acepta vídeos (`MP4`, `MOV`, `MKV`, `WebM`).
 - Pipeline por **módulos** registrados (mismo contrato para todos).
-- Módulos actuales: cortes, habla, texto en pantalla, **observación visual (Moondream2)**.
+- Módulos actuales: cortes, habla, quién habla, texto en pantalla, objetos/personas (YOLO), observación visual (Moondream2), resumen.
 - La UI y el JSON solo muestran lo que cada módulo devuelve (`summary`, `items`, `data`).
 - Trabajos y JSON guardados en disco (`data/jobs/`); el vídeo temporal se borra al terminar.
 - API: `POST/GET /api/jobs`, `GET /api/jobs/:id/result`, `GET /api/modules`.

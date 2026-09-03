@@ -176,8 +176,8 @@ function HomeView() {
             De vídeo a JSON. Instala, sube y listo.
           </h1>
           <p className="mt-4 text-[clamp(15px,1.4vw,18px)] text-[#75757d]">
-            Software pensado para instalarse de un golpe. Cada módulo escribe su bloque:
-            cortes, habla, texto en pantalla y observación visual con IA.
+            Cortes, habla, quién habla, texto, objetos/personas, observación visual y un resumen final.
+            Todo modular: cada cajita escribe su bloque en el JSON.
           </p>
 
           <div

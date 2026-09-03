@@ -46,6 +46,11 @@ next-env.d.ts
 # persisted jobs / JSON results (vídeos temporales no se guardan)
 /data/
 
+# model weights downloaded at runtime
+*.pt
+*.onnx
+yolov8*.pt
+
 # local python for video speech
 .venv/
 video-py/

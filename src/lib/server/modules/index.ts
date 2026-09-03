@@ -1,19 +1,24 @@
 import type { ExtractionModuleDefinition } from "./types";
+import { objectsPeopleModule } from "./objects-people";
 import { onScreenTextModule } from "./on-screen-text";
 import { sceneCutsModule } from "./scene-cuts";
+import { speakersModule } from "./speakers";
 import { speechModule } from "./speech";
+import { summaryModule } from "./summary";
 import { visualObservationModule } from "./visual-observation";
 
 /**
- * Registro de módulos activos.
- * Para enchufar otro repo: añade aquí una definición con el mismo contrato
- * (id, title, stage, run) y la UI / el JSON lo recogerán solos.
+ * Registro de módulos activos (orden = orden de ejecución).
+ * summary va al final porque lee previousModules.
  */
 export const EXTRACTION_MODULES: ExtractionModuleDefinition[] = [
   sceneCutsModule,
   speechModule,
+  speakersModule,
   onScreenTextModule,
+  objectsPeopleModule,
   visualObservationModule,
+  summaryModule,
 ];
 
 export function listExtractionModules() {

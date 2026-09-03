@@ -31,6 +31,7 @@ export async function processVideoFile(
         filename,
         probe,
         workDir,
+        previousModules: [...modules],
       });
       modules.push(result);
     }

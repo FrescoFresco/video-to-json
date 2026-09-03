@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Speech from a video soundtrack. Not a standalone audio product."""
+"""Speech from a video soundtrack with improved speaker clustering."""
 from __future__ import annotations
 
 import json
@@ -23,7 +23,29 @@ def load_wav(path: str) -> tuple[np.ndarray, int]:
     return samples, sr
 
 
-def speech_windows(samples: np.ndarray, sr: int, win=0.8, hop=0.4):
+def frame_features(chunk: np.ndarray, sr: int) -> np.ndarray:
+    """Huella simple de voz: bandas + energía + f0 aproximada (gratis, local)."""
+    if len(chunk) < 32:
+        return np.zeros(28, dtype=np.float64)
+    windowed = chunk * np.hanning(len(chunk))
+    spec = np.abs(np.fft.rfft(windowed))
+    bands = np.array_split(spec, 24)
+    band_feat = np.log1p(np.array([float(b.mean()) for b in bands], dtype=np.float64))
+    rms = float(np.sqrt(np.mean(chunk**2)))
+    # autocorrelación burda para pitch
+    f0 = 0.0
+    if rms > 0.01:
+        corr = np.correlate(chunk, chunk, mode="full")[len(chunk) - 1 :]
+        min_lag = max(1, int(sr / 400))
+        max_lag = max(min_lag + 1, int(sr / 70))
+        segment = corr[min_lag:max_lag]
+        if len(segment):
+            lag = int(np.argmax(segment)) + min_lag
+            f0 = float(sr / lag) if lag else 0.0
+    return np.concatenate([band_feat, np.array([rms, f0 / 400.0], dtype=np.float64)])
+
+
+def speech_windows(samples: np.ndarray, sr: int, win=0.9, hop=0.35):
     win_n = int(sr * win)
     hop_n = int(sr * hop)
     out = []
@@ -34,36 +56,43 @@ def speech_windows(samples: np.ndarray, sr: int, win=0.8, hop=0.4):
         rms = float(np.sqrt(np.mean(chunk**2)))
         if rms < 0.012:
             continue
-        spec = np.abs(np.fft.rfft(chunk * np.hanning(len(chunk))))
-        bands = np.array_split(spec, 24)
-        feat = np.log1p(np.array([float(b.mean()) for b in bands], dtype=np.float64))
+        feat = frame_features(chunk, sr)
         out.append((start / sr, (start + win_n) / sr, feat))
     return out
 
 
 def cluster_speakers(windows):
     if len(windows) < 2:
-        return ["S01"] * len(windows), 1
+        return ["SPEAKER_01"] * len(windows), 1
     X = np.stack([w[2] for w in windows])
     X = X - X.mean(axis=0)
     norms = np.linalg.norm(X, axis=1, keepdims=True)
     X = X / np.clip(norms, 1e-8, None)
-    dist = 1 - (X @ X.T)
+    dist = 1 - np.clip(X @ X.T, -1, 1)
     tri = dist[np.triu_indices(len(X), k=1)]
-    n_clusters = 2 if len(tri) and float(np.median(tri)) > 0.18 else 1
-    n_clusters = min(n_clusters, min(3, len(X)))
+    med = float(np.median(tri)) if len(tri) else 0.0
+    # Más sensible a cambios de voz que la versión anterior
+    if med > 0.28:
+        n_clusters = min(4, len(X))
+    elif med > 0.16:
+        n_clusters = min(3, len(X))
+    elif med > 0.10:
+        n_clusters = 2
+    else:
+        n_clusters = 1
+    n_clusters = max(1, min(n_clusters, len(X)))
     if n_clusters <= 1:
-        return ["S01"] * len(X), 1
+        return ["SPEAKER_01"] * len(X), 1
     labels = AgglomerativeClustering(
         n_clusters=n_clusters, metric="cosine", linkage="average"
     ).fit_predict(X)
-    return [f"S{int(i) + 1:02d}" for i in labels], n_clusters
+    return [f"SPEAKER_{int(i) + 1:02d}" for i in labels], n_clusters
 
 
 def speaker_at(t: float, windows, speakers: list[str]) -> str:
-    best, best_ov = "S01", -1.0
+    best, best_ov = "SPEAKER_01", -1.0
     for (start, end, _), spk in zip(windows, speakers):
-        ov = min(end, t + 0.2) - max(start, t)
+        ov = min(end, t + 0.25) - max(start, t - 0.05)
         if ov > best_ov:
             best_ov, best = ov, spk
     return best
@@ -77,7 +106,7 @@ def collect(model, wav, vad: bool, windows, win_speakers):
         if not text:
             continue
         mid = (seg.start + seg.end) / 2
-        speaker = speaker_at(mid, windows, win_speakers) if windows else "S01"
+        speaker = speaker_at(mid, windows, win_speakers) if windows else "SPEAKER_01"
         rows.append(
             {
                 "start": round(seg.start, 3),
@@ -102,7 +131,7 @@ def main():
     transcript, info = collect(model, wav, True, windows, win_speakers)
     if not transcript:
         transcript, info = collect(model, wav, False, windows, win_speakers)
-    speakers = sorted({t["speaker"] for t in transcript}) or ["S01"]
+    speakers = sorted({t["speaker"] for t in transcript}) or ["SPEAKER_01"]
     open(out, "w", encoding="utf-8").write(
         json.dumps(
             {
@@ -111,7 +140,7 @@ def main():
                 "language": getattr(info, "language", None),
                 "speakers": speakers,
                 "speaker_count": max(n_speakers, len(speakers)),
-                "diarization": "spectral-clustering",
+                "diarization": "spectral-pitch-clustering",
                 "segments": transcript,
             },
             ensure_ascii=False,

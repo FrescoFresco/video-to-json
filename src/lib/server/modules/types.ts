@@ -5,6 +5,8 @@ export type ModuleContext = {
   filename: string;
   probe: ProbeResult;
   workDir: string;
+  /** Resultados de módulos ya ejecutados (para resumen / speakers). */
+  previousModules: ExtractionModule[];
 };
 
 export type ExtractionModuleDefinition = {
