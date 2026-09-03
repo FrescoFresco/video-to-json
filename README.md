@@ -1,40 +1,70 @@
 # Video Extraction Studio
 
-Base limpia para una app web de extracción de vídeo. Esta versión **no inventa resultados**: solo muestra lo que realmente se ha podido sacar del archivo.
+Software web para convertir un vídeo en un JSON denso (metadatos, cortes, habla, texto en pantalla) **sin pasos técnicos sueltos**.
 
-## Qué hace ahora
+La idea: cualquiera lo instala de un golpe, abre el navegador, sube un vídeo y obtiene el resultado.
 
-- Acepta vídeos locales (`video/*`, `.mp4`, `.mov`, `.mkv`, `.webm`).
-- Extrae metadatos reales con `ffprobe` / `ffmpeg`.
-- Detecta cortes de plano.
-- Transcribe el habla del propio vídeo con `faster-whisper` en CPU.
-- Lee texto en pantalla con RapidOCR en CPU.
-- Crea trabajos de servidor en memoria con endpoints para crear, consultar estado y leer resultado.
-- Deja explícitas las capacidades que aún no existen en este build.
+## Instalación de un golpe
 
-## Qué no hace todavía
+### Opción A — Docker (recomendada)
 
-- Descripción visual del plano.
-- Tracking de objetos o personas.
-- Análisis de música o ambiente.
-- Base de datos o almacenamiento persistente.
-
-## Cómo arrancar
-
-Hace falta Node, `ffmpeg`/`ffprobe` y Python 3.12.
+Necesitas solo [Docker Desktop](https://www.docker.com/products/docker-desktop/) (o Docker Engine + Compose).
 
 ```bash
-npm install
-python3 -m venv .venv
-.venv/bin/pip install -r requirements-video.txt
-npm run dev
+./install.sh
 ```
 
-Abre `http://localhost:43141`.
+Abre [http://localhost:43141](http://localhost:43141).
 
-## Notas de rendimiento
+Equivale a:
 
-- La primera vez que corre `npm run dev`, Next.js compila y puede tardar.
-- La primera transcripción descarga el modelo Whisper `base`.
-- El procesado real de vídeo es lento porque Whisper y OCR van en CPU, sin GPU.
-- Los trabajos viven en memoria del servidor actual; si reinicias el dev server, desaparecen.
+```bash
+docker compose up --build
+```
+
+### Opción B — Sin Docker (local)
+
+Hace falta Node 20+, Python 3.12, ffmpeg y ffprobe.
+
+```bash
+./install.sh
+```
+
+Si no detecta Docker, instala dependencias npm/Python y arranca el servidor de desarrollo en el mismo comando.
+
+Producción local:
+
+```bash
+./install.sh prod
+```
+
+## Qué hace hoy
+
+- Acepta vídeos (`MP4`, `MOV`, `MKV`, `WebM`).
+- Metadatos y cortes de plano (`ffprobe` / `ffmpeg`).
+- Transcripción del habla (`faster-whisper` en CPU).
+- Texto en pantalla (RapidOCR en CPU).
+- Trabajos en memoria del servidor (se borran al reiniciar).
+- El archivo de vídeo se procesa en temporal y se elimina al terminar.
+
+## Qué aún no hace
+
+- Descripción visual del plano.
+- Tracking de personas u objetos.
+- Análisis de música o ambiente.
+- Base de datos persistente.
+
+## Variables útiles
+
+| Variable | Por defecto | Uso |
+| --- | --- | --- |
+| `WHISPER_MODEL` | `base` | Modelo Whisper (`tiny`, `base`, `small`…) |
+| `VIDEO_PYTHON` | `video-py/bin/python` | Interprete Python del pipeline |
+| `VIDEO_VENV_DIR` | `video-py` | Carpeta del entorno Python local |
+| `PORT` | `43141` | Puerto HTTP |
+
+## Notas
+
+- La primera transcripción descarga el modelo Whisper (en Docker queda en el volumen `vx-models`).
+- En CPU el procesado es lento; es intencional en este build sin GPU.
+- No inventa resultados: si una capacidad no está cableada, lo dice.

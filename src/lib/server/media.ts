@@ -131,11 +131,11 @@ export async function transcribeVideoSpeech(
     }
   }
 
-  const python = path.join(process.cwd(), ".venv", "bin", "python");
+  const python = resolvePythonBin();
   const script = path.join(process.cwd(), "scripts", "from_video_speech.py");
-  if (!existsSync(python)) {
+  if (!existsSync(/*turbopackIgnore: true*/ python)) {
     throw new Error(
-      "Falta .venv. Ejecuta: python3 -m venv .venv && .venv/bin/pip install -r requirements-video.txt"
+      "Falta el entorno Python del pipeline. Ejecuta ./install.sh en la raiz del proyecto."
     );
   }
   const model = process.env.WHISPER_MODEL || "base";
@@ -151,8 +151,17 @@ export async function transcribeVideoSpeech(
   return JSON.parse(raw) as VideoSpeech;
 }
 
+function resolvePythonBin() {
+  if (process.env.VIDEO_PYTHON && existsSync(process.env.VIDEO_PYTHON)) {
+    return process.env.VIDEO_PYTHON;
+  }
+  // Directorio local del pipeline (no usar un literal de symlink que Turbopack intente seguir).
+  const dir = process.env.VIDEO_VENV_DIR || "video-py";
+  return path.join(process.cwd(), dir, "bin", "python");
+}
+
 function pythonBin() {
-  return path.join(process.cwd(), ".venv", "bin", "python");
+  return resolvePythonBin();
 }
 
 function framePlan(scenes: { startMs: number; endMs: number }[], durationMs: number) {
@@ -199,9 +208,9 @@ export async function readOnScreenText(
 ): Promise<OnScreenText> {
   const python = pythonBin();
   const script = path.join(process.cwd(), "scripts", "from_video_ocr.py");
-  if (!existsSync(python)) {
+  if (!existsSync(/*turbopackIgnore: true*/ python)) {
     throw new Error(
-      "Falta .venv. Ejecuta: python3 -m venv .venv && .venv/bin/pip install -r requirements-video.txt"
+      "Falta el entorno Python del pipeline. Ejecuta ./install.sh en la raiz del proyecto."
     );
   }
   await writeFile(manifestPath, JSON.stringify({ frames }), "utf8");

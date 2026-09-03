@@ -1,0 +1,16 @@
+services:
+  app:
+    build: .
+    ports:
+      - "43141:43141"
+    environment:
+      WHISPER_MODEL: ${WHISPER_MODEL:-base}
+      HF_HOME: /data/hf
+      XDG_CACHE_HOME: /data/cache
+      HF_HUB_DISABLE_TELEMETRY: "1"
+    volumes:
+      - vx-models:/data
+    restart: unless-stopped
+
+volumes:
+  vx-models:

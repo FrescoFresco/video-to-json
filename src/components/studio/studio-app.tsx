@@ -175,11 +175,11 @@ function HomeView() {
         <div className="w-full max-w-[780px] text-center">
           <div className="mb-2.5 text-[13px] text-[#75757d]">Video Extraction Studio</div>
           <h1 className="m-0 text-[clamp(32px,5vw,58px)] leading-none font-semibold tracking-[-0.055em]">
-            Sube un vídeo. Mira solo lo que de verdad se ha extraído.
+            De vídeo a JSON. Instala, sube y listo.
           </h1>
           <p className="mt-4 text-[clamp(15px,1.4vw,18px)] text-[#75757d]">
-            Esta base no enseña ejemplos inventados. Hoy saca metadatos, cortes de plano,
-            habla del vídeo y texto en pantalla.
+            Software pensado para instalarse de un golpe. Hoy saca metadatos, cortes,
+            habla y texto en pantalla — solo datos reales, nada inventado.
           </p>
 
           <div
@@ -504,15 +504,21 @@ function SettingsView() {
     <div className="grid gap-4">
       <div>
         <h1 className="text-[clamp(24px,2.4vw,32px)] font-semibold tracking-[-0.035em]">Ajustes</h1>
-        <p className="text-sm text-[#75757d]">Base limpia para seguir construyendo la app web correctamente.</p>
+        <p className="text-sm text-[#75757d]">
+          Este software se instala de un golpe con <code className="rounded bg-[#f5f5f7] px-1.5 py-0.5 text-[12px]">./install.sh</code>.
+        </p>
       </div>
+      <EmptyCard
+        title="Cómo se arranca"
+        body="Con Docker: un comando y ya tienes Node, ffmpeg, Whisper y OCR. Sin Docker, el mismo script prepara el entorno local y levanta la app en el puerto 43141."
+      />
       <EmptyCard
         title="Sin resultados inventados"
         body="Si una capacidad no existe aún, no aparece con sample. Solo verás datos reales o un aviso claro de que todavía no está implementada."
       />
       <EmptyCard
         title="Paso siguiente"
-        body="Cuando quieras, el siguiente salto es guardar trabajos y resultados en una base de datos real y almacenamiento persistente."
+        body="Cuando quieras, el siguiente salto es guardar trabajos y resultados de forma persistente — sin obligar a nadie a pelearse con dependencias sueltas."
       />
     </div>
   );

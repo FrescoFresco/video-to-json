@@ -1,0 +1,12 @@
+node_modules
+.next
+.git
+.venv
+video-py
+.cache
+agent-tools
+*.tsbuildinfo
+npm-debug.log*
+README.md
+Dockerfile
+docker-compose.yml
