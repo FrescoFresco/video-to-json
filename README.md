@@ -42,14 +42,15 @@ Producción local:
 
 - Acepta vídeos (`MP4`, `MOV`, `MKV`, `WebM`).
 - Pipeline por **módulos** registrados (mismo contrato para todos).
-- Módulos actuales: cortes de plano, habla (`faster-whisper`), texto en pantalla (RapidOCR).
+- Módulos actuales: cortes, habla, texto en pantalla, **observación visual (Moondream2)**.
 - La UI y el JSON solo muestran lo que cada módulo devuelve (`summary`, `items`, `data`).
 - Trabajos y JSON guardados en disco (`data/jobs/`); el vídeo temporal se borra al terminar.
 - API: `POST/GET /api/jobs`, `GET /api/jobs/:id/result`, `GET /api/modules`.
 
 ## Qué aún no hace
 
-- Descripción visual, tracking o música (no están registrados como módulos).
+- Tracking fino de personas/objetos en el tiempo.
+- Análisis de música.
 - Webhook al terminar / API key.
 
 ## Añadir otro módulo / repo
@@ -64,7 +65,8 @@ Producción local:
 | --- | --- | --- |
 | `WHISPER_MODEL` | `base` | Modelo Whisper (`tiny`, `base`, `small`…) |
 | `VIDEO_PYTHON` | `video-py/bin/python` | Interprete Python del pipeline |
-| `VX_DATA_DIR` | `data/jobs` | Carpeta de trabajos y JSON persistidos |
+| `VISION_MAX_FRAMES` | `6` | Máx. fotogramas a observar (CPU) |
+| `VISION_MODEL` | `vikhyatk/moondream2` | Modelo VLM de observación |
 | `PORT` | `43141` | Puerto HTTP |
 
 ## Notas

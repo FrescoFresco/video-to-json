@@ -18,7 +18,7 @@ need_cmd() {
 }
 
 start_docker() {
-  echo "→ Usando Docker (todo empaquetado: Node, ffmpeg, Whisper, OCR)"
+  echo "→ Usando Docker (todo empaquetado: Node, ffmpeg, Whisper, OCR, visión)"
   if docker compose version >/dev/null 2>&1; then
     docker compose up --build -d
   else
@@ -44,9 +44,10 @@ start_local() {
   fi
 
   if [[ ! -x video-py/bin/python ]]; then
-    echo "→ creando entorno Python"
+    echo "→ creando entorno Python (Whisper, OCR, visión Moondream)"
     python3 -m venv video-py
     video-py/bin/pip install --upgrade pip
+    video-py/bin/pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
     video-py/bin/pip install -r requirements-video.txt
   fi
 

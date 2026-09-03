@@ -224,3 +224,50 @@ export async function readOnScreenText(
   });
   return JSON.parse(await readFile(outJson, "utf8")) as OnScreenText;
 }
+
+export type VisualObservation = {
+  engine: string;
+  model?: string;
+  revision?: string;
+  device?: string;
+  frame_count: number;
+  items: Array<{
+    text: string;
+    start_ms: number;
+    end_ms: number;
+    caption?: string | null;
+    observation?: string | null;
+    role?: string;
+  }>;
+  error?: string;
+  warnings?: string[];
+};
+
+export async function readVisualObservations(
+  frames: { path: string; start_ms: number; end_ms: number }[],
+  manifestPath: string,
+  outJson: string
+): Promise<VisualObservation> {
+  const python = pythonBin();
+  const script = path.join(process.cwd(), "scripts", "from_video_visual.py");
+  if (!existsSync(/*turbopackIgnore: true*/ python)) {
+    throw new Error(
+      "Falta el entorno Python del pipeline. Ejecuta ./install.sh en la raiz del proyecto."
+    );
+  }
+  if (!existsSync(/*turbopackIgnore: true*/ script)) {
+    throw new Error("Falta scripts/from_video_visual.py");
+  }
+  await writeFile(manifestPath, JSON.stringify({ frames }), "utf8");
+  await execFileAsync(python, [script, manifestPath, outJson], {
+    // Primera carga del VLM + varios frames en CPU puede tardar.
+    timeout: 900000,
+    maxBuffer: 16 * 1024 * 1024,
+    env: {
+      ...process.env,
+      HF_HUB_DISABLE_TELEMETRY: "1",
+      VISION_MAX_FRAMES: process.env.VISION_MAX_FRAMES || "6",
+    },
+  });
+  return JSON.parse(await readFile(outJson, "utf8")) as VisualObservation;
+}

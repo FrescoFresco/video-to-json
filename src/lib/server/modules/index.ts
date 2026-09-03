@@ -2,6 +2,7 @@ import type { ExtractionModuleDefinition } from "./types";
 import { onScreenTextModule } from "./on-screen-text";
 import { sceneCutsModule } from "./scene-cuts";
 import { speechModule } from "./speech";
+import { visualObservationModule } from "./visual-observation";
 
 /**
  * Registro de módulos activos.
@@ -12,6 +13,7 @@ export const EXTRACTION_MODULES: ExtractionModuleDefinition[] = [
   sceneCutsModule,
   speechModule,
   onScreenTextModule,
+  visualObservationModule,
 ];
 
 export function listExtractionModules() {

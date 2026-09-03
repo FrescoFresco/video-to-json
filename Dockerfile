@@ -31,6 +31,9 @@ RUN apt-get update \
     python3 \
     python3-venv \
     python3-pip \
+    python3-dev \
+    pkg-config \
+    libvips-dev \
     libgl1 \
     libglib2.0-0 \
   && rm -rf /var/lib/apt/lists/*
@@ -38,7 +41,9 @@ RUN apt-get update \
 COPY requirements-video.txt ./
 RUN python3 -m venv video-py \
   && video-py/bin/pip install --upgrade pip \
-  && video-py/bin/pip install --no-cache-dir -r requirements-video.txt
+  && video-py/bin/pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu \
+  && video-py/bin/pip install --no-cache-dir -r requirements-video.txt \
+  && video-py/bin/pip install --no-cache-dir 'transformers==4.49.0'
 
 ENV VIDEO_VENV_DIR=video-py
 ENV VX_DATA_DIR=/data/jobs
