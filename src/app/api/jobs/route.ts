@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { clearJobs, createJobFromUpload, listJobs } from "@/lib/server/job-store";
+import { MAX_INGEST_BATCH } from "@/lib/ingest-links";
 import { isVideoFile } from "@/lib/video-file";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
-const MAX_BATCH = 20;
+const MAX_BATCH = MAX_INGEST_BATCH;
 const MAX_BYTES = 80 * 1024 * 1024;
 
 function collectVideoFiles(form: FormData): File[] {

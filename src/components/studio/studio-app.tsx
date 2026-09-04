@@ -15,8 +15,10 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { msToClock } from "@/lib/extraction";
+import { isLinkListFilename, readLinksFromFile } from "@/lib/ingest-links";
 import { useStudio } from "@/lib/store";
 import type { ExtractionModule, JobStatus, StoredVideo, ViewName } from "@/lib/types";
+import { isVideoFile } from "@/lib/video-file";
 
 function downloadJson(name: string, obj: unknown) {
   const blob = new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" });
@@ -169,13 +171,25 @@ export function StudioApp() {
 function HomeView() {
   const s = useStudio();
   const inputRef = useRef<HTMLInputElement>(null);
+  const folderRef = useRef<HTMLInputElement>(null);
   const [drag, setDrag] = useState(false);
   const [link, setLink] = useState("");
   const [linkBusy, setLinkBusy] = useState(false);
+  const [folderBusy, setFolderBusy] = useState(false);
 
-  async function handleFiles(files: FileList | null) {
+  async function handleIncoming(files: FileList | File[] | null) {
     if (!files?.length) return;
-    await s.ingestFiles([...files]);
+    const list = [...files];
+    const videos = list.filter((file) => isVideoFile(file));
+    const linkFiles = list.filter((file) => isLinkListFilename(file.name));
+
+    const urls: string[] = [];
+    for (const file of linkFiles) {
+      urls.push(...(await readLinksFromFile(file)));
+    }
+
+    if (videos.length) await s.ingestFiles(videos);
+    if (urls.length) await s.ingestUrls(urls);
   }
 
   async function handleLinkSubmit(e?: FormEvent) {
@@ -226,7 +240,12 @@ function HomeView() {
           onDrop={async (e) => {
             e.preventDefault();
             setDrag(false);
-            await handleFiles(e.dataTransfer.files);
+            setFolderBusy(true);
+            try {
+              await handleIncoming(e.dataTransfer.files);
+            } finally {
+              setFolderBusy(false);
+            }
           }}
           className={`vx-home-fade vx-home-fade-delay flex min-h-[168px] flex-col items-start justify-center gap-4 border border-dashed px-6 py-7 transition md:px-8 ${
             drag ? "border-[#171719] bg-white" : "border-[#c9ced6] bg-transparent"
@@ -235,28 +254,69 @@ function HomeView() {
           <div className="flex items-center gap-3 text-[#171719]">
             <Upload className="size-[18px] shrink-0 opacity-70" strokeWidth={1.75} />
             <span className="text-[15px] font-medium tracking-[-0.015em]">
-              Arrastra vídeos o elige archivos
+              {folderBusy
+                ? "Encolando…"
+                : "Arrastra vídeos, una carpeta o un .txt con links"}
             </span>
           </div>
-          <p className="m-0 text-[13px] text-[#6a7380]">MP4, MOV, MKV, WebM · varios a la vez</p>
+          <p className="m-0 text-[13px] text-[#6a7380]">
+            MP4, MOV, MKV, WebM · carpeta completa · lista de links (.txt)
+          </p>
           <input
             ref={inputRef}
             type="file"
             multiple
-            accept="video/*,.mp4,.mov,.mkv,.webm,.m4v"
+            accept="video/*,.mp4,.mov,.mkv,.webm,.m4v,.txt,.csv"
             hidden
             onChange={async (e) => {
-              await handleFiles(e.target.files);
-              e.target.value = "";
+              setFolderBusy(true);
+              try {
+                await handleIncoming(e.target.files);
+              } finally {
+                setFolderBusy(false);
+                e.target.value = "";
+              }
             }}
           />
-          <Button
-            variant="outline"
-            className="rounded-lg border-[#d0d4da] bg-white hover:bg-[#f5f5f7]"
-            onClick={() => inputRef.current?.click()}
-          >
-            Seleccionar vídeos
-          </Button>
+          <input
+            ref={folderRef}
+            type="file"
+            multiple
+            hidden
+            onChange={async (e) => {
+              setFolderBusy(true);
+              try {
+                await handleIncoming(e.target.files);
+              } finally {
+                setFolderBusy(false);
+                e.target.value = "";
+              }
+            }}
+          />
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              className="rounded-lg border-[#d0d4da] bg-white hover:bg-[#f5f5f7]"
+              disabled={folderBusy}
+              onClick={() => inputRef.current?.click()}
+            >
+              Seleccionar archivos
+            </Button>
+            <Button
+              variant="outline"
+              className="rounded-lg border-[#d0d4da] bg-white hover:bg-[#f5f5f7]"
+              disabled={folderBusy}
+              onClick={() => {
+                const el = folderRef.current;
+                if (!el) return;
+                el.setAttribute("webkitdirectory", "");
+                el.setAttribute("directory", "");
+                el.click();
+              }}
+            >
+              Seleccionar carpeta
+            </Button>
+          </div>
         </div>
 
         <form
@@ -268,7 +328,7 @@ function HomeView() {
           </label>
           <textarea
             id="vx-video-url"
-            rows={3}
+            rows={4}
             autoComplete="off"
             placeholder={"https://www.tiktok.com/@cuenta/video/…\nhttps://www.instagram.com/reel/…\nhttps://www.youtube.com/watch?v=…"}
             value={link}
@@ -285,7 +345,7 @@ function HomeView() {
               {linkBusy ? "Encolando…" : "Analizar links"}
             </Button>
             <p className="m-0 text-[12.5px] leading-relaxed text-[#6a7380]">
-              Un link por línea (máx. 20). TikTok, Instagram, Facebook, YouTube, X…
+              Un link por línea. Sin límite práctico: se encolan por lotes.
             </p>
           </div>
         </form>
@@ -1038,36 +1098,42 @@ curl http://localhost:43141/api/jobs/JOB_ID/result`}</DocsCode>
       </section>
 
       <section className="min-w-0 overflow-hidden rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
-        <div className="text-sm font-semibold">Importar links (TikTok, Instagram, YouTube…)</div>
+        <div className="text-sm font-semibold">Importar muchos de golpe</div>
         <p className="mt-2 text-sm leading-relaxed text-[#75757d]">
-          En la home puedes pegar varios links (uno por línea) y pulsar «Analizar links».
-          También desde fuera, con la API. Solo vídeos públicos. Máximo 20 por petición.
+          Tres formas cómodas. Todo acaba en la misma cola de Vídeos.
         </p>
         <ol className="mt-4 grid gap-2 text-sm text-[#171719]">
-          <li>1. Copia los links de vídeos públicos.</li>
-          <li>2. Pégalos en la home (uno por línea) o mándalos a la API.</li>
-          <li>3. Cada link crea un trabajo: primero descarga, luego extrae el JSON.</li>
+          <li>
+            1. <strong className="font-medium">Carpeta de vídeos:</strong> en la home,
+            «Seleccionar carpeta» (o arrastra la carpeta). Encola todos los MP4/MOV/etc.
+          </li>
+          <li>
+            2. <strong className="font-medium">Pegar links:</strong> uno por línea en el
+            cuadro de texto → «Analizar links».
+          </li>
+          <li>
+            3. <strong className="font-medium">Archivo .txt:</strong> un link por línea;
+            súbelo o arrástralo como un archivo más.
+          </li>
         </ol>
-        <p className="mt-4 text-[12.5px] text-[#75757d]">Un solo link:</p>
+        <p className="mt-4 text-[12.5px] leading-relaxed text-[#75757d]">
+          Redes: TikTok, Instagram, Facebook, YouTube, X… Solo públicos. Si hay muchos, se
+          mandan por lotes automáticamente (no hace falta preocuparse del límite).
+        </p>
+        <p className="mt-4 text-[12.5px] text-[#75757d]">API — un link:</p>
         <DocsCode>{`curl -X POST http://localhost:43141/api/jobs/from-url \\
   -H "Content-Type: application/json" \\
   -d '{"url":"https://www.tiktok.com/@cuenta/video/123"}'`}</DocsCode>
-        <p className="mt-4 text-[12.5px] text-[#75757d]">Muchos links de golpe:</p>
+        <p className="mt-4 text-[12.5px] text-[#75757d]">API — muchos links:</p>
         <DocsCode>{`curl -X POST http://localhost:43141/api/jobs/from-url \\
   -H "Content-Type: application/json" \\
   -d '{
     "urls": [
       "https://www.tiktok.com/@a/video/1",
       "https://www.instagram.com/reel/ABC/",
-      "https://www.youtube.com/watch?v=xyz",
-      "https://www.facebook.com/watch/?v=123"
+      "https://www.youtube.com/watch?v=xyz"
     ]
   }'`}</DocsCode>
-        <p className="mt-3 text-[12.5px] leading-relaxed text-[#75757d]">
-          Respuesta: lista de trabajos en cola. Mira el estado en Vídeos o con{" "}
-          <code className="text-[12px]">GET /api/jobs/JOB_ID</code>. Si un link falla (privado,
-          bloqueado…), el resto sigue.
-        </p>
       </section>
 
       <section className="min-w-0 overflow-hidden rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">

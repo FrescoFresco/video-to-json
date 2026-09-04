@@ -46,9 +46,9 @@ Con **Google Drive para escritorio** (carpetas locales sincronizadas):
 También puedes usar webhook (Make/n8n) si prefieres otro destino.
 ## Qué hace hoy
 
-- Acepta vídeos (`MP4`, `MOV`, `MKV`, `WebM`) por archivo o por **link** (TikTok, Instagram, Facebook, YouTube, X…).
-- En la home puedes pegar **varios links** (uno por línea, máx. 20). También `POST /api/jobs/from-url` con `urls: [...]`.
-- Pipeline por **módulos** registrados (mismo contrato para todos).
+- Acepta vídeos (`MP4`, `MOV`, `MKV`, `WebM`) por archivo, **carpeta completa**, o por **link** (TikTok, Instagram, Facebook, YouTube, X…).
+- En la home: pegar muchos links, subir un `.txt` con links, o «Seleccionar carpeta».
+- La API acepta lotes (`POST /api/jobs`, `POST /api/jobs/from-url`); el cliente parte en tandas si hace falta.
 - Diarización con `diarize` (Silero + WeSpeaker): gratis, local, **sin token ni API de pago**.
 - **Música y ambiente** local (`librosa`): energía, ritmo/BPM si es claro, brillo del audio por pasajes. No identifica canciones.
 - **Movimiento de cámara** local (OpenCV): estática, paneo, zoom, trepidación por tramos.
@@ -76,11 +76,15 @@ curl -F "files=@video1.mp4" -F "files=@video2.mp4" -F "files=@video3.mp4" \
 
 Respuesta: lista de trabajos. Se procesan en cola (`VX_MAX_CONCURRENT`, por defecto 1). Cada uno, al terminar, puede disparar el webhook.
 
-## Importar muchos links
+## Importar muchos links o una carpeta
 
-En la **home**: pega varios links (uno por línea) → **Analizar links**.
+En la **home**:
 
-Por API (máx. 20):
+1. **Carpeta** → «Seleccionar carpeta» (o arrástrala): encola todos los vídeos.
+2. **Pegar links** → uno por línea → «Analizar links».
+3. **Archivo `.txt`** → un link por línea; súbelo como archivo.
+
+Por API:
 
 ```bash
 # Uno
@@ -94,7 +98,7 @@ curl -X POST http://localhost:43141/api/jobs/from-url \
   -d '{"urls":["https://www.tiktok.com/@a/video/1","https://www.youtube.com/watch?v=xyz"]}'
 ```
 
-Solo vídeos públicos (TikTok, Instagram, Facebook, YouTube, X…). Detalle en **Docs** dentro de la app.
+Solo vídeos públicos. Detalle en **Docs** dentro de la app.
 
 Con el servidor en marcha:
 

@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import type { StoredVideo, ViewName } from "./types";
+import { MAX_INGEST_BATCH } from "./ingest-links";
 import { isVideoFile } from "./video-file";
 
 const defaultVideos: StoredVideo[] = [];
@@ -65,38 +66,49 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     if (!validFiles.length) return;
 
     try {
-      const fd = new FormData();
-      for (const file of validFiles) {
-        fd.append("files", file);
+      const allJobs: StoredVideo[] = [];
+
+      for (let i = 0; i < validFiles.length; i += MAX_INGEST_BATCH) {
+        const chunk = validFiles.slice(i, i + MAX_INGEST_BATCH);
+        const fd = new FormData();
+        for (const file of chunk) {
+          fd.append("files", file);
+        }
+        const res = await fetch("/api/jobs", { method: "POST", body: fd });
+        const data = (await res.json()) as
+          | (StoredVideo & { error?: string })
+          | {
+              jobs?: StoredVideo[];
+              rejected?: Array<{ name: string; error: string }>;
+              error?: string;
+            };
+
+        if (!res.ok) {
+          throw new Error(
+            ("error" in data && data.error) || "No se pudieron crear los trabajos"
+          );
+        }
+
+        const jobs: StoredVideo[] =
+          "jobs" in data && Array.isArray(data.jobs)
+            ? data.jobs
+            : "id" in data && data.id
+              ? [data as StoredVideo]
+              : [];
+
+        allJobs.push(...jobs);
       }
-      const res = await fetch("/api/jobs", { method: "POST", body: fd });
-      const data = (await res.json()) as
-        | (StoredVideo & { error?: string })
-        | { jobs?: StoredVideo[]; rejected?: Array<{ name: string; error: string }>; error?: string };
 
-      if (!res.ok) {
-        throw new Error(
-          ("error" in data && data.error) || "No se pudieron crear los trabajos"
-        );
-      }
-
-      const jobs: StoredVideo[] =
-        "jobs" in data && Array.isArray(data.jobs) ?
-          data.jobs
-        : "id" in data && data.id ?
-          [data as StoredVideo]
-        : [];
-
-      if (!jobs.length) {
+      if (!allJobs.length) {
         throw new Error("No se creó ningún trabajo");
       }
 
       setVideos((prev) => {
-        const ids = new Set(jobs.map((j) => j.id));
-        return [...jobs, ...prev.filter((item) => !ids.has(item.id))];
+        const ids = new Set(allJobs.map((j) => j.id));
+        return [...allJobs, ...prev.filter((item) => !ids.has(item.id))];
       });
-      setActiveVideoId(jobs[0].id);
-      setView(jobs.length === 1 ? "video-detail" : "videos");
+      setActiveVideoId(allJobs[0].id);
+      setView(allJobs.length === 1 ? "video-detail" : "videos");
       void refreshJobs();
     } catch (error) {
       const message = error instanceof Error ? error.message : "No se pudieron crear los trabajos";
@@ -129,44 +141,52 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     if (!cleaned.length) return;
 
     try {
-      const res = await fetch("/api/jobs/from-url", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          cleaned.length === 1 ? { url: cleaned[0] } : { urls: cleaned }
-        ),
-      });
-      const data = (await res.json()) as
-        | (StoredVideo & { error?: string })
-        | {
-            jobs?: StoredVideo[];
-            rejected?: Array<{ url: string; error: string }>;
-            error?: string;
-          };
+      const allJobs: StoredVideo[] = [];
 
-      if (!res.ok) {
-        throw new Error(
-          ("error" in data && data.error) || "No se pudieron crear los trabajos desde los links"
-        );
+      for (let i = 0; i < cleaned.length; i += MAX_INGEST_BATCH) {
+        const chunk = cleaned.slice(i, i + MAX_INGEST_BATCH);
+        const res = await fetch("/api/jobs/from-url", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            chunk.length === 1 ? { url: chunk[0] } : { urls: chunk }
+          ),
+        });
+        const data = (await res.json()) as
+          | (StoredVideo & { error?: string })
+          | {
+              jobs?: StoredVideo[];
+              rejected?: Array<{ url: string; error: string }>;
+              error?: string;
+            };
+
+        if (!res.ok) {
+          throw new Error(
+            ("error" in data && data.error) ||
+              "No se pudieron crear los trabajos desde los links"
+          );
+        }
+
+        const jobs: StoredVideo[] =
+          "jobs" in data && Array.isArray(data.jobs)
+            ? data.jobs
+            : "id" in data && data.id
+              ? [data as StoredVideo]
+              : [];
+
+        allJobs.push(...jobs);
       }
 
-      const jobs: StoredVideo[] =
-        "jobs" in data && Array.isArray(data.jobs)
-          ? data.jobs
-          : "id" in data && data.id
-            ? [data as StoredVideo]
-            : [];
-
-      if (!jobs.length) {
+      if (!allJobs.length) {
         throw new Error("No se creó ningún trabajo");
       }
 
       setVideos((prev) => {
-        const ids = new Set(jobs.map((j) => j.id));
-        return [...jobs, ...prev.filter((item) => !ids.has(item.id))];
+        const ids = new Set(allJobs.map((j) => j.id));
+        return [...allJobs, ...prev.filter((item) => !ids.has(item.id))];
       });
-      setActiveVideoId(jobs[0].id);
-      setView(jobs.length === 1 ? "video-detail" : "videos");
+      setActiveVideoId(allJobs[0].id);
+      setView(allJobs.length === 1 ? "video-detail" : "videos");
       void refreshJobs();
     } catch (error) {
       const message =

@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { createJobFromUrl } from "@/lib/server/job-store";
+import { MAX_INGEST_BATCH } from "@/lib/ingest-links";
 import { parseAllowedVideoUrl } from "@/lib/server/url-download";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
-const MAX_URLS = 20;
+const MAX_URLS = MAX_INGEST_BATCH;
 
 function collectUrls(body: { url?: unknown; urls?: unknown }): string[] {
   const out: string[] = [];
