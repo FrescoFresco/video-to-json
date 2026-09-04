@@ -705,28 +705,6 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ModuleSummaryCard({ module }: { module: ExtractionModule }) {
-  const tone =
-    module.status === "error" ? "text-[#b42318]" :
-    module.status === "empty" ? "text-[#75757d]" :
-    "text-[#177245]";
-
-  return (
-    <div className="rounded-xl border border-[#e7e7eb] bg-[#fbfbfc] p-4">
-      <div className="text-sm font-medium">{module.title}</div>
-      <div className={`mt-2 text-[12.5px] leading-relaxed ${tone}`}>
-        {module.summary}
-      </div>
-      {module.engine ? (
-        <div className="mt-2 text-[11px] text-[#9a9aa3]">{module.engine}</div>
-      ) : null}
-      {module.error ? (
-        <div className="mt-2 text-[12px] leading-relaxed text-[#b42318]">{module.error}</div>
-      ) : null}
-    </div>
-  );
-}
-
 function ModuleItemsList({ module }: { module: ExtractionModule }) {
   return (
     <section className="rounded-2xl border border-[#e7e7eb] bg-white p-5">
