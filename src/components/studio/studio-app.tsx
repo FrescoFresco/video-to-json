@@ -121,8 +121,8 @@ export function StudioApp() {
         </div>
       </aside>
 
-      <main className="min-w-0 px-4 py-5 pb-24 md:px-[clamp(22px,3vw,42px)] md:py-[clamp(22px,3vw,42px)]">
-        <div className="mx-auto w-full max-w-[1080px]">
+      <main className="min-w-0 overflow-x-hidden px-4 py-5 pb-24 md:px-[clamp(22px,3vw,42px)] md:py-[clamp(22px,3vw,42px)]">
+        <div className="mx-auto w-full min-w-0 max-w-[1080px]">
           {s.view === "home" && <HomeView />}
           {s.view === "videos" && <VideosView />}
           {s.view === "video-detail" && activeVideo && <VideoDetail video={activeVideo} />}
@@ -593,32 +593,34 @@ function ModuleItemsList({ module }: { module: ExtractionModule }) {
 
 function DocsCode({ children }: { children: string }) {
   return (
-    <pre className="mt-3 overflow-x-auto rounded-xl bg-[#151517] p-4 text-[12.5px] leading-[1.55] text-[#e9e9ed]">
-      <code>{children}</code>
-    </pre>
+    <div className="mt-3 min-w-0 max-w-full overflow-x-auto rounded-xl bg-[#151517]">
+      <pre className="m-0 min-w-0 p-3 text-[12px] leading-[1.55] text-[#e9e9ed] whitespace-pre-wrap break-all sm:p-4 sm:text-[12.5px] sm:whitespace-pre sm:break-normal">
+        <code>{children}</code>
+      </pre>
+    </div>
   );
 }
 
 function DocsView({ onOpenSettings }: { onOpenSettings: () => void }) {
   return (
-    <div className="grid gap-5">
-      <div>
+    <div className="grid min-w-0 gap-4 sm:gap-5">
+      <div className="min-w-0">
         <h1 className="text-[clamp(24px,2.4vw,32px)] font-semibold tracking-[-0.035em]">Docs</h1>
-        <p className="mt-1 text-sm text-[#75757d]">
+        <p className="mt-1 text-sm leading-relaxed text-[#75757d]">
           Cómo conectar este programa con otras apps: meter vídeos y recibir el JSON.
         </p>
       </div>
 
-      <section className="rounded-2xl border border-[#e7e7eb] bg-white p-5">
+      <section className="min-w-0 rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
         <div className="text-sm font-semibold">Las dos direcciones</div>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
-          <div className="rounded-xl bg-[#f5f5f7] p-4">
+          <div className="min-w-0 rounded-xl bg-[#f5f5f7] p-4">
             <div className="text-sm font-medium">1. Meter vídeos (API)</div>
             <p className="mt-2 text-[12.5px] leading-relaxed text-[#75757d]">
               Otra app (o tú con curl) envía uno o muchos vídeos a este programa.
             </p>
           </div>
-          <div className="rounded-xl bg-[#f5f5f7] p-4">
+          <div className="min-w-0 rounded-xl bg-[#f5f5f7] p-4">
             <div className="text-sm font-medium">2. Avisar al terminar (webhook)</div>
             <p className="mt-2 text-[12.5px] leading-relaxed text-[#75757d]">
               Cuando un vídeo acaba, este programa hace POST a tu URL con el JSON.
@@ -627,7 +629,7 @@ function DocsView({ onOpenSettings }: { onOpenSettings: () => void }) {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-[#e7e7eb] bg-white p-5">
+      <section className="min-w-0 overflow-hidden rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
         <div className="text-sm font-semibold">Webhook</div>
         <p className="mt-2 text-sm leading-relaxed text-[#75757d]">
           Configura la URL en Ajustes. Sirve para Make, n8n, Zapier o tu backend.
@@ -651,12 +653,13 @@ function DocsView({ onOpenSettings }: { onOpenSettings: () => void }) {
 }`}</DocsCode>
       </section>
 
-      <section className="rounded-2xl border border-[#e7e7eb] bg-white p-5">
+      <section className="min-w-0 overflow-hidden rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
         <div className="text-sm font-semibold">Subir un vídeo desde fuera</div>
         <p className="mt-2 text-sm leading-relaxed text-[#75757d]">
           La otra app manda el archivo a la API. Luego puede consultar el estado o esperar el webhook.
         </p>
-        <DocsCode>{`curl -F "file=@clip.mp4" http://localhost:43141/api/jobs
+        <DocsCode>{`curl -F "file=@clip.mp4" \\
+  http://localhost:43141/api/jobs
 
 # Estado
 curl http://localhost:43141/api/jobs/JOB_ID
@@ -665,39 +668,39 @@ curl http://localhost:43141/api/jobs/JOB_ID
 curl http://localhost:43141/api/jobs/JOB_ID/result`}</DocsCode>
       </section>
 
-      <section className="rounded-2xl border border-[#e7e7eb] bg-white p-5">
+      <section className="min-w-0 overflow-hidden rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
         <div className="text-sm font-semibold">Varios vídeos de golpe</div>
         <p className="mt-2 text-sm leading-relaxed text-[#75757d]">
           Puedes mandar muchos archivos en la misma petición. Se encolan y, si hay webhook,
           cada uno avisa cuando termina.
         </p>
         <DocsCode>{`curl -F "files=@video1.mp4" \\
-     -F "files=@video2.mp4" \\
-     -F "files=@video3.mp4" \\
-     http://localhost:43141/api/jobs`}</DocsCode>
+  -F "files=@video2.mp4" \\
+  -F "files=@video3.mp4" \\
+  http://localhost:43141/api/jobs`}</DocsCode>
       </section>
 
-      <section className="rounded-2xl border border-[#e7e7eb] bg-white p-5">
+      <section className="min-w-0 overflow-hidden rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
         <div className="text-sm font-semibold">Endpoints útiles</div>
-        <div className="mt-3 grid gap-2 text-sm">
-          <div className="grid gap-1 border-t border-[#e7e7eb] py-3 first:border-t-0 md:grid-cols-[160px_minmax(0,1fr)]">
-            <code className="text-[12.5px]">POST /api/jobs</code>
+        <div className="mt-3 grid min-w-0 gap-2 text-sm">
+          <div className="grid min-w-0 gap-1 border-t border-[#e7e7eb] py-3 first:border-t-0 md:grid-cols-[minmax(0,180px)_minmax(0,1fr)]">
+            <code className="break-all text-[12.5px]">POST /api/jobs</code>
             <span className="text-[#75757d]">Crear uno o varios trabajos</span>
           </div>
-          <div className="grid gap-1 border-t border-[#e7e7eb] py-3 md:grid-cols-[160px_minmax(0,1fr)]">
-            <code className="text-[12.5px]">GET /api/jobs/:id</code>
+          <div className="grid min-w-0 gap-1 border-t border-[#e7e7eb] py-3 md:grid-cols-[minmax(0,180px)_minmax(0,1fr)]">
+            <code className="break-all text-[12.5px]">GET /api/jobs/:id</code>
             <span className="text-[#75757d]">Estado del trabajo</span>
           </div>
-          <div className="grid gap-1 border-t border-[#e7e7eb] py-3 md:grid-cols-[160px_minmax(0,1fr)]">
-            <code className="text-[12.5px]">GET /api/jobs/:id/result</code>
+          <div className="grid min-w-0 gap-1 border-t border-[#e7e7eb] py-3 md:grid-cols-[minmax(0,180px)_minmax(0,1fr)]">
+            <code className="break-all text-[12.5px]">GET /api/jobs/:id/result</code>
             <span className="text-[#75757d]">JSON completo</span>
           </div>
-          <div className="grid gap-1 border-t border-[#e7e7eb] py-3 md:grid-cols-[160px_minmax(0,1fr)]">
-            <code className="text-[12.5px]">GET /api/modules</code>
+          <div className="grid min-w-0 gap-1 border-t border-[#e7e7eb] py-3 md:grid-cols-[minmax(0,180px)_minmax(0,1fr)]">
+            <code className="break-all text-[12.5px]">GET /api/modules</code>
             <span className="text-[#75757d]">Cajitas registradas</span>
           </div>
-          <div className="grid gap-1 border-t border-[#e7e7eb] py-3 md:grid-cols-[160px_minmax(0,1fr)]">
-            <code className="text-[12.5px]">PUT /api/settings</code>
+          <div className="grid min-w-0 gap-1 border-t border-[#e7e7eb] py-3 md:grid-cols-[minmax(0,180px)_minmax(0,1fr)]">
+            <code className="break-all text-[12.5px]">PUT /api/settings</code>
             <span className="text-[#75757d]">Guardar URL del webhook</span>
           </div>
         </div>
