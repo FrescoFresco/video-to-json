@@ -47,7 +47,8 @@ start_local() {
     echo "→ creando entorno Python (Whisper, OCR, visión Moondream)"
     python3 -m venv video-py
     video-py/bin/pip install --upgrade pip
-    video-py/bin/pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+    # Torch CPU fijo (compatible con diarize + visión)
+    video-py/bin/pip install torch==2.8.0 torchvision==0.23.0 torchaudio==2.8.0 --index-url https://download.pytorch.org/whl/cpu
     video-py/bin/pip install -r requirements-video.txt
   fi
 

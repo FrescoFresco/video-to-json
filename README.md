@@ -42,15 +42,14 @@ Producción local:
 
 - Acepta vídeos (`MP4`, `MOV`, `MKV`, `WebM`).
 - Pipeline por **módulos** registrados (mismo contrato para todos).
-- Módulos actuales: cortes, habla, quién habla, texto en pantalla, objetos/personas (YOLO), observación visual (Moondream2), resumen.
+- Diarización con `diarize` (Silero + WeSpeaker): gratis, local, **sin token ni API de pago**.
 - La UI y el JSON solo muestran lo que cada módulo devuelve (`summary`, `items`, `data`).
 - Trabajos y JSON guardados en disco (`data/jobs/`); el vídeo temporal se borra al terminar.
 - API: `POST/GET /api/jobs`, `GET /api/jobs/:id/result`, `GET /api/modules`.
 
 ## Qué aún no hace
 
-- Tracking fino de personas/objetos en el tiempo.
-- Análisis de música.
+- Análisis de música / ambiente.
 - Webhook al terminar / API key.
 
 ## Añadir otro módulo / repo
