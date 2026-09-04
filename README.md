@@ -54,8 +54,9 @@ También puedes usar webhook (Make/n8n) si prefieres otro destino.
 - **Caras y encuadre** (OpenCV YuNet): rostros, escala de plano y pistas simples de boca.
 - **Pose y acciones** (YOLOv8n-pose): postura corporal y gestos aproximados.
 - Observación visual con preguntas de recreación (lugar, acciones, caras, cámara).
+- **Brief IA** (Moondream): notas de recreación y continuidad ancladas a hechos ya medidos + fotogramas.
 - Diarización con el paquete `diarize` (Silero VAD + WeSpeaker) + Whisper `small`.
-- Muestreo temporal más denso en objetos/caras/pose.
+- Muestreo temporal más denso en objetos/caras/pose/visión.
 - **Música y ambiente** local (`librosa`): energía, ritmo/BPM si es claro, brillo del audio por pasajes. No identifica canciones.
 - **Movimiento de cámara** local (OpenCV): estática, paneo, zoom, trepidación por tramos.
 - **Eventos de audio** local (PANNs / AudioSet): habla, música, aplausos, sirenas, etc. con puntuación.

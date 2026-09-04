@@ -1,6 +1,6 @@
 import path from "node:path";
 import type { ExtractionModule } from "@/lib/types";
-import { extractSceneFrames, readVisualObservations } from "../media";
+import { extractDenseFrames, readVisualObservations } from "../media";
 import type { ExtractionModuleDefinition, ModuleContext } from "./types";
 
 export const visualObservationModule: ExtractionModuleDefinition = {
@@ -13,14 +13,14 @@ export const visualObservationModule: ExtractionModuleDefinition = {
     const outJson = path.join(ctx.workDir, "visual.json");
 
     try {
-      const frames = await extractSceneFrames(
+      const maxFrames = Number(process.env.VISION_MAX_FRAMES || 8);
+      const frames = await extractDenseFrames(
         ctx.videoPath,
-        ctx.probe.scenes,
         ctx.probe.durationMs,
-        framesDir
+        framesDir,
+        { maxFrames }
       );
-      // CPU: pocas observaciones; el script también limita.
-      const limited = frames.slice(0, Number(process.env.VISION_MAX_FRAMES || 8));
+      const limited = frames.slice(0, maxFrames);
       const visual = await readVisualObservations(limited, manifestPath, outJson);
       const items = (visual.items || []).map((item) => ({
         start_ms: item.start_ms,

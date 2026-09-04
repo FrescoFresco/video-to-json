@@ -640,3 +640,57 @@ export async function analyzeAudioEvents(
   });
   return JSON.parse(await readFile(outJson, "utf8")) as AudioEventsResult;
 }
+
+export type AiBriefResult = {
+  engine: string;
+  model?: string | null;
+  device?: string;
+  facts_digest?: string | null;
+  frame_notes?: unknown[];
+  items: Array<{
+    text: string;
+    start_ms: number;
+    end_ms: number;
+    label?: string;
+    role?: string;
+  }>;
+  error?: string;
+};
+
+/** Brief de recreación: hechos medidos + VLM sobre fotogramas clave. */
+export async function readAiBrief(
+  facts: Record<string, unknown>,
+  factsPath: string,
+  outJson: string,
+  frames?: { path: string; start_ms: number; end_ms: number }[],
+  framesManifestPath?: string
+): Promise<AiBriefResult> {
+  const python = resolvePythonBin();
+  const script = path.join(process.cwd(), "scripts", "from_video_ai_brief.py");
+  if (!existsSync(/*turbopackIgnore: true*/ python)) {
+    throw new Error(
+      "Falta el entorno Python del pipeline. Ejecuta ./install.sh en la raiz del proyecto."
+    );
+  }
+  if (!existsSync(/*turbopackIgnore: true*/ script)) {
+    throw new Error("Falta scripts/from_video_ai_brief.py");
+  }
+
+  await writeFile(factsPath, JSON.stringify(facts), "utf8");
+  const args = [script, factsPath, outJson];
+  if (frames?.length && framesManifestPath) {
+    await writeFile(framesManifestPath, JSON.stringify({ frames }), "utf8");
+    args.push(framesManifestPath);
+  }
+
+  await execFileAsync(python, args, {
+    timeout: 900000,
+    maxBuffer: 16 * 1024 * 1024,
+    env: {
+      ...process.env,
+      HF_HUB_DISABLE_TELEMETRY: "1",
+      AI_BRIEF_MAX_FRAMES: process.env.AI_BRIEF_MAX_FRAMES || "4",
+    },
+  });
+  return JSON.parse(await readFile(outJson, "utf8")) as AiBriefResult;
+}
