@@ -32,6 +32,38 @@ function downloadJson(name: string, obj: unknown) {
   setTimeout(() => URL.revokeObjectURL(a.href), 400);
 }
 
+function safeDownloadName(name: string) {
+  const base = name.replace(/\.[^.]+$/, "").replace(/[^\w.\- áéíóúñÁÉÍÓÚÑ]+/gi, "_").trim();
+  return (base || "video").slice(0, 60);
+}
+
+function downloadSelectedExtractions(videos: StoredVideo[]) {
+  const withJson = videos.filter((v) => v.extraction);
+  if (!withJson.length) return { ok: 0, skipped: videos.length };
+
+  if (withJson.length === 1) {
+    const v = withJson[0];
+    const partial = v.status !== "ready";
+    downloadJson(
+      `${safeDownloadName(v.name)}${partial ? "-parcial" : ""}-extraction.json`,
+      v.extraction
+    );
+    return { ok: 1, skipped: videos.length - 1 };
+  }
+
+  downloadJson(`extractions-${withJson.length}.json`, {
+    exported_at: new Date().toISOString(),
+    count: withJson.length,
+    items: withJson.map((v) => ({
+      id: v.id,
+      name: v.name,
+      status: v.status,
+      extraction: v.extraction,
+    })),
+  });
+  return { ok: withJson.length, skipped: videos.length - withJson.length };
+}
+
 function StatusDot({ status }: { status: JobStatus }) {
   const map = {
     ready: "bg-[#edf6f1] text-[#177245]",
@@ -471,20 +503,33 @@ function QueueSummary({
 function VideoQueueRow({
   video,
   eta,
+  selected,
+  onToggle,
   onOpen,
 }: {
   video: StoredVideo;
   eta: string | null;
+  selected: boolean;
+  onToggle: () => void;
   onOpen: () => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-t border-[#e7e7eb] px-4 py-4 text-left first:border-t-0"
+    <div
+      className={`grid w-full grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-3 border-t border-[#e7e7eb] px-3 py-3.5 first:border-t-0 sm:gap-3 sm:px-4 sm:py-4 ${
+        selected ? "bg-[#f7f7f9]" : "bg-white"
+      }`}
     >
-      <StatusDot status={video.status} />
-      <div className="min-w-0">
+      <input
+        type="checkbox"
+        checked={selected}
+        onChange={onToggle}
+        aria-label={`Seleccionar ${video.name}`}
+        className="size-4 shrink-0 accent-[#171719]"
+      />
+      <button type="button" onClick={onOpen} className="shrink-0" title="Abrir">
+        <StatusDot status={video.status} />
+      </button>
+      <button type="button" onClick={onOpen} className="min-w-0 text-left">
         <div className="truncate text-sm font-medium">{video.name}</div>
         <div className="mt-1 text-[12.5px] text-[#75757d]">
           {statusLabel(video.status)}
@@ -502,12 +547,12 @@ function VideoQueueRow({
             />
           </div>
         )}
-      </div>
-      <div className="text-right text-[12px] text-[#75757d]">
+      </button>
+      <button type="button" onClick={onOpen} className="text-right text-[12px] text-[#75757d]">
         <div className="font-medium text-[#171719]">{statusLabel(video.status)}</div>
         <div className="mt-1">{video.progress}%</div>
-      </div>
-    </button>
+      </button>
+    </div>
   );
 }
 
@@ -518,6 +563,8 @@ function VideosView() {
   const [sortMode, setSortMode] = useState<SortMode>("newest");
   const [moduleCount, setModuleCount] = useState(10);
   const [now, setNow] = useState(() => Date.now());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [bulkMsg, setBulkMsg] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -543,6 +590,20 @@ function VideosView() {
     if (!active) return;
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
+  }, [s.videos]);
+
+  // Quita de la selección ids que ya no existen
+  useEffect(() => {
+    const alive = new Set(s.videos.map((v) => v.id));
+    setSelectedIds((prev) => {
+      let changed = false;
+      const next = new Set<string>();
+      for (const id of prev) {
+        if (alive.has(id)) next.add(id);
+        else changed = true;
+      }
+      return changed ? next : prev;
+    });
   }, [s.videos]);
 
   const filtered = useMemo(() => {
@@ -574,13 +635,70 @@ function VideosView() {
     return list;
   }, [s.videos, query, statusFilter, sortMode]);
 
+  const filteredIds = useMemo(() => filtered.map((v) => v.id), [filtered]);
+  const allFilteredSelected =
+    filteredIds.length > 0 && filteredIds.every((id) => selectedIds.has(id));
+  const selectedVideos = useMemo(
+    () => s.videos.filter((v) => selectedIds.has(v.id)),
+    [s.videos, selectedIds]
+  );
+  const selectedWithJson = selectedVideos.filter((v) => v.extraction).length;
+
+  function toggleOne(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+    setBulkMsg(null);
+  }
+
+  function toggleAllFiltered() {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allFilteredSelected) {
+        for (const id of filteredIds) next.delete(id);
+      } else {
+        for (const id of filteredIds) next.add(id);
+      }
+      return next;
+    });
+    setBulkMsg(null);
+  }
+
+  function selectReadyOnly() {
+    setSelectedIds(new Set(filtered.filter((v) => v.status === "ready").map((v) => v.id)));
+    setBulkMsg(null);
+  }
+
+  function clearSelection() {
+    setSelectedIds(new Set());
+    setBulkMsg(null);
+  }
+
+  function handleDownloadSelected() {
+    const result = downloadSelectedExtractions(selectedVideos);
+    if (result.ok === 0) {
+      setBulkMsg("Ninguno de los seleccionados tiene JSON aún.");
+      return;
+    }
+    setBulkMsg(
+      result.skipped > 0
+        ? `Descargados ${result.ok}. ${result.skipped} sin JSON se omitieron.`
+        : result.ok === 1
+          ? "JSON descargado."
+          : `Pack con ${result.ok} extracciones descargado.`
+    );
+  }
+
   return (
     <div>
       <div className="mb-6 flex items-end justify-between gap-4">
         <div>
           <h1 className="text-[clamp(24px,2.4vw,32px)] font-semibold tracking-[-0.035em]">Vídeos</h1>
           <p className="text-sm text-[#75757d]">
-            Cola con tiempo estimado: busca, filtra y ordena como quieras.
+            Selecciona varios y descarga su JSON. También puedes buscar y filtrar.
           </p>
         </div>
         {s.videos.length > 0 && (
@@ -641,6 +759,57 @@ function VideosView() {
             </select>
           </div>
 
+          <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-[#e7e7eb] bg-white px-3 py-2.5">
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-[#171719]">
+              <input
+                type="checkbox"
+                checked={allFilteredSelected}
+                onChange={toggleAllFiltered}
+                disabled={filtered.length === 0}
+                className="size-4 accent-[#171719]"
+              />
+              Seleccionar todos
+            </label>
+            <span className="text-[12.5px] text-[#75757d]">
+              {selectedIds.size === 0
+                ? "Ninguno seleccionado"
+                : `${selectedIds.size} seleccionado${selectedIds.size === 1 ? "" : "s"}`}
+              {selectedIds.size > 0 ? ` · ${selectedWithJson} con JSON` : ""}
+            </span>
+            <div className="flex flex-wrap gap-2 sm:ml-auto">
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-lg"
+                disabled={selectedWithJson === 0}
+                onClick={handleDownloadSelected}
+              >
+                <Download className="mr-1.5 size-3.5" />
+                Descargar JSON
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-lg"
+                onClick={selectReadyOnly}
+              >
+                Solo listos
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-lg"
+                disabled={selectedIds.size === 0}
+                onClick={clearSelection}
+              >
+                Quitar
+              </Button>
+            </div>
+          </div>
+          {bulkMsg ? (
+            <p className="mb-2 text-[12.5px] text-[#75757d]">{bulkMsg}</p>
+          ) : null}
+
           <p className="mb-2 text-[12.5px] text-[#75757d]">
             {filtered.length === s.videos.length
               ? `${filtered.length} vídeos`
@@ -672,6 +841,8 @@ function VideosView() {
                   key={video.id}
                   video={video}
                   eta={etaLabel(video, s.videos, moduleCount, now)}
+                  selected={selectedIds.has(video.id)}
+                  onToggle={() => toggleOne(video.id)}
                   onOpen={() => s.openVideo(video.id)}
                 />
               ))}
