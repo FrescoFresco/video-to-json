@@ -23,7 +23,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Máximo 80 MB en este entorno" }, { status: 413 });
   }
 
-  const job = await createJobFromUpload(file);
+  const job = await createJobFromUpload(file, {
+    webhookUrl: typeof form.get("webhook_url") === "string" ? String(form.get("webhook_url")) : null,
+  });
   return NextResponse.json(job, { status: 202 });
 }
 

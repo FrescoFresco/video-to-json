@@ -9,6 +9,7 @@ import {
   type JobRecord,
 } from "./job-persistence";
 import { processVideoFile } from "./process-video";
+import { deliverWebhook } from "./webhook";
 
 type JobStore = {
   jobs: Map<string, JobRecord>;
@@ -104,7 +105,10 @@ export async function getJobResult(id: string): Promise<VideoJobResult | null> {
   return getStore().jobs.get(id)?.result ?? null;
 }
 
-export async function createJobFromUpload(file: File): Promise<StoredVideo> {
+export async function createJobFromUpload(
+  file: File,
+  options?: { webhookUrl?: string | null }
+): Promise<StoredVideo> {
   await ensureLoaded();
   const id = createId();
   const createdAt = new Date().toISOString();
@@ -112,6 +116,7 @@ export async function createJobFromUpload(file: File): Promise<StoredVideo> {
   await mkdir(dir, { recursive: true });
   const tempPath = path.join(dir, `${id}-${file.name.replace(/[^\w.-]+/g, "_")}`);
   await writeFile(tempPath, Buffer.from(await file.arrayBuffer()));
+  const webhookUrl = options?.webhookUrl?.trim() || null;
 
   const job: JobRecord = {
     id,
@@ -135,7 +140,7 @@ export async function createJobFromUpload(file: File): Promise<StoredVideo> {
       stage,
     });
   })
-    .then((result) => {
+    .then(async (result) => {
       updateJob(
         id,
         {
@@ -163,8 +168,36 @@ export async function createJobFromUpload(file: File): Promise<StoredVideo> {
         },
         true
       );
+
+      const readyJob = getStore().jobs.get(id);
+      if (!readyJob) return;
+      const delivery = await deliverWebhook({
+        event: "job.ready",
+        job: readyJob,
+        result,
+        webhookUrl,
+      });
+      if (delivery) {
+        updateJob(
+          id,
+          {
+            activity: [
+              ...(getStore().jobs.get(id)?.activity ?? []),
+              {
+                time: clock(),
+                title: "Webhook",
+                detail: delivery.ok
+                  ? `Enviado a ${delivery.url} (HTTP ${delivery.status})`
+                  : `Falló: ${delivery.error || "error"}`,
+                status: delivery.ok ? "ready" : "error",
+              },
+            ],
+          },
+          true
+        );
+      }
     })
-    .catch((error) => {
+    .catch(async (error) => {
       updateJob(
         id,
         {
@@ -184,6 +217,33 @@ export async function createJobFromUpload(file: File): Promise<StoredVideo> {
         },
         true
       );
+
+      const failedJob = getStore().jobs.get(id);
+      if (!failedJob) return;
+      const delivery = await deliverWebhook({
+        event: "job.error",
+        job: failedJob,
+        webhookUrl,
+      });
+      if (delivery) {
+        updateJob(
+          id,
+          {
+            activity: [
+              ...(getStore().jobs.get(id)?.activity ?? []),
+              {
+                time: clock(),
+                title: "Webhook",
+                detail: delivery.ok
+                  ? `Aviso de error enviado a ${delivery.url}`
+                  : `Falló el aviso: ${delivery.error || "error"}`,
+                status: delivery.ok ? "ready" : "error",
+              },
+            ],
+          },
+          true
+        );
+      }
     });
 
   return (await getJob(id)) as StoredVideo;

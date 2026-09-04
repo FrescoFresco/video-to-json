@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, useEffect, type ReactNode } from "react";
 import {
   ArrowLeft,
   Check,
@@ -479,29 +479,156 @@ function ModuleItemsList({ module }: { module: ExtractionModule }) {
 }
 
 function SettingsView() {
+  const [webhookUrl, setWebhookUrl] = useState("");
+  const [webhookSecret, setWebhookSecret] = useState("");
+  const [secretSet, setSecretSet] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/settings", { cache: "no-store" });
+        const data = (await res.json()) as {
+          webhookUrl?: string;
+          webhookSecretSet?: boolean;
+          error?: string;
+        };
+        if (!res.ok) throw new Error(data.error || "No se pudo cargar ajustes");
+        if (cancelled) return;
+        setWebhookUrl(data.webhookUrl || "");
+        setSecretSet(Boolean(data.webhookSecretSet));
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "No se pudo cargar ajustes");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function save() {
+    setSaving(true);
+    setMessage(null);
+    setError(null);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          webhookUrl,
+          ...(webhookSecret.trim() ? { webhookSecret: webhookSecret.trim() } : {}),
+        }),
+      });
+      const data = (await res.json()) as {
+        webhookUrl?: string;
+        webhookSecretSet?: boolean;
+        error?: string;
+      };
+      if (!res.ok) throw new Error(data.error || "No se pudo guardar");
+      setWebhookUrl(data.webhookUrl || "");
+      setSecretSet(Boolean(data.webhookSecretSet));
+      setWebhookSecret("");
+      setMessage("Webhook guardado. Se enviará al terminar cada vídeo.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo guardar");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function testWebhook() {
+    setTesting(true);
+    setMessage(null);
+    setError(null);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ webhookUrl }),
+      });
+      const data = (await res.json()) as { ok?: boolean; error?: string; status?: number };
+      if (!res.ok || !data.ok) throw new Error(data.error || "La prueba falló");
+      setMessage(`Prueba OK (HTTP ${data.status ?? 200}). Tu otra app recibió el evento.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "La prueba falló");
+    } finally {
+      setTesting(false);
+    }
+  }
+
   return (
     <div className="grid gap-4">
       <div>
         <h1 className="text-[clamp(24px,2.4vw,32px)] font-semibold tracking-[-0.035em]">Ajustes</h1>
         <p className="text-sm text-[#75757d]">
-          Este software se instala de un golpe con <code className="rounded bg-[#f5f5f7] px-1.5 py-0.5 text-[12px]">./install.sh</code>.
+          Conecta otras apps: cuando un vídeo termine, enviamos el JSON a tu URL.
         </p>
       </div>
+
+      <section className="rounded-2xl border border-[#e7e7eb] bg-white p-5">
+        <div className="text-sm font-semibold">Webhook</div>
+        <p className="mt-1 text-[12.5px] text-[#75757d]">
+          Pon la URL de Make, n8n, Zapier, tu backend, etc. Recibirá un POST con el resultado.
+        </p>
+        {loading ? (
+          <p className="mt-4 text-sm text-[#75757d]">Cargando…</p>
+        ) : (
+          <div className="mt-4 grid gap-3">
+            <label className="grid gap-1.5 text-sm">
+              <span className="text-[#75757d]">URL del webhook</span>
+              <input
+                value={webhookUrl}
+                onChange={(e) => setWebhookUrl(e.target.value)}
+                placeholder="https://hooks.ejemplo.com/vx"
+                className="h-10 rounded-xl border border-[#d7d7dc] bg-[#fbfbfc] px-3 outline-none focus:border-[#9e9ea5]"
+              />
+            </label>
+            <label className="grid gap-1.5 text-sm">
+              <span className="text-[#75757d]">
+                Secreto opcional {secretSet ? "(ya hay uno guardado)" : ""}
+              </span>
+              <input
+                value={webhookSecret}
+                onChange={(e) => setWebhookSecret(e.target.value)}
+                placeholder={secretSet ? "Dejar vacío para no cambiarlo" : "Bearer token o clave"}
+                className="h-10 rounded-xl border border-[#d7d7dc] bg-[#fbfbfc] px-3 outline-none focus:border-[#9e9ea5]"
+              />
+            </label>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <Button className="rounded-xl" disabled={saving} onClick={() => void save()}>
+                {saving ? "Guardando…" : "Guardar"}
+              </Button>
+              <Button
+                variant="outline"
+                className="rounded-xl"
+                disabled={testing || !webhookUrl.trim()}
+                onClick={() => void testWebhook()}
+              >
+                {testing ? "Probando…" : "Probar webhook"}
+              </Button>
+            </div>
+            {message ? <p className="text-sm text-[#177245]">{message}</p> : null}
+            {error ? <p className="text-sm text-[#b42318]">{error}</p> : null}
+          </div>
+        )}
+      </section>
+
       <EmptyCard
-        title="Módulos, no pantallas fijas"
-        body="La interfaz no hardcodea «habla» o «OCR». Cada módulo registrado escribe su bloque (id, summary, items, data) y la UI lo pinta. Para añadir otro repo, regístralo en el mismo contrato."
+        title="Qué recibe la otra app"
+        body='Un POST JSON con event ("job.ready" o "job.error"), datos del trabajo y el bloque extraction con todos los módulos.'
       />
       <EmptyCard
-        title="Cómo se arranca"
-        body="Con Docker: un comando y ya tienes Node, ffmpeg, Whisper y OCR. Sin Docker, el mismo script prepara el entorno local y levanta la app en el puerto 43141."
-      />
-      <EmptyCard
-        title="Resultados guardados"
-        body="Los trabajos y el JSON viven en disco (data/jobs). El archivo de vídeo no se guarda: se procesa en temporal y se borra. Al reiniciar, la lista y el JSON siguen ahí."
-      />
-      <EmptyCard
-        title="Paso siguiente"
-        body="Webhook al terminar: avisar a otra app cuando el JSON esté listo, sin tener que preguntar cada dos segundos."
+        title="Módulos"
+        body="La interfaz no hardcodea extractores. Cada módulo registrado escribe su bloque y aparece solo si se ejecutó."
       />
     </div>
   );

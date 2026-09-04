@@ -45,12 +45,14 @@ Producción local:
 - Diarización con `diarize` (Silero + WeSpeaker): gratis, local, **sin token ni API de pago**.
 - La UI y el JSON solo muestran lo que cada módulo devuelve (`summary`, `items`, `data`).
 - Trabajos y JSON guardados en disco (`data/jobs/`); el vídeo temporal se borra al terminar.
-- API: `POST/GET /api/jobs`, `GET /api/jobs/:id/result`, `GET /api/modules`.
+- API: `POST/GET /api/jobs`, `GET /api/jobs/:id/result`, `GET /api/modules`, `GET/PUT/POST /api/settings` (webhook).
+- Webhook al terminar: POST a tu URL con `job.ready` / `job.error` y el JSON de extracción.
 
 ## Qué aún no hace
 
 - Análisis de música / ambiente.
-- Webhook al terminar / API key.
+- Instalador nativo `.exe` / `.dmg` (ahora: Docker o `./install.sh`).
+- API key de acceso (el secreto del webhook es opcional).
 
 ## Comprobar que todos los módulos funcionan
 
@@ -73,7 +75,8 @@ Crea un vídeo de prueba (persona + texto + 2 voces), lo procesa y exige que cad
 | `WHISPER_MODEL` | `base` | Modelo Whisper (`tiny`, `base`, `small`…) |
 | `VIDEO_PYTHON` | `video-py/bin/python` | Interprete Python del pipeline |
 | `VISION_MAX_FRAMES` | `6` | Máx. fotogramas a observar (CPU) |
-| `VISION_MODEL` | `vikhyatk/moondream2` | Modelo VLM de observación |
+| `WEBHOOK_URL` | _(vacío)_ | URL por defecto si no hay config en disco |
+| `WEBHOOK_SECRET` | _(vacío)_ | Bearer opcional para el webhook |
 | `PORT` | `43141` | Puerto HTTP |
 
 ## Notas
