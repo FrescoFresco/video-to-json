@@ -160,3 +160,82 @@ body {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* Home flow diagram */
+@keyframes vx-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes vx-draw {
+  from {
+    stroke-dashoffset: 80;
+    opacity: 0;
+  }
+  to {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+@keyframes vx-pulse-play {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.95;
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+}
+
+@keyframes vx-bar {
+  from {
+    transform: scaleX(0.35);
+    opacity: 0.25;
+  }
+  to {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+.vx-flow-step,
+.vx-flow-chip {
+  opacity: 0;
+  animation: vx-rise 560ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.vx-flow-line {
+  stroke-dasharray: 80;
+  animation: vx-draw 700ms ease forwards;
+}
+
+.vx-flow-play {
+  transform-origin: 112px 125px;
+  animation: vx-pulse-play 2.4s ease-in-out infinite;
+}
+
+.vx-flow-bar {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: vx-bar 900ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.vx-home-hero {
+  background:
+    radial-gradient(1200px 420px at 12% -10%, rgba(45, 90, 110, 0.08), transparent 60%),
+    radial-gradient(900px 380px at 88% 0%, rgba(60, 120, 95, 0.07), transparent 55%),
+    linear-gradient(180deg, #f3f5f7 0%, #fbfbfc 55%, #fbfbfc 100%);
+}
+
+.vx-home-brand {
+  letter-spacing: -0.06em;
+}

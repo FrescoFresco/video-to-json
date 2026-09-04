@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { HomeFlowDiagram } from "@/components/studio/home-flow-diagram";
 import { msToClock } from "@/lib/extraction";
 import { useStudio } from "@/lib/store";
 import type { ExtractionModule, JobStatus, StoredVideo, ViewName } from "@/lib/types";
@@ -168,107 +169,106 @@ function HomeView() {
   }
 
   return (
-    <div>
-      <div className="grid min-h-[min(68vh,760px)] place-items-center py-5 md:py-12">
-        <div className="w-full max-w-[780px] text-center">
-          <div className="mb-2.5 text-[13px] text-[#75757d]">Video Extraction Studio</div>
-          <h1 className="m-0 text-[clamp(32px,5vw,58px)] leading-none font-semibold tracking-[-0.055em]">
-            De vídeo a JSON. Instala, sube y listo.
-          </h1>
-          <p className="mt-4 text-[clamp(15px,1.4vw,18px)] text-[#75757d]">
-            Cortes, habla, quién habla, texto, objetos/personas, observación visual y un resumen final.
-            Todo modular: cada cajita escribe su bloque en el JSON.
-          </p>
-
-          <div
-            tabIndex={0}
-            onDragEnter={(e) => {
-              e.preventDefault();
-              setDrag(true);
-            }}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDrag(true);
-            }}
-            onDragLeave={() => setDrag(false)}
-            onDrop={async (e) => {
-              e.preventDefault();
-              setDrag(false);
-              await handleFiles(e.dataTransfer.files);
-            }}
-            className={`mt-8 grid min-h-[280px] place-items-center rounded-3xl border border-[#d7d7dc] bg-white p-8 transition ${drag ? "scale-[1.005] border-[#9e9ea5]" : ""}`}
-          >
-            <div className="grid justify-items-center gap-3">
-              <div className="grid size-[54px] place-items-center rounded-[16px] bg-[#f5f5f7]">
-                <Upload className="size-[24px]" />
-              </div>
-              <div className="text-lg font-semibold">Añade uno o varios vídeos</div>
-              <div className="text-[13px] text-[#75757d]">MP4 · MOV · MKV · WebM · varios a la vez</div>
-              <input
-                ref={inputRef}
-                type="file"
-                multiple
-                accept="video/*,.mp4,.mov,.mkv,.webm,.m4v"
-                hidden
-                onChange={async (e) => {
-                  await handleFiles(e.target.files);
-                  e.target.value = "";
-                }}
-              />
-              <Button className="rounded-xl" onClick={() => inputRef.current?.click()}>
-                Seleccionar vídeos
-              </Button>
-              <p className="max-w-[44rem] text-[12.5px] leading-relaxed text-[#75757d]">
-                Lo que no existe aún no se inventa: se deja fuera o marcado como no disponible.
-                La primera ejecución puede tardar porque Whisper y OCR van por CPU.
-              </p>
+    <div className="vx-home-hero -mx-4 px-4 py-2 md:-mx-[clamp(22px,3vw,42px)] md:px-[clamp(22px,3vw,42px)] md:py-4">
+      <div className="mx-auto grid max-w-[1080px] gap-10 py-6 md:gap-12 md:py-10">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:items-center">
+          <div>
+            <p className="vx-home-brand m-0 text-[clamp(34px,5vw,56px)] font-semibold leading-[0.95] tracking-[-0.06em] text-[#171719]">
+              Video Extraction Studio
+            </p>
+            <h1 className="mt-4 m-0 text-[clamp(22px,2.6vw,34px)] font-semibold leading-tight tracking-[-0.035em] text-[#2a323c]">
+              Subes un vídeo. Sales con un JSON claro.
+            </h1>
+            <p className="mt-3 max-w-[36rem] text-[15px] leading-relaxed text-[#5c6570]">
+              El programa mira el vídeo con varias cajitas: cortes, habla, quién habla,
+              texto, objetos, visión con IA y un resumen. Cada una escribe su parte.
+              Nada inventado.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-2 text-[12.5px] text-[#5c6570]">
+              <span className="rounded-md bg-white/80 px-2.5 py-1 ring-1 ring-[#e2e5ea]">1. Sube</span>
+              <span className="text-[#9aa3ad]">→</span>
+              <span className="rounded-md bg-white/80 px-2.5 py-1 ring-1 ring-[#e2e5ea]">2. Extrae</span>
+              <span className="text-[#9aa3ad]">→</span>
+              <span className="rounded-md bg-white/80 px-2.5 py-1 ring-1 ring-[#e2e5ea]">3. JSON / webhook</span>
             </div>
           </div>
+
+          <div className="rounded-[28px] bg-white/70 p-3 ring-1 ring-[#e2e5ea] backdrop-blur-sm md:p-4">
+            <HomeFlowDiagram />
+          </div>
         </div>
-      </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <EmptyCard
-          title="Sí hace"
-          body="Duración, resolución, fps, cortes de plano, transcripción y texto en pantalla."
-        />
-        <EmptyCard
-          title="No hace todavía"
-          body="Descripción visual del plano, tracking de objetos y análisis de música."
-        />
-        <EmptyCard
-          title="Cómo se guarda"
-          body="Los trabajos viven en memoria del servidor mientras la app está encendida. Más adelante se puede mover a base de datos."
-        />
-      </div>
-
-      {s.videos.length > 0 && (
-        <div className="mt-12">
-          <div className="mb-3 flex items-center justify-between">
-            <p className="text-xs font-semibold tracking-wide text-[#75757d] uppercase">Recientes</p>
-            <Button variant="outline" className="rounded-xl" onClick={s.clearAll}>
-              Limpiar historial
+        <div
+          tabIndex={0}
+          onDragEnter={(e) => {
+            e.preventDefault();
+            setDrag(true);
+          }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDrag(true);
+          }}
+          onDragLeave={() => setDrag(false)}
+          onDrop={async (e) => {
+            e.preventDefault();
+            setDrag(false);
+            await handleFiles(e.dataTransfer.files);
+          }}
+          className={`grid min-h-[220px] place-items-center rounded-[28px] border border-dashed border-[#c9ced6] bg-white/90 p-8 transition ${
+            drag ? "scale-[1.01] border-[#7f8792] bg-white" : ""
+          }`}
+        >
+          <div className="grid justify-items-center gap-3 text-center">
+            <div className="grid size-[52px] place-items-center rounded-[16px] bg-[#eef2f4]">
+              <Upload className="size-[22px]" />
+            </div>
+            <div className="text-lg font-semibold tracking-[-0.02em]">Empieza aquí: añade vídeos</div>
+            <div className="text-[13px] text-[#6a7380]">MP4 · MOV · MKV · WebM · varios a la vez</div>
+            <input
+              ref={inputRef}
+              type="file"
+              multiple
+              accept="video/*,.mp4,.mov,.mkv,.webm,.m4v"
+              hidden
+              onChange={async (e) => {
+                await handleFiles(e.target.files);
+                e.target.value = "";
+              }}
+            />
+            <Button className="rounded-xl" onClick={() => inputRef.current?.click()}>
+              Seleccionar vídeos
             </Button>
           </div>
-          <div className="rounded-2xl border border-[#e7e7eb] bg-white">
-            {s.videos.slice(0, 5).map((video) => (
-              <button
-                key={video.id}
-                type="button"
-                onClick={() => s.openVideo(video.id)}
-                className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-t border-[#e7e7eb] px-4 py-4 text-left first:border-t-0"
-              >
-                <StatusDot status={video.status} />
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-medium">{video.name}</div>
-                  <div className="mt-1 text-[12.5px] text-[#75757d]">{video.stage}</div>
-                </div>
-                <div className="text-[12px] text-[#75757d]">{video.progress}%</div>
-              </button>
-            ))}
-          </div>
         </div>
-      )}
+
+        {s.videos.length > 0 && (
+          <div>
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-xs font-semibold tracking-wide text-[#6a7380] uppercase">Recientes</p>
+              <Button variant="outline" className="rounded-xl" onClick={s.clearAll}>
+                Limpiar historial
+              </Button>
+            </div>
+            <div className="rounded-2xl border border-[#e7e7eb] bg-white">
+              {s.videos.slice(0, 5).map((video) => (
+                <button
+                  key={video.id}
+                  type="button"
+                  onClick={() => s.openVideo(video.id)}
+                  className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-t border-[#e7e7eb] px-4 py-4 text-left first:border-t-0"
+                >
+                  <StatusDot status={video.status} />
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium">{video.name}</div>
+                    <div className="mt-1 text-[12.5px] text-[#75757d]">{video.stage}</div>
+                  </div>
+                  <div className="text-[12px] text-[#75757d]">{video.progress}%</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
