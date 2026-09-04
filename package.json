@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start --port 43141 --hostname 0.0.0.0",
     "setup": "bash ./install.sh",
+    "desktop:mac": "bash ./scripts/build-macos-app.sh",
+    "desktop:launch": "bash ./desktop/launch.sh",
     "verify": "bash ./scripts/verify-extraction.sh",
     "lint": "eslint"
   },

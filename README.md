@@ -65,9 +65,10 @@ También puedes usar webhook (Make/n8n) si prefieres otro destino.
 ## Qué aún no hace
 
 - Identificación de canción (tipo Shazam): requiere API/catálogo externo.
-- Instalador nativo `.exe` / `.dmg` (ahora: Docker o `./install.sh`).
+- Instalador firmado tipo App Store / `.dmg` / `.exe` empaquetado con modelos dentro (ahora: lanzadores nativos + Docker o local).
 - API key de acceso (el secreto del webhook es opcional).
 - Emoción facial / pose tracking (candidatos futuros).
+- Lectura directa de Google Drive en la nube sin Drive Desktop (hace falta sincronizar carpetas locales).
 
 ## Subir varios vídeos (API)
 

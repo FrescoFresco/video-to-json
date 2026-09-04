@@ -46,6 +46,9 @@ next-env.d.ts
 # persisted jobs / JSON results (vídeos temporales no se guardan)
 /data/
 
+# native app build output
+/dist/
+
 # model weights downloaded at runtime
 *.pt
 *.onnx
