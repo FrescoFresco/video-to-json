@@ -411,7 +411,9 @@ export async function readFacesFraming(
 export type PoseActionsResult = {
   engine: string;
   model?: string;
+  vision_model?: string | null;
   frame_count?: number;
+  vlm_described?: number;
   profile?: {
     person_detections?: number;
     tracks?: number;
@@ -425,7 +427,9 @@ export type PoseActionsResult = {
     end_ms: number;
     role?: string;
     label?: string;
+    description?: string | null;
   }>;
+  vlm_error?: string;
   error?: string;
 };
 
@@ -446,12 +450,15 @@ export async function readPoseActions(
   }
   await writeFile(manifestPath, JSON.stringify({ frames }), "utf8");
   await execFileAsync(python, [script, manifestPath, outJson], {
-    timeout: 300000,
+    // Pose + Moondream (primera carga) puede tardar en CPU.
+    timeout: 900000,
     maxBuffer: 32 * 1024 * 1024,
     env: {
       ...process.env,
+      HF_HUB_DISABLE_TELEMETRY: "1",
       POSE_MAX_FRAMES: process.env.POSE_MAX_FRAMES || "16",
       POSE_CONF: process.env.POSE_CONF || "0.35",
+      POSE_VLM: process.env.POSE_VLM || "1",
     },
   });
   return JSON.parse(await readFile(outJson, "utf8")) as PoseActionsResult;

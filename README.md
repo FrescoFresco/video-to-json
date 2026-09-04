@@ -53,7 +53,7 @@ También puedes usar webhook (Make/n8n) si prefieres otro destino.
 - Pipeline por **módulos** registrados (mismo contrato para todos).
 - **Caras y encuadre** (OpenCV YuNet): rostros, escala de plano y pistas simples de boca.
 - **Objetos y personas** (YOLOv8n + Moondream): detección y descripción del crop (color, ropa, estado) dentro del mismo módulo.
-- **Pose y acciones** (YOLOv8n-pose): postura corporal y gestos aproximados.
+- **Pose y acciones** (YOLOv8n-pose + Moondream): postura geométrica y descripción de la acción en el crop.
 - Observación visual con preguntas de recreación (lugar, acciones, caras, cámara).
 - Diarización con el paquete `diarize` (Silero VAD + WeSpeaker) + Whisper `small`.
 - Muestreo temporal más denso en objetos/caras/pose/visión.

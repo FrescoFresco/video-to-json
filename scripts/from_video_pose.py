@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Pose y acciones aproximadas (YOLOv8n-pose, local).
+"""Pose y acciones (YOLOv8n-pose) + descripción VLM (Moondream) por pista.
 
-Extrae keypoints de personas y etiqueta posturas/acciones simples
-(de pie, sentado, brazos arriba, caminando…) según geometría.
+YOLO-pose da keypoints y postura geométrica; la IA describe la acción
+en el crop de la persona. Si el VLM falla, queda la geometría.
 """
 from __future__ import annotations
 
@@ -12,14 +12,29 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
+from PIL import Image
 from ultralytics import YOLO
 
 MODEL_NAME = os.environ.get("POSE_MODEL", "yolov8n-pose.pt")
 MAX_FRAMES = int(os.environ.get("POSE_MAX_FRAMES", "16"))
 CONF = float(os.environ.get("YOLO_CONF", os.environ.get("POSE_CONF", "0.35")))
+VLM_ENABLED = os.environ.get("POSE_VLM", "1").strip().lower() not in (
+    "0",
+    "false",
+    "no",
+    "off",
+)
+VISION_MODEL = os.environ.get("VISION_MODEL", "vikhyatk/moondream2")
+VISION_REVISION = os.environ.get("VISION_MODEL_REVISION", "2025-01-09")
 
 # COCO pose: 0 nose, 5/6 shoulders, 9/10 wrists, 11/12 hips, 15/16 ankles
 NOSE, L_SH, R_SH, L_WR, R_WR, L_HIP, R_HIP, L_ANK, R_ANK = 0, 5, 6, 9, 10, 11, 12, 15, 16
+
+DESCRIBE_PROMPT = (
+    "In one short sentence, describe what this person is doing and how they stand "
+    "or move: posture, gestures, hands, gaze if clear, and interaction with objects. "
+    "Be concrete. Do not invent things that are not visible."
+)
 
 
 def kp(row, idx: int):
@@ -38,7 +53,7 @@ def mid(a, b):
 
 
 def label_pose(kpts) -> tuple[str, list[str]]:
-    """Devuelve (postura principal, pistas de acción)."""
+    """Devuelve (postura principal, pistas de acción geométricas)."""
     nose = kp(kpts, NOSE)
     l_sh, r_sh = kp(kpts, L_SH), kp(kpts, R_SH)
     l_wr, r_wr = kp(kpts, L_WR), kp(kpts, R_WR)
@@ -53,17 +68,12 @@ def label_pose(kpts) -> tuple[str, list[str]]:
 
     if shoulder and hip:
         torso = abs(hip[1] - shoulder[1])
-        # Sentado: cadera relativamente alta vs tobillos / torso corto respecto piernas
         if ankle and torso > 1:
             leg = abs(ankle[1] - hip[1])
-            if leg < torso * 0.85:
-                posture = "sentado / agachado"
-            else:
-                posture = "de pie"
+            posture = "sentado / agachado" if leg < torso * 0.85 else "de pie"
         else:
             posture = "de pie" if torso > 20 else "persona"
 
-    # Brazos arriba: muñecas por encima de hombros
     up = 0
     if l_wr and l_sh and l_wr[1] < l_sh[1] - 12:
         up += 1
@@ -74,13 +84,12 @@ def label_pose(kpts) -> tuple[str, list[str]]:
     elif up == 1:
         hints.append("un brazo arriba")
 
-    # Gesto cerca de la cara
-    if nose and ((l_wr and abs(l_wr[1] - nose[1]) < 35 and abs(l_wr[0] - nose[0]) < 45) or (
-        r_wr and abs(r_wr[1] - nose[1]) < 35 and abs(r_wr[0] - nose[0]) < 45
-    )):
+    if nose and (
+        (l_wr and abs(l_wr[1] - nose[1]) < 35 and abs(l_wr[0] - nose[0]) < 45)
+        or (r_wr and abs(r_wr[1] - nose[1]) < 35 and abs(r_wr[0] - nose[0]) < 45)
+    ):
         hints.append("mano cerca de la cara")
 
-    # Caminando aproximado: tobillos a distinta altura/x
     if l_ank and r_ank:
         if abs(l_ank[0] - r_ank[0]) > 28 and abs(l_ank[1] - r_ank[1]) > 8:
             hints.append("posible caminar / paso")
@@ -88,8 +97,55 @@ def label_pose(kpts) -> tuple[str, list[str]]:
     return posture, hints
 
 
-def track_key(label: str, cx: float, cy: float) -> str:
-    return f"{label}:{int(cx // 90)}:{int(cy // 90)}"
+def track_key(cx: float, cy: float) -> str:
+    return f"person:{int(cx // 90)}:{int(cy // 90)}"
+
+
+def load_vlm():
+    import torch
+    from transformers import AutoModelForCausalLM
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model = AutoModelForCausalLM.from_pretrained(
+        VISION_MODEL,
+        revision=VISION_REVISION,
+        trust_remote_code=True,
+        torch_dtype=torch.float32 if device == "cpu" else torch.float16,
+        device_map={"": device},
+    )
+    model.eval()
+    return model, device
+
+
+def describe_crop(model, image: Image.Image) -> str:
+    encoded = model.encode_image(image)
+    try:
+        if hasattr(model, "query"):
+            ans = model.query(encoded, DESCRIBE_PROMPT)
+            text = (ans.get("answer") if isinstance(ans, dict) else str(ans) or "").strip()
+            if text:
+                return text
+        if hasattr(model, "caption"):
+            cap = model.caption(encoded, length="short")
+            return (cap.get("caption") if isinstance(cap, dict) else str(cap) or "").strip()
+    except Exception:
+        return ""
+    return ""
+
+
+def crop_box(image: Image.Image, bbox: list[float], pad: float = 0.1) -> Image.Image | None:
+    w, h = image.size
+    x1, y1, x2, y2 = bbox
+    bw, bh = x2 - x1, y2 - y1
+    x1 = max(0, int(x1 - bw * pad))
+    y1 = max(0, int(y1 - bh * pad))
+    x2 = min(w, int(x2 + bw * pad))
+    y2 = min(h, int(y2 + bh * pad))
+    if x2 - x1 < 8 or y2 - y1 < 8:
+        return None
+    crop = image.crop((x1, y1, x2, y2))
+    crop.thumbnail((384, 384))
+    return crop
 
 
 def main() -> int:
@@ -121,6 +177,7 @@ def main() -> int:
     model = YOLO(MODEL_NAME)
     detections: list[dict] = []
     buckets: dict[str, list[dict]] = defaultdict(list)
+    best_crop: dict[str, dict] = {}
     posture_counts: dict[str, int] = defaultdict(int)
 
     for frame in frames:
@@ -135,40 +192,54 @@ def main() -> int:
         boxes = result.boxes
         kps = result.keypoints
         xy = kps.xy.cpu().numpy() if hasattr(kps.xy, "cpu") else kps.xy
-        confs = kps.conf.cpu().numpy() if kps.conf is not None and hasattr(kps.conf, "cpu") else None
+        confs = (
+            kps.conf.cpu().numpy()
+            if kps.conf is not None and hasattr(kps.conf, "cpu")
+            else None
+        )
 
         for i in range(len(boxes)):
             xyxy = [round(float(x), 1) for x in boxes.xyxy[i].tolist()]
             conf = float(boxes.conf[i].item()) if boxes.conf is not None else 0.0
-            # keypoints row: N×(x,y) + conf
             row_xy = xy[i]
             if confs is not None:
-                row = [[float(row_xy[j][0]), float(row_xy[j][1]), float(confs[i][j])] for j in range(len(row_xy))]
+                row = [
+                    [float(row_xy[j][0]), float(row_xy[j][1]), float(confs[i][j])]
+                    for j in range(len(row_xy))
+                ]
             else:
-                row = [[float(row_xy[j][0]), float(row_xy[j][1]), 1.0] for j in range(len(row_xy))]
+                row = [
+                    [float(row_xy[j][0]), float(row_xy[j][1]), 1.0]
+                    for j in range(len(row_xy))
+                ]
 
             posture, hints = label_pose(row)
             posture_counts[posture] += 1
             cx = (xyxy[0] + xyxy[2]) / 2
             cy = (xyxy[1] + xyxy[3]) / 2
-            key = track_key("person", cx, cy)
+            key = track_key(cx, cy)
             bits = [posture] + hints
-            text = " · ".join(bits)
             det = {
                 "track_key": key,
                 "bbox": xyxy,
                 "conf": round(conf, 3),
                 "posture": posture,
                 "action_hints": hints,
-                "keypoints": [[round(a, 1), round(b, 1), round(c, 3)] for a, b, c in row],
+                "keypoints": [
+                    [round(a, 1), round(b, 1), round(c, 3)] for a, b, c in row
+                ],
                 "start_ms": start_ms,
                 "end_ms": end_ms,
-                "text": text,
+                "text": " · ".join(bits),
+                "frame_path": path,
             }
             detections.append(det)
             buckets[key].append(det)
+            prev = best_crop.get(key)
+            if prev is None or conf > prev["conf"]:
+                best_crop[key] = det
 
-    tracks = []
+    tracks: list[dict] = []
     for key, rows in buckets.items():
         postures = [r["posture"] for r in rows]
         dominant = max(set(postures), key=postures.count)
@@ -182,24 +253,56 @@ def main() -> int:
                 "dominant_posture": dominant,
                 "action_hints": hints,
                 "avg_conf": round(sum(r["conf"] for r in rows) / len(rows), 3),
+                "description": None,
             }
         )
     tracks.sort(key=lambda t: (-t["count"], t["id"]))
 
-    items = [
-        {
-            "start_ms": t["start_ms"],
-            "end_ms": t["end_ms"],
-            "label": t["dominant_posture"],
-            "role": "pose",
-            "text": " · ".join(
-                [t["dominant_posture"], f"{t['count']} frames"]
-                + t["action_hints"][:3]
-            ),
-        }
-        for t in tracks
-    ]
-    # También filas densas por frame (útiles para recreación)
+    vlm_error = None
+    vlm_used = 0
+    if VLM_ENABLED and tracks:
+        try:
+            vlm, _device = load_vlm()
+            image_cache: dict[str, Image.Image] = {}
+            for track in tracks:
+                tip = best_crop.get(track["id"])
+                if not tip:
+                    continue
+                fpath = tip.get("frame_path")
+                if not fpath or not Path(fpath).exists():
+                    continue
+                if fpath not in image_cache:
+                    image_cache[fpath] = Image.open(fpath).convert("RGB")
+                crop = crop_box(image_cache[fpath], tip["bbox"])
+                if crop is None:
+                    continue
+                desc = describe_crop(vlm, crop)
+                if desc:
+                    track["description"] = desc
+                    vlm_used += 1
+        except Exception as exc:  # noqa: BLE001
+            vlm_error = str(exc)
+
+    items: list[dict] = []
+    for t in tracks:
+        if t.get("description"):
+            text = f"{t['dominant_posture']}: {t['description']}"
+        else:
+            text = " · ".join(
+                [t["dominant_posture"], f"{t['count']} frames"] + t["action_hints"][:3]
+            )
+        items.append(
+            {
+                "start_ms": t["start_ms"],
+                "end_ms": t["end_ms"],
+                "label": t["dominant_posture"],
+                "role": "pose",
+                "text": text,
+                "description": t.get("description"),
+            }
+        )
+
+    # Filas densas por frame (geometría; útiles para timeline)
     for d in detections:
         items.append(
             {
@@ -211,19 +314,28 @@ def main() -> int:
             }
         )
 
+    clean_dets = [{k: v for k, v in d.items() if k != "frame_path"} for d in detections]
+
+    engine = "yolov8n-pose+moondream2" if vlm_used else "yolov8n-pose"
     payload = {
-        "engine": "yolov8n-pose",
+        "engine": engine,
         "model": MODEL_NAME,
+        "vision_model": VISION_MODEL if vlm_used else None,
         "frame_count": len(frames),
+        "vlm_described": vlm_used,
         "profile": {
             "person_detections": len(detections),
             "tracks": len(tracks),
-            "posture_counts": dict(sorted(posture_counts.items(), key=lambda x: (-x[1], x[0]))),
+            "posture_counts": dict(
+                sorted(posture_counts.items(), key=lambda x: (-x[1], x[0]))
+            ),
         },
         "tracks": tracks,
-        "detections": detections,
+        "detections": clean_dets,
         "items": items,
     }
+    if vlm_error:
+        payload["vlm_error"] = vlm_error
     if not detections:
         payload["error"] = "Sin poses de persona en los fotogramas muestreados"
 
