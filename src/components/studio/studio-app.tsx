@@ -700,7 +700,12 @@ function DocsView({ onOpenSettings }: { onOpenSettings: () => void }) {
   "event": "job.ready",
   "sent_at": "2026-09-04T00:00:00.000Z",
   "job": { "id": "job_123", "name": "clip.mp4", "status": "ready" },
-  "extraction": { "media": { ... }, "modules": [ ... ] }
+  "extraction": {
+    "schema_version": "1.0",
+    "source": { "filename": "clip.mp4", "processed_at": "..." },
+    "media": { "duration_ms": 12000, "width": 1080, "height": 1920 },
+    "modules": [ { "id": "speech", "status": "ok", "items": [ ... ] } ]
+  }
 }`}</DocsCode>
       </section>
 
