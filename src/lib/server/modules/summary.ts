@@ -30,6 +30,12 @@ export const summaryModule: ExtractionModuleDefinition = {
     const scenes = byId.get("scene_cuts");
     if (scenes?.status === "ok") parts.push(`Cortes: ${scenes.summary}.`);
 
+    const camera = byId.get("camera_motion");
+    if (camera?.status === "ok") {
+      parts.push(`Cámara: ${camera.summary}.`);
+      for (const line of takeLines(camera, 2)) parts.push(`- ${line}`);
+    }
+
     const speakers = byId.get("speakers");
     if (speakers?.status === "ok") {
       parts.push(`Quién habla: ${speakers.summary}.`);
@@ -60,6 +66,12 @@ export const summaryModule: ExtractionModuleDefinition = {
     if (ambiance?.status === "ok") {
       parts.push(`Música y ambiente: ${ambiance.summary}.`);
       for (const line of takeLines(ambiance, 2)) parts.push(`- ${line}`);
+    }
+
+    const audioEvents = byId.get("audio_events");
+    if (audioEvents?.status === "ok") {
+      parts.push(`Eventos de audio: ${audioEvents.summary}.`);
+      for (const line of takeLines(audioEvents, 2)) parts.push(`- ${line}`);
     }
 
     const failed = ctx.previousModules.filter((m) => m.status === "error");

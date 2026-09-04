@@ -1,4 +1,6 @@
 import type { ExtractionModuleDefinition } from "./types";
+import { audioEventsModule } from "./audio-events";
+import { cameraMotionModule } from "./camera-motion";
 import { musicAmbianceModule } from "./music-ambiance";
 import { objectsPeopleModule } from "./objects-people";
 import { onScreenTextModule } from "./on-screen-text";
@@ -14,12 +16,14 @@ import { visualObservationModule } from "./visual-observation";
  */
 export const EXTRACTION_MODULES: ExtractionModuleDefinition[] = [
   sceneCutsModule,
+  cameraMotionModule,
   speechModule,
   speakersModule,
   onScreenTextModule,
   objectsPeopleModule,
   visualObservationModule,
   musicAmbianceModule,
+  audioEventsModule,
   summaryModule,
 ];
 

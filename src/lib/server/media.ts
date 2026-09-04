@@ -392,3 +392,118 @@ export async function analyzeVideoAmbiance(
   });
   return JSON.parse(await readFile(outJson, "utf8")) as AmbianceResult;
 }
+
+export type CameraMotionResult = {
+  engine: string;
+  duration_ms?: number;
+  fps?: number;
+  frame_samples?: number;
+  segments?: Array<{
+    start_ms: number;
+    end_ms: number;
+    label: string;
+    mean_mag?: number;
+    translation?: number;
+    mean_radial?: number;
+  }>;
+  items: Array<{
+    start_ms: number;
+    end_ms: number;
+    label: string;
+    text: string;
+  }>;
+  profile?: {
+    overall?: string;
+    dominant?: string;
+    unique_motions?: number;
+  };
+  error?: string;
+};
+
+/** Movimiento de cámara vía flujo óptico (OpenCV Farneback). */
+export async function analyzeCameraMotion(
+  videoPath: string,
+  outJson: string
+): Promise<CameraMotionResult> {
+  const python = pythonBin();
+  const script = path.join(process.cwd(), "scripts", "from_video_camera.py");
+  if (!existsSync(/*turbopackIgnore: true*/ python)) {
+    throw new Error(
+      "Falta el entorno Python del pipeline. Ejecuta ./install.sh en la raiz del proyecto."
+    );
+  }
+  if (!existsSync(/*turbopackIgnore: true*/ script)) {
+    throw new Error("Falta scripts/from_video_camera.py");
+  }
+  const maxFrames = process.env.CAMERA_MAX_FRAMES || "48";
+  await execFileAsync(python, [script, videoPath, outJson, maxFrames], {
+    timeout: 180000,
+    maxBuffer: 8 * 1024 * 1024,
+  });
+  return JSON.parse(await readFile(outJson, "utf8")) as CameraMotionResult;
+}
+
+export type AudioEventsResult = {
+  engine: string;
+  duration_ms?: number;
+  events?: unknown[];
+  items: Array<{
+    start_ms: number;
+    end_ms: number;
+    label: string;
+    text: string;
+  }>;
+  top_tags?: Array<{ label_es: string; score: number }>;
+  profile?: {
+    overall?: string;
+    tag_count?: number;
+  };
+  error?: string;
+};
+
+/** Eventos de audio (PANNs / AudioSet) a partir del vídeo. */
+export async function analyzeAudioEvents(
+  videoPath: string,
+  wavPath: string,
+  outJson: string
+): Promise<AudioEventsResult> {
+  try {
+    await execFileAsync(
+      "ffmpeg",
+      ["-y", "-i", videoPath, "-vn", "-ac", "1", "-ar", "32000", "-c:a", "pcm_s16le", wavPath],
+      { timeout: 60000 }
+    );
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    if (/does not contain any stream/i.test(msg)) {
+      return {
+        engine: "panns-cnn14",
+        items: [],
+        events: [],
+        profile: { overall: "Sin pista de audio" },
+      };
+    }
+    throw error;
+  }
+
+  const python = pythonBin();
+  const script = path.join(process.cwd(), "scripts", "from_video_audio_events.py");
+  if (!existsSync(/*turbopackIgnore: true*/ python)) {
+    throw new Error(
+      "Falta el entorno Python del pipeline. Ejecuta ./install.sh en la raiz del proyecto."
+    );
+  }
+  if (!existsSync(/*turbopackIgnore: true*/ script)) {
+    throw new Error("Falta scripts/from_video_audio_events.py");
+  }
+
+  await execFileAsync(python, [script, wavPath, outJson], {
+    timeout: 300000,
+    maxBuffer: 8 * 1024 * 1024,
+    env: {
+      ...process.env,
+      PANNS_DEVICE: process.env.PANNS_DEVICE || "cpu",
+    },
+  });
+  return JSON.parse(await readFile(outJson, "utf8")) as AudioEventsResult;
+}

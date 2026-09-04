@@ -190,8 +190,8 @@ function HomeView() {
             Subes un vídeo. Sales con un JSON claro.
           </p>
           <p className="mt-3 m-0 max-w-[28rem] text-[14.5px] leading-relaxed text-[#6a7380]">
-            Cortes, habla, interlocutores, texto en pantalla, objetos, ambiente sonoro y un
-            resumen. Cada módulo escribe solo lo que encuentra.
+            Cortes, cámara, habla, texto, objetos, ambiente, eventos de sonido y un resumen.
+            Cada módulo escribe solo lo que encuentra.
           </p>
         </div>
 

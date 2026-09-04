@@ -12,12 +12,14 @@ WORKDIR="${TMPDIR:-/tmp}/vx-smoke-verify"
 VIDEO="$WORKDIR/all-modules.mp4"
 EXPECT_MODULES=(
   scene_cuts
+  camera_motion
   speech
   speakers
   on_screen_text
   objects_people
   visual_observation
   music_ambiance
+  audio_events
   summary
 )
 
@@ -88,12 +90,14 @@ data = json.loads(raw)
 modules = {m["id"]: m for m in (data.get("extraction") or {}).get("modules") or []}
 expected = [
   "scene_cuts",
+  "camera_motion",
   "speech",
   "speakers",
   "on_screen_text",
   "objects_people",
   "visual_observation",
   "music_ambiance",
+  "audio_events",
   "summary",
 ]
 
@@ -110,7 +114,7 @@ for mid in expected:
     items = len(m.get("items") or [])
     ok = status == "ok" and items > 0
     # speech/speakers: ok si hay segmentos o interlocutores
-    if mid in ("speech", "speakers", "on_screen_text", "objects_people", "visual_observation", "scene_cuts", "music_ambiance", "summary"):
+    if mid in ("speech", "speakers", "on_screen_text", "objects_people", "visual_observation", "scene_cuts", "music_ambiance", "camera_motion", "audio_events", "summary"):
         if not ok:
             print(f"FAIL  {mid}: status={status} summary={summary!r} items={items} error={m.get('error')}")
             failed.append(mid)
