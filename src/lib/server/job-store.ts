@@ -11,6 +11,7 @@ import {
 import { processVideoFile } from "./process-video";
 import { withProcessSlot } from "./process-queue";
 import { deliverWebhook } from "./webhook";
+import { buildVideoExtraction } from "@/lib/extraction";
 
 type JobStore = {
   jobs: Map<string, JobRecord>;
@@ -168,14 +169,66 @@ async function enqueueVideoJob(
     },
     run: async () => {
       try {
-        const result = await processVideoFile(tempPath, filename, (progress, stage) => {
-          const current = getStore().jobs.get(id);
-          if (!current) return;
-          updateJob(id, {
-            status: "processing",
-            progress,
-            stage,
-          });
+        const result = await processVideoFile(tempPath, filename, {
+          onProgress: (progress, stage) => {
+            const current = getStore().jobs.get(id);
+            if (!current) return;
+            updateJob(id, {
+              status: "processing",
+              progress,
+              stage,
+            });
+          },
+          onProbe: (probe) => {
+            const current = getStore().jobs.get(id);
+            if (!current) return;
+            updateJob(
+              id,
+              {
+                probe,
+                activity: [
+                  ...(current.activity ?? []),
+                  {
+                    time: clock(),
+                    title: "Media",
+                    detail: `${probe.width}×${probe.height} · ${Math.round(probe.durationMs / 1000)} s`,
+                    status: "ready",
+                  },
+                ],
+              },
+              true
+            );
+          },
+          onModule: ({ module, modules, probe }) => {
+            const current = getStore().jobs.get(id);
+            if (!current) return;
+            const extraction = buildVideoExtraction({
+              filename,
+              processedAt: new Date().toISOString(),
+              probe,
+              modules,
+            });
+            updateJob(
+              id,
+              {
+                status: "processing",
+                probe,
+                extraction,
+                activity: [
+                  ...(current.activity ?? []),
+                  {
+                    time: clock(),
+                    title: module.title,
+                    detail: module.error
+                      ? `${module.summary}: ${module.error}`
+                      : module.summary,
+                    status: (module.status === "error" ? "error" : "ready") as StoredVideo["status"],
+                  },
+                ],
+              },
+              true
+            );
+          },
         });
 
         updateJob(
@@ -187,21 +240,6 @@ async function enqueueVideoJob(
             probe: result.probe,
             extraction: result.extraction,
             result,
-            activity: [
-              ...(getStore().jobs.get(id)?.activity ?? []),
-              {
-                time: clock(),
-                title: "Media",
-                detail: `${result.probe.width}×${result.probe.height} · ${Math.round(result.probe.durationMs / 1000)} s`,
-                status: "ready",
-              },
-              ...result.modules.map((mod) => ({
-                time: clock(),
-                title: mod.title,
-                detail: mod.error ? `${mod.summary}: ${mod.error}` : mod.summary,
-                status: (mod.status === "error" ? "error" : "ready") as StoredVideo["status"],
-              })),
-            ],
           },
           true
         );

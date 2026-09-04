@@ -50,7 +50,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     if (!hasRunning) return;
     const timer = window.setInterval(() => {
       void refreshJobs();
-    }, 2000);
+    }, 1200);
     return () => window.clearInterval(timer);
   }, [videos, refreshJobs]);
 

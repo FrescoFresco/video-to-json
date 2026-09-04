@@ -415,6 +415,79 @@ function VideosView() {
 function VideoDetail({ video }: { video: StoredVideo }) {
   const s = useStudio();
   const extraction = video.extraction;
+  const [catalog, setCatalog] = useState<Array<{ id: string; title: string; stage: string }>>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/modules", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          modules?: Array<{ id: string; title: string; stage: string }>;
+        };
+        if (!cancelled && data.modules) setCatalog(data.modules);
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const doneById = useMemo(() => {
+    const map = new Map<string, ExtractionModule>();
+    for (const mod of extraction?.modules || []) map.set(mod.id, mod);
+    return map;
+  }, [extraction]);
+
+  const liveRows = useMemo(() => {
+    const ids = new Set<string>();
+    const rows: Array<{
+      id: string;
+      title: string;
+      stage: string;
+      phase: "done" | "running" | "waiting";
+      module?: ExtractionModule;
+    }> = [];
+
+    for (const entry of catalog) {
+      ids.add(entry.id);
+      const done = doneById.get(entry.id);
+      let phase: "done" | "running" | "waiting" = "waiting";
+      if (done) phase = "done";
+      else if (
+        (video.status === "processing" || video.status === "queued") &&
+        video.stage === entry.stage
+      ) {
+        phase = "running";
+      }
+      rows.push({
+        id: entry.id,
+        title: entry.title,
+        stage: entry.stage,
+        phase,
+        module: done,
+      });
+    }
+
+    // Módulos nuevos no listados en catálogo (por si el registry cambia mid-flight)
+    for (const mod of extraction?.modules || []) {
+      if (ids.has(mod.id)) continue;
+      rows.push({
+        id: mod.id,
+        title: mod.title,
+        stage: mod.title,
+        phase: "done",
+        module: mod,
+      });
+    }
+
+    return rows;
+  }, [catalog, doneById, extraction, video.status, video.stage]);
+
+  const doneCount = liveRows.filter((r) => r.phase === "done").length;
 
   return (
     <div>
@@ -423,14 +496,15 @@ function VideoDetail({ video }: { video: StoredVideo }) {
           <IconBtn title="Volver" onClick={() => s.setView("videos")}>
             <ArrowLeft className="size-[18px]" />
           </IconBtn>
-          <h1 className="mt-3 text-[clamp(24px,2.4vw,32px)] font-semibold tracking-[-0.035em]">{video.name}</h1>
+          <h1 className="mt-3 text-[clamp(24px,2.4vw,32px)] font-semibold tracking-[-0.035em]">
+            {video.name}
+          </h1>
           <div className="mt-2 flex items-center gap-2 text-[12.5px] text-[#75757d]">
             <StatusDot status={video.status} />
             <span>
-              {video.status === "queued" ? "En espera" :
-               video.status === "processing" ? "Procesando" :
-               video.status === "ready" ? "Listo" : "Error"}
+              {statusLabel(video.status)}
               {video.stage ? ` · ${video.stage}` : ""}
+              {liveRows.length > 0 ? ` · ${doneCount}/${liveRows.length} módulos` : ""}
             </span>
           </div>
           {(video.status === "processing" || video.status === "queued") && (
@@ -443,9 +517,17 @@ function VideoDetail({ video }: { video: StoredVideo }) {
           )}
         </div>
         {extraction && (
-          <Button className="rounded-xl" onClick={() => downloadJson("video-extraction.json", extraction)}>
+          <Button
+            className="rounded-xl"
+            onClick={() =>
+              downloadJson(
+                video.status === "ready" ? "video-extraction.json" : "video-extraction-parcial.json",
+                extraction
+              )
+            }
+          >
             <Download className="mr-2 size-4" />
-            Descargar JSON
+            {video.status === "ready" ? "Descargar JSON" : "Descargar JSON parcial"}
           </Button>
         )}
       </div>
@@ -458,54 +540,77 @@ function VideoDetail({ video }: { video: StoredVideo }) {
         </TabsList>
 
         <TabsContent value="overview">
-          {!extraction ? (
-            <EmptyCard
-              title={
-                video.status === "error" ? "No se pudo procesar" :
-                video.status === "queued" ? "En espera" :
-                "Procesando"
-              }
-              body={
-                video.error ||
-                (video.status === "queued"
-                  ? "Hay otros vídeos delante. Este empezará cuando haya hueco."
-                  : "La extracción todavía no está lista.")
-              }
-            />
+          {video.status === "error" && !extraction ? (
+            <EmptyCard title="No se pudo procesar" body={video.error || "Error desconocido"} />
           ) : (
             <div className="grid gap-5">
-              <div className="grid gap-4 md:grid-cols-4">
-                <Metric label="Duración" value={extraction.media.duration} />
-                <Metric label="Resolución" value={`${extraction.media.width}×${extraction.media.height}`} />
-                <Metric label="FPS" value={String(extraction.media.fps)} />
-                <Metric label="Módulos" value={String(extraction.modules.length)} />
-              </div>
+              {extraction?.media ? (
+                <div className="grid gap-4 md:grid-cols-4">
+                  <Metric label="Duración" value={extraction.media.duration} />
+                  <Metric
+                    label="Resolución"
+                    value={`${extraction.media.width}×${extraction.media.height}`}
+                  />
+                  <Metric label="FPS" value={String(extraction.media.fps)} />
+                  <Metric label="Módulos listos" value={`${doneCount}/${liveRows.length || "—"}`} />
+                </div>
+              ) : video.probe ? (
+                <div className="grid gap-4 md:grid-cols-3">
+                  <Metric label="Duración" value={msToClock(video.probe.durationMs)} />
+                  <Metric
+                    label="Resolución"
+                    value={`${video.probe.width}×${video.probe.height}`}
+                  />
+                  <Metric label="FPS" value={String(video.probe.fps)} />
+                </div>
+              ) : null}
 
               <section className="rounded-2xl border border-[#e7e7eb] bg-white p-5">
                 <div className="text-sm font-semibold">Módulos de este vídeo</div>
                 <p className="mt-1 text-[12.5px] text-[#75757d]">
-                  El resumen lo aporta cada módulo. Si mañana añades otro, aparece aquí igual.
+                  Se van rellenando solos al terminar cada extractor. Si mañana registras otro
+                  módulo, aparece aquí igual.
                 </p>
-                <div className="mt-4 grid gap-3 md:grid-cols-3">
-                  {extraction.modules.map((mod) => (
-                    <ModuleSummaryCard key={mod.id} module={mod} />
-                  ))}
+                <div className="mt-4 grid gap-2">
+                  {liveRows.length === 0 ? (
+                    <p className="text-sm text-[#75757d]">
+                      {video.status === "queued"
+                        ? "En espera de hueco en la cola…"
+                        : "Preparando extractores…"}
+                    </p>
+                  ) : (
+                    liveRows.map((row) => (
+                      <ModuleLiveRow key={row.id} row={row} />
+                    ))
+                  )}
                 </div>
               </section>
 
-              <section className="grid gap-5 lg:grid-cols-2">
-                {extraction.modules.map((mod) => (
-                  <ModuleItemsList key={`${mod.id}-items`} module={mod} />
-                ))}
-              </section>
+              {(extraction?.modules || []).filter((m) => m.items.length > 0).length > 0 && (
+                <section className="grid gap-5 lg:grid-cols-2">
+                  {(extraction?.modules || [])
+                    .filter((m) => m.items.length > 0)
+                    .map((mod) => (
+                      <ModuleItemsList key={`${mod.id}-items`} module={mod} />
+                    ))}
+                </section>
+              )}
             </div>
           )}
         </TabsContent>
 
         <TabsContent value="json">
           <div className="rounded-2xl bg-[#151517] p-4 text-[12.5px] leading-[1.55] text-[#e9e9ed]">
-            <pre className="overflow-auto whitespace-pre-wrap break-all">
-              {JSON.stringify(extraction ?? { error: video.error || "Aún no hay JSON disponible." }, null, 2)}
+            <pre className="overflow-auto whitespace-pre-wrap break-words">
+              {JSON.stringify(
+                extraction ?? {
+                  status: video.status,
+                  stage: video.stage,
+                  note: video.error || "Aún no hay JSON. Los módulos irán apareciendo aquí.",
+                },
+                null,
+                2
+              )}
             </pre>
           </div>
         </TabsContent>
@@ -513,7 +618,10 @@ function VideoDetail({ video }: { video: StoredVideo }) {
         <TabsContent value="activity">
           <div className="rounded-2xl border border-[#e7e7eb] bg-white p-4">
             {video.activity.map((item, index) => (
-              <div key={`${item.time}-${index}`} className="grid grid-cols-[60px_24px_minmax(0,1fr)] gap-3 border-t border-[#e7e7eb] py-3 first:border-t-0">
+              <div
+                key={`${item.time}-${index}`}
+                className="grid grid-cols-[60px_24px_minmax(0,1fr)] gap-3 border-t border-[#e7e7eb] py-3 first:border-t-0"
+              >
                 <div className="text-xs text-[#75757d]">{item.time}</div>
                 <StatusDot status={item.status} />
                 <div>
@@ -525,6 +633,65 @@ function VideoDetail({ video }: { video: StoredVideo }) {
           </div>
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+function ModuleLiveRow({
+  row,
+}: {
+  row: {
+    id: string;
+    title: string;
+    phase: "done" | "running" | "waiting";
+    module?: ExtractionModule;
+  };
+}) {
+  const mark =
+    row.phase === "done" ? (
+      <span className="grid size-[22px] place-items-center rounded-full bg-[#edf6f1] text-[#177245]">
+        <Check className="size-3.5" />
+      </span>
+    ) : row.phase === "running" ? (
+      <span className="grid size-[22px] place-items-center rounded-full bg-[#fff6df] text-[#9a6700]">
+        <span className="size-2 animate-pulse rounded-full bg-current" />
+      </span>
+    ) : (
+      <span className="grid size-[22px] place-items-center rounded-full bg-[#f0f0f2] text-[#9a9aa3]">
+        <span className="size-1.5 rounded-full bg-current" />
+      </span>
+    );
+
+  const detail =
+    row.phase === "done"
+      ? row.module?.summary || "Listo"
+      : row.phase === "running"
+        ? "Extrayendo…"
+        : "En espera";
+
+  return (
+    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-[#ececf0] bg-[#fbfbfc] px-3 py-3">
+      {mark}
+      <div className="min-w-0">
+        <div className="truncate text-sm font-medium">{row.title}</div>
+        <div
+          className={`mt-0.5 text-[12.5px] ${
+            row.phase === "done"
+              ? row.module?.status === "error"
+                ? "text-[#b42318]"
+                : "text-[#177245]"
+              : row.phase === "running"
+                ? "text-[#9a6700]"
+                : "text-[#9a9aa3]"
+          }`}
+        >
+          {detail}
+          {row.module?.error ? ` · ${row.module.error}` : ""}
+        </div>
+      </div>
+      {row.module?.engine ? (
+        <div className="hidden text-[11px] text-[#9a9aa3] sm:block">{row.module.engine}</div>
+      ) : null}
     </div>
   );
 }
