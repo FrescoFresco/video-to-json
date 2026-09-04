@@ -60,3 +60,4 @@ video-py/
 video-py
 .cache/
 video-extraction-studio-home.webp
+__pycache__/

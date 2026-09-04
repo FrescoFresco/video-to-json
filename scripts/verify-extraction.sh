@@ -22,7 +22,6 @@ EXPECT_MODULES=(
   visual_observation
   music_ambiance
   audio_events
-  ai_brief
   summary
 )
 
@@ -103,7 +102,6 @@ expected = [
   "visual_observation",
   "music_ambiance",
   "audio_events",
-  "ai_brief",
   "summary",
 ]
 
@@ -120,7 +118,7 @@ for mid in expected:
     items = len(m.get("items") or [])
     ok = status == "ok" and items > 0
     # speech/speakers: ok si hay segmentos o interlocutores
-    if mid in ("speech", "speakers", "on_screen_text", "objects_people", "faces_framing", "pose_actions", "visual_observation", "scene_cuts", "music_ambiance", "camera_motion", "audio_events", "ai_brief", "summary"):
+    if mid in ("speech", "speakers", "on_screen_text", "objects_people", "faces_framing", "pose_actions", "visual_observation", "scene_cuts", "music_ambiance", "camera_motion", "audio_events", "summary"):
         if not ok:
             print(f"FAIL  {mid}: status={status} summary={summary!r} items={items} error={m.get('error')}")
             failed.append(mid)

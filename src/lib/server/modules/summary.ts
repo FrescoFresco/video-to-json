@@ -40,7 +40,6 @@ export const summaryModule: ExtractionModuleDefinition = {
       ["visual_observation", "Observación visual"],
       ["music_ambiance", "Música y ambiente"],
       ["audio_events", "Eventos de audio"],
-      ["ai_brief", "Brief IA"],
     ];
 
     const speakers = ok(byId.get("speakers"));

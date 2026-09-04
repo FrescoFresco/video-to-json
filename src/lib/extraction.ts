@@ -22,7 +22,6 @@ export const COMPLETE_MODULE_IDS = [
   "visual_observation",
   "music_ambiance",
   "audio_events",
-  "ai_brief",
   "summary",
 ] as const;
 

@@ -1,5 +1,4 @@
 import type { ExtractionModuleDefinition } from "./types";
-import { aiBriefModule } from "./ai-brief";
 import { audioEventsModule } from "./audio-events";
 import { cameraMotionModule } from "./camera-motion";
 import { facesFramingModule } from "./faces-framing";
@@ -15,7 +14,7 @@ import { visualObservationModule } from "./visual-observation";
 
 /**
  * Orden = ejecución.
- * Medición primero (audio/CV) → IA visual → brief IA → summary.
+ * Medición primero (audio/CV) → IA visual → summary.
  */
 export const EXTRACTION_MODULES: ExtractionModuleDefinition[] = [
   sceneCutsModule,
@@ -29,7 +28,6 @@ export const EXTRACTION_MODULES: ExtractionModuleDefinition[] = [
   visualObservationModule,
   musicAmbianceModule,
   audioEventsModule,
-  aiBriefModule,
   summaryModule,
 ];
 
