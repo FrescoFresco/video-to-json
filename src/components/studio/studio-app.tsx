@@ -612,6 +612,38 @@ function DocsView({ onOpenSettings }: { onOpenSettings: () => void }) {
       </div>
 
       <section className="min-w-0 rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
+        <div className="text-sm font-semibold">Requisitos del ordenador</div>
+        <p className="mt-2 text-sm leading-relaxed text-[#75757d]">
+          Todo corre en local (sin GPU obligatoria). En CPU funciona, pero puede ir lento.
+        </p>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <div className="min-w-0 rounded-xl bg-[#f5f5f7] p-4">
+            <div className="text-sm font-medium">Mínimo usable</div>
+            <ul className="mt-2 grid gap-1.5 text-[12.5px] leading-relaxed text-[#75757d]">
+              <li>Windows 10/11, macOS 12+ o Linux reciente</li>
+              <li>16 GB de RAM (con 8 GB va justo)</li>
+              <li>CPU de los últimos ~6–8 años, o Apple Silicon (M1/M2/M3…)</li>
+              <li>15–25 GB libres en disco (modelos de IA)</li>
+              <li>Docker Desktop, o Node + Python + ffmpeg</li>
+            </ul>
+          </div>
+          <div className="min-w-0 rounded-xl bg-[#f5f5f7] p-4">
+            <div className="text-sm font-medium">Recomendado</div>
+            <ul className="mt-2 grid gap-1.5 text-[12.5px] leading-relaxed text-[#75757d]">
+              <li>32 GB de RAM</li>
+              <li>SSD con 30+ GB libres</li>
+              <li>M1/M2/M3 o Intel/AMD de 6+ núcleos</li>
+              <li>GPU opcional (este build está pensado en CPU)</li>
+            </ul>
+          </div>
+        </div>
+        <p className="mt-4 text-[12.5px] leading-relaxed text-[#75757d]">
+          Vídeos cortos (30–60 s): minutos en CPU. Vídeos largos o con visión: pueden tardar
+          bastante. Un portátil viejo de 8 GB no es buen candidato.
+        </p>
+      </section>
+
+      <section className="min-w-0 rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
         <div className="text-sm font-semibold">Las dos direcciones</div>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <div className="min-w-0 rounded-xl bg-[#f5f5f7] p-4">
