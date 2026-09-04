@@ -33,23 +33,23 @@ export function IdeaView() {
         <h2 className="vx-idea-h2">El recorrido</h2>
         <ol className="vx-idea-steps">
           <li>
-            <strong>Vídeo original</strong>
+            <strong>1 · Vídeo original</strong>
             El clip real (archivo o link).
           </li>
           <li>
-            <strong>Video Extraction Studio</strong>
+            <strong>2 · Video Extraction Studio</strong>
             Este software: convierte el vídeo en un texto de extracción denso.
           </li>
           <li>
-            <strong>Texto de extracción</strong>
-            El dossier JSON. Es lo único que produce el Studio.
+            <strong>3 · Texto de extracción</strong>
+            El dossier JSON. Es lo único que produce el Studio. Puente entre ambos lados.
           </li>
           <li>
-            <strong>Generador de vídeo IA (externo)</strong>
+            <strong>4 · Generador de vídeo IA (externo)</strong>
             Otra herramienta: lee ese texto y puede regenerar un vídeo.
           </li>
           <li>
-            <strong>Vídeo generado</strong>
+            <strong>5 · Vídeo generado</strong>
             El resultado fuera de aquí. Cuanto más rico el texto, más cerca puede quedar del
             original.
           </li>
@@ -69,9 +69,9 @@ export function IdeaView() {
       <section className="vx-idea-block vx-idea-block--last">
         <h2 className="vx-idea-h2">La cercanía al original</h2>
         <p className="vx-idea-p">
-          Arriba, el original y el generado se miran de frente. La barra del medio no es una
-          nota automática: es el objetivo. El trabajo de este software es hacer el texto del
-          centro tan rico que esa cercanía sea posible.
+          Arriba, el original (1) y el generado (5) se miran de frente. La barra del medio no
+          es una nota automática: es el objetivo. El trabajo de este software es hacer el
+          texto (3) tan rico que esa cercanía sea posible.
         </p>
       </section>
     </div>
@@ -80,60 +80,63 @@ export function IdeaView() {
 
 /**
  * Desktop:
- *   [Original] —— cercanía —— [Generado]
- *       │                          ▲
- *   [VX Studio]              [Generador IA]
- *       │                          │
- *       └──── [Texto extracción] ──┘
+ *   [1 Original]  —— cercanía ——  [5 Generado]
+ *   [2 VX Studio]                 [4 Generador IA]
+ *              [3 Texto extracción]
  *
- * Móvil: flujo vertical con cercanía al final.
+ * Móvil: flujo 1→2→3→4→5 + cercanía al final.
  */
 export function RecreationDiagram() {
   return (
     <section aria-label="De vídeo a texto a vídeo generado" className="vx-loop vx-loop--embedded">
       {/* —— Desktop —— */}
       <div className="vx-loop-desk">
-        <div className="vx-pair">
-          <Node
-            step="1"
-            title="Vídeo original"
-            copy="El clip que subes o importas"
-            illu={<VideoFrameIllustration variant="origin" />}
-          />
-          <FidelityBridge />
-          <Node
-            step="5"
-            title="Vídeo generado"
-            copy="Recreado fuera de este Studio"
-            badge="Externo"
-            illu={<VideoFrameIllustration variant="generated" />}
-          />
+        <div className="vx-grid">
+          {/* Columna izquierda */}
+          <div className="vx-col vx-col--left">
+            <Node
+              step="1"
+              title="Vídeo original"
+              copy="El clip que subes o importas"
+              illu={<VideoFrameIllustration variant="origin" />}
+            />
+            <div className="vx-col-link" aria-hidden="true" />
+            <Node
+              step="2"
+              title="Video Extraction Studio"
+              copy="Este software · vídeo → texto"
+              illu={<StudioAppIllustration />}
+            />
+          </div>
+
+          {/* Centro: cercanía (arriba) */}
+          <div className="vx-col vx-col--mid">
+            <FidelityBridge />
+          </div>
+
+          {/* Columna derecha */}
+          <div className="vx-col vx-col--right">
+            <Node
+              step="5"
+              title="Vídeo generado"
+              copy="Recreado fuera de este Studio"
+              badge="Externo"
+              illu={<VideoFrameIllustration variant="generated" />}
+            />
+            <div className="vx-col-link" aria-hidden="true" />
+            <Node
+              step="4"
+              title="Generador de vídeo IA"
+              copy="Herramienta externa · texto → vídeo"
+              badge="Externo"
+              illu={<AiGeneratorIllustration />}
+            />
+          </div>
         </div>
 
-        <div className="vx-pair-down" aria-hidden="true">
-          <span className="vx-pair-down-line" />
-          <span className="vx-pair-down-line vx-pair-down-line--right" />
-        </div>
-
-        <div className="vx-engines">
-          <Node
-            step="2"
-            title="Video Extraction Studio"
-            copy="Este software · vídeo → texto"
-            illu={<StudioAppIllustration />}
-          />
-          <Node
-            step="4"
-            title="Generador de vídeo IA"
-            copy="Herramienta externa · texto → vídeo"
-            badge="Externo"
-            illu={<AiGeneratorIllustration />}
-          />
-        </div>
-
-        <div className="vx-engines-join" aria-hidden="true">
-          <span className="vx-engines-join-line" />
-          <span className="vx-engines-join-line vx-engines-join-line--right" />
+        <div className="vx-bridge-links" aria-hidden="true">
+          <span className="vx-bridge-link vx-bridge-link--left" />
+          <span className="vx-bridge-link vx-bridge-link--right" />
         </div>
 
         <Node
@@ -356,7 +359,6 @@ function VideoFrameIllustration({
   );
 }
 
-/** Ilustración del propio Studio (ventana VX). */
 function StudioAppIllustration({ size = "md" }: { size?: "sm" | "md" }) {
   return (
     <div className={`vx-illu-app vx-illu-app--${size}`} aria-hidden="true">
@@ -388,12 +390,10 @@ function StudioAppIllustration({ size = "md" }: { size?: "sm" | "md" }) {
         >
           VX
         </text>
-        {/* sidebar */}
         <rect x="10" y="32" width="18" height="68" rx="4" fill="currentColor" opacity="0.07" />
         <rect x="14" y="38" width="10" height="6" rx="1.5" fill="currentColor" opacity="0.25" />
         <rect x="14" y="50" width="10" height="6" rx="1.5" fill="currentColor" opacity="0.15" />
         <rect x="14" y="62" width="10" height="6" rx="1.5" fill="currentColor" opacity="0.15" />
-        {/* content → text lines emerging */}
         <rect x="38" y="34" width="48" height="36" rx="4" fill="currentColor" opacity="0.08" />
         <polygon points="54,46 66,52 54,58" fill="currentColor" opacity="0.4" />
         <rect x="96" y="34" width="42" height="8" rx="2" fill="currentColor" opacity="0.45" />
@@ -415,7 +415,6 @@ function StudioAppIllustration({ size = "md" }: { size?: "sm" | "md" }) {
   );
 }
 
-/** Ilustración de un generador IA externo. */
 function AiGeneratorIllustration({ size = "md" }: { size?: "sm" | "md" }) {
   return (
     <div className={`vx-illu-genai vx-illu-genai--${size}`} aria-hidden="true">
@@ -432,12 +431,20 @@ function AiGeneratorIllustration({ size = "md" }: { size?: "sm" | "md" }) {
           className="vx-illu-stroke"
         />
         <rect x="14" y="14" width="70" height="10" rx="3" fill="currentColor" opacity="0.12" />
-        <rect x="14" y="14" width="70" height="10" rx="3" stroke="currentColor" strokeWidth="1" opacity="0.25" />
+        <rect
+          x="14"
+          y="14"
+          width="70"
+          height="10"
+          rx="3"
+          stroke="currentColor"
+          strokeWidth="1"
+          opacity="0.25"
+        />
         <rect x="18" y="17" width="40" height="4" rx="1.5" fill="currentColor" opacity="0.28" />
         <rect x="14" y="32" width="70" height="4" rx="1.5" fill="currentColor" opacity="0.16" />
         <rect x="14" y="40" width="58" height="4" rx="1.5" fill="currentColor" opacity="0.14" />
         <rect x="14" y="48" width="64" height="4" rx="1.5" fill="currentColor" opacity="0.14" />
-        {/* spark / generate */}
         <circle cx="112" cy="42" r="22" fill="currentColor" opacity="0.07" />
         <path
           d="M112 24 L115 36 L127 39 L115 42 L112 54 L109 42 L97 39 L109 36 Z"
@@ -451,7 +458,6 @@ function AiGeneratorIllustration({ size = "md" }: { size?: "sm" | "md" }) {
           strokeDasharray="2 2"
           opacity="0.4"
         />
-        {/* output phone thumbnail */}
         <rect
           x="98"
           y="70"

@@ -592,81 +592,63 @@ body {
     gap: 0;
   }
 
-  .vx-pair {
+  /* 1 | cercanía | 5
+     2 |           | 4
+            3         */
+  .vx-grid {
     display: grid;
-    grid-template-columns: 1fr minmax(8rem, 11rem) 1fr;
-    gap: 0.35rem;
-    align-items: center;
-  }
-
-  .vx-pair .vx-loop-node {
-    justify-items: center;
-    text-align: center;
-  }
-
-  .vx-pair .vx-loop-node figcaption {
-    justify-items: center;
-  }
-
-  .vx-pair .vx-loop-step-row {
-    justify-content: center;
-  }
-
-  .vx-pair-down {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    height: 1.1rem;
-    margin: 0.15rem 0 0;
-  }
-
-  .vx-pair-down-line {
-    width: 1px;
-    height: 100%;
-    margin-left: 25%;
-    background: var(--vx-loop-line);
-  }
-
-  .vx-pair-down-line--right {
-    margin-left: auto;
-    margin-right: 25%;
-  }
-
-  .vx-engines {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.25rem;
+    grid-template-columns: 1fr minmax(7.5rem, 10rem) 1fr;
+    gap: 0 0.5rem;
     align-items: start;
   }
 
-  .vx-engines .vx-loop-node {
+  .vx-col {
+    display: grid;
+    justify-items: center;
+    gap: 0;
+  }
+
+  .vx-col--mid {
+    align-self: start;
+    padding-top: 2.75rem; /* alinea la barra con los teléfonos (nodo 1/5) */
+  }
+
+  .vx-col-link {
+    width: 1px;
+    height: 1.15rem;
+    background: var(--vx-loop-line);
+    margin: 0.15rem 0;
+  }
+
+  .vx-col .vx-loop-node {
     justify-items: center;
     text-align: center;
   }
 
-  .vx-engines .vx-loop-node figcaption {
+  .vx-col .vx-loop-node figcaption {
     justify-items: center;
-    max-width: 15rem;
+    max-width: 14rem;
   }
 
-  .vx-engines .vx-loop-step-row {
+  .vx-col .vx-loop-step-row {
     justify-content: center;
   }
 
-  .vx-engines-join {
+  .vx-bridge-links {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    height: 1.1rem;
-    margin: 0.2rem 0 0.15rem;
+    height: 1.15rem;
+    margin: 0.2rem 0 0.1rem;
   }
 
-  .vx-engines-join-line {
+  .vx-bridge-link {
     width: 1px;
     height: 100%;
-    margin-left: 25%;
     background: var(--vx-loop-line);
+    margin-left: 25%;
   }
 
-  .vx-engines-join-line--right {
+  .vx-bridge-link--right {
     margin-left: auto;
     margin-right: 25%;
   }
@@ -674,7 +656,7 @@ body {
   .vx-loop-node--text {
     justify-self: center;
     width: min(100%, 26rem);
-    margin-top: 0.15rem;
+    margin-top: 0.1rem;
   }
 
   .vx-loop-node--text figcaption {
@@ -687,16 +669,16 @@ body {
   }
 
   .vx-illu-phone {
-    width: 82px;
+    width: 78px;
   }
 
   .vx-illu-dossier {
-    width: 250px;
+    width: 248px;
   }
 
   .vx-illu-app,
   .vx-illu-genai {
-    width: 138px;
+    width: 132px;
   }
 }
 
