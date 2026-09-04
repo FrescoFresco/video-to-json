@@ -18,8 +18,8 @@ from ultralytics import YOLO
 MODEL_NAME = os.environ.get("YOLO_MODEL", "yolov8n.pt")
 MAX_FRAMES = int(os.environ.get("OBJECTS_MAX_FRAMES", "12"))
 CONF = float(os.environ.get("YOLO_CONF", "0.35"))
-# Captions VLM por track (0 = solo YOLO)
-VLM_MAX = int(os.environ.get("OBJECTS_VLM_MAX", "8"))
+# Describir todas las pistas con VLM (0 = solo YOLO)
+VLM_ENABLED = os.environ.get("OBJECTS_VLM", "1").strip().lower() not in ("0", "false", "no", "off")
 VISION_MODEL = os.environ.get("VISION_MODEL", "vikhyatk/moondream2")
 VISION_REVISION = os.environ.get("VISION_MODEL_REVISION", "2025-01-09")
 
@@ -192,9 +192,10 @@ def main() -> int:
 
     vlm_error = None
     vlm_used = 0
-    if VLM_MAX > 0 and tracks:
+    if VLM_ENABLED and tracks:
         try:
             vlm, _device = load_vlm()
+            # Todas las pistas; personas primero solo por orden de proceso
             candidates = sorted(
                 tracks,
                 key=lambda t: (
@@ -202,7 +203,7 @@ def main() -> int:
                     -t["count"],
                     -t["avg_conf"],
                 ),
-            )[:VLM_MAX]
+            )
             image_cache: dict[str, Image.Image] = {}
             for track in candidates:
                 tip = best_crop.get(track["id"])

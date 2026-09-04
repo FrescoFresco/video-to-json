@@ -354,7 +354,7 @@ export async function readObjectDetections(
       ...process.env,
       HF_HUB_DISABLE_TELEMETRY: "1",
       OBJECTS_MAX_FRAMES: process.env.OBJECTS_MAX_FRAMES || "12",
-      OBJECTS_VLM_MAX: process.env.OBJECTS_VLM_MAX || "8",
+      OBJECTS_VLM: process.env.OBJECTS_VLM || "1",
       YOLO_CONF: process.env.YOLO_CONF || "0.35",
     },
   });
