@@ -210,6 +210,7 @@ export async function createJobFromUrl(
     status: "processing",
     progress: 3,
     stage: "Descargando desde link…",
+    processingStartedAt: createdAt,
     activity: [
       {
         time: clock(),
@@ -278,6 +279,7 @@ export async function createJobFromUrl(
           progress: 100,
           stage: "Error",
           error: message,
+          completedAt: new Date().toISOString(),
           activity: [
             ...(getStore().jobs.get(id)?.activity ?? []),
             {
@@ -339,10 +341,12 @@ async function runQueuedProcessing(
       });
     },
     onStarted: () => {
+      const current = getStore().jobs.get(id);
       updateJob(id, {
         status: "processing",
         stage: "Procesando",
-        progress: 8,
+        progress: Math.max(8, current?.progress || 8),
+        processingStartedAt: current?.processingStartedAt || new Date().toISOString(),
       });
     },
     run: async () => {
@@ -418,6 +422,7 @@ async function runQueuedProcessing(
             probe: result.probe,
             extraction: result.extraction,
             result,
+            completedAt: new Date().toISOString(),
           },
           true
         );
@@ -463,6 +468,7 @@ async function runQueuedProcessing(
             progress: 100,
             stage: "Error",
             error: message,
+            completedAt: new Date().toISOString(),
             activity: [
               ...(getStore().jobs.get(id)?.activity ?? []),
               {

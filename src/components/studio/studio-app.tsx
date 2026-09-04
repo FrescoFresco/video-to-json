@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { etaLabel } from "@/lib/eta";
 import { msToClock } from "@/lib/extraction";
 import { isLinkListFilename, readLinksFromFile } from "@/lib/ingest-links";
 import { useStudio } from "@/lib/store";
@@ -362,7 +363,9 @@ function HomeView() {
               </Button>
             </div>
             <div className="border border-[#e7e7eb] bg-white">
-              {s.videos.slice(0, 5).map((video) => (
+              {s.videos.slice(0, 5).map((video) => {
+                const eta = etaLabel(video, s.videos);
+                return (
                 <button
                   key={video.id}
                   type="button"
@@ -377,11 +380,13 @@ function HomeView() {
                        video.status === "processing" ? "Procesando" :
                        video.status === "ready" ? "Listo" : "Error"}
                       {video.stage ? ` · ${video.stage}` : ""}
+                      {eta ? ` · ${eta}` : ""}
                     </div>
                   </div>
                   <div className="text-[12px] text-[#75757d]">{video.progress}%</div>
                 </button>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -462,7 +467,15 @@ function QueueSummary({
   );
 }
 
-function VideoQueueRow({ video, onOpen }: { video: StoredVideo; onOpen: () => void }) {
+function VideoQueueRow({
+  video,
+  eta,
+  onOpen,
+}: {
+  video: StoredVideo;
+  eta: string | null;
+  onOpen: () => void;
+}) {
   return (
     <button
       type="button"
@@ -476,6 +489,7 @@ function VideoQueueRow({ video, onOpen }: { video: StoredVideo; onOpen: () => vo
           {statusLabel(video.status)}
           {video.stage ? ` · ${video.stage}` : ""}
           {video.probe ? ` · ${Math.round(video.probe.durationMs / 1000)} s` : ""}
+          {eta ? ` · ${eta}` : ""}
         </div>
         {(video.status === "processing" || video.status === "queued") && (
           <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#eef0f3]">
@@ -501,6 +515,34 @@ function VideosView() {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [sortMode, setSortMode] = useState<SortMode>("newest");
+  const [moduleCount, setModuleCount] = useState(10);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/modules", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = (await res.json()) as { modules?: unknown[] };
+        if (!cancelled && data.modules?.length) setModuleCount(data.modules.length);
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const active = s.videos.some(
+      (v) => v.status === "queued" || v.status === "processing"
+    );
+    if (!active) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [s.videos]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -525,7 +567,6 @@ function VideosView() {
         if (rank !== 0) return rank;
         return b.createdAt.localeCompare(a.createdAt);
       }
-      // newest (default)
       return b.createdAt.localeCompare(a.createdAt);
     });
 
@@ -538,7 +579,7 @@ function VideosView() {
         <div>
           <h1 className="text-[clamp(24px,2.4vw,32px)] font-semibold tracking-[-0.035em]">Vídeos</h1>
           <p className="text-sm text-[#75757d]">
-            Cola visible: busca, filtra y ordena como quieras.
+            Cola con tiempo estimado: busca, filtra y ordena como quieras.
           </p>
         </div>
         {s.videos.length > 0 && (
@@ -603,9 +644,7 @@ function VideosView() {
             {filtered.length === s.videos.length
               ? `${filtered.length} vídeos`
               : `${filtered.length} de ${s.videos.length}`}
-            {statusFilter !== "all" || query
-              ? " · "
-              : ""}
+            {statusFilter !== "all" || query ? " · " : ""}
             {(statusFilter !== "all" || query) && (
               <button
                 type="button"
@@ -631,6 +670,7 @@ function VideosView() {
                 <VideoQueueRow
                   key={video.id}
                   video={video}
+                  eta={etaLabel(video, s.videos, moduleCount, now)}
                   onOpen={() => s.openVideo(video.id)}
                 />
               ))}
@@ -725,6 +765,20 @@ function VideoDetail({ video }: { video: StoredVideo }) {
 
   const doneCount = liveRows.filter((r) => r.phase === "done").length;
   const activeModuleRow = liveRows.find((r) => r.id === detailTab);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (video.status !== "queued" && video.status !== "processing") return;
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [video.status]);
+
+  const eta = etaLabel(
+    video,
+    s.videos,
+    Math.max(catalog.length, liveRows.length, 10),
+    now
+  );
 
   const tabBtn = (id: string, label: string, hint?: string) => {
     const active = detailTab === id;
@@ -759,12 +813,13 @@ function VideoDetail({ video }: { video: StoredVideo }) {
           <h1 className="mt-3 text-[clamp(24px,2.4vw,32px)] font-semibold tracking-[-0.035em]">
             {video.name}
           </h1>
-          <div className="mt-2 flex items-center gap-2 text-[12.5px] text-[#75757d]">
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-[12.5px] text-[#75757d]">
             <StatusDot status={video.status} />
             <span>
               {statusLabel(video.status)}
               {video.stage ? ` · ${video.stage}` : ""}
               {liveRows.length > 0 ? ` · ${doneCount}/${liveRows.length} módulos` : ""}
+              {eta ? ` · ${eta}` : ""}
             </span>
           </div>
           {(video.status === "processing" || video.status === "queued") && (
@@ -775,6 +830,11 @@ function VideoDetail({ video }: { video: StoredVideo }) {
               />
             </div>
           )}
+          {eta && (video.status === "processing" || video.status === "queued") ? (
+            <p className="mt-2 text-[12.5px] text-[#6a7380]">
+              Tiempo estimado (orientativo en CPU). Se ajusta según el progreso real.
+            </p>
+          ) : null}
         </div>
         {extraction && (
           <Button

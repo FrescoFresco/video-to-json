@@ -113,6 +113,10 @@ export type StoredVideo = {
   progress: number;
   stage: string;
   error?: string;
+  /** ISO: cuando empezó el procesado real (para ETA). */
+  processingStartedAt?: string;
+  /** ISO: cuando terminó (listo o error tras procesar). */
+  completedAt?: string;
   probe?: ProbeResult;
   extraction?: VideoExtraction;
   activity: ActivityEvent[];
