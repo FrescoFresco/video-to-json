@@ -48,7 +48,9 @@ También puedes usar webhook (Make/n8n) si prefieres otro destino.
 
 - Acepta vídeos (`MP4`, `MOV`, `MKV`, `WebM`) por archivo, **carpeta completa**, o por **link** (TikTok, Instagram, Facebook, YouTube, X…).
 - En la home: pegar muchos links, subir un `.txt` con links, o «Seleccionar carpeta».
-- La API acepta lotes (`POST /api/jobs`, `POST /api/jobs/from-url`); el cliente parte en tandas si hace falta.
+- Sin tope de cantidad: todo entra en cola y se procesa por lotes (`VX_MAX_CONCURRENT`).
+- La API acepta listas grandes de archivos o links; el cliente parte las subidas HTTP en tandas si hace falta.
+- Pipeline por **módulos** registrados (mismo contrato para todos).
 - Diarización con `diarize` (Silero + WeSpeaker): gratis, local, **sin token ni API de pago**.
 - **Música y ambiente** local (`librosa`): energía, ritmo/BPM si es claro, brillo del audio por pasajes. No identifica canciones.
 - **Movimiento de cámara** local (OpenCV): estática, paneo, zoom, trepidación por tramos.

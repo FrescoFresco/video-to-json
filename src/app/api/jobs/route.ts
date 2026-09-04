@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
 import { clearJobs, createJobFromUpload, listJobs } from "@/lib/server/job-store";
-import { MAX_INGEST_BATCH } from "@/lib/ingest-links";
 import { isVideoFile } from "@/lib/video-file";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
-const MAX_BATCH = MAX_INGEST_BATCH;
 const MAX_BYTES = 80 * 1024 * 1024;
 
 function collectVideoFiles(form: FormData): File[] {
@@ -47,12 +45,6 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: "Falta el vídeo. Envía file / files (uno o varios)." },
       { status: 400 }
-    );
-  }
-  if (files.length > MAX_BATCH) {
-    return NextResponse.json(
-      { error: `Máximo ${MAX_BATCH} vídeos por petición` },
-      { status: 413 }
     );
   }
 

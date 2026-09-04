@@ -1,8 +1,14 @@
-/** Límite alto por petición (cola local; evita petar la RAM de un golpe). */
-export const MAX_INGEST_BATCH = Number(process.env.VX_MAX_BATCH || 200);
+/**
+ * Tamaño de cada tanda HTTP al subir muchos ítems.
+ * No es un límite de cuántos puedes importar: el cliente parte en tandas
+ * y todo entra en la cola. Puedes mandar 300, 1000… sin problema.
+ */
+export const UPLOAD_CHUNK_SIZE = Math.max(
+  1,
+  Number(process.env.VX_UPLOAD_CHUNK || 50)
+);
 
-const URL_IN_TEXT =
-  /https?:\/\/[^\s<>"']+/gi;
+const URL_IN_TEXT = /https?:\/\/[^\s<>"']+/gi;
 
 export function parseLinksFromText(text: string): string[] {
   const out: string[] = [];
@@ -12,7 +18,6 @@ export function parseLinksFromText(text: string): string[] {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith("#")) continue;
 
-    // Línea completa si parece URL
     if (/^https?:\/\//i.test(trimmed)) {
       const clean = trimmed.replace(/[),.;]+$/g, "");
       if (!seen.has(clean)) {
@@ -22,7 +27,6 @@ export function parseLinksFromText(text: string): string[] {
       continue;
     }
 
-    // O URLs embebidas en la línea
     const matches = trimmed.match(URL_IN_TEXT) || [];
     for (const raw of matches) {
       const clean = raw.replace(/[),.;]+$/g, "");

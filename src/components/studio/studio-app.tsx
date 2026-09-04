@@ -345,7 +345,7 @@ function HomeView() {
               {linkBusy ? "Encolando…" : "Analizar links"}
             </Button>
             <p className="m-0 text-[12.5px] leading-relaxed text-[#6a7380]">
-              Un link por línea. Sin límite práctico: se encolan por lotes.
+              Un link por línea. Cuantos quieras: entran en cola y se procesan por lotes.
             </p>
           </div>
         </form>
@@ -1117,8 +1117,9 @@ curl http://localhost:43141/api/jobs/JOB_ID/result`}</DocsCode>
           </li>
         </ol>
         <p className="mt-4 text-[12.5px] leading-relaxed text-[#75757d]">
-          Redes: TikTok, Instagram, Facebook, YouTube, X… Solo públicos. Si hay muchos, se
-          mandan por lotes automáticamente (no hace falta preocuparse del límite).
+          Redes: TikTok, Instagram, Facebook, YouTube, X… Solo públicos. No hay tope de
+          cantidad: aunque pegues cientos, entran en cola y se van procesando de poco en
+          poco.
         </p>
         <p className="mt-4 text-[12.5px] text-[#75757d]">API — un link:</p>
         <DocsCode>{`curl -X POST http://localhost:43141/api/jobs/from-url \\

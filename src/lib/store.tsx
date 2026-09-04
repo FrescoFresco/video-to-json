@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 import type { StoredVideo, ViewName } from "./types";
-import { MAX_INGEST_BATCH } from "./ingest-links";
+import { UPLOAD_CHUNK_SIZE } from "./ingest-links";
 import { isVideoFile } from "./video-file";
 
 const defaultVideos: StoredVideo[] = [];
@@ -68,8 +68,8 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     try {
       const allJobs: StoredVideo[] = [];
 
-      for (let i = 0; i < validFiles.length; i += MAX_INGEST_BATCH) {
-        const chunk = validFiles.slice(i, i + MAX_INGEST_BATCH);
+      for (let i = 0; i < validFiles.length; i += UPLOAD_CHUNK_SIZE) {
+        const chunk = validFiles.slice(i, i + UPLOAD_CHUNK_SIZE);
         const fd = new FormData();
         for (const file of chunk) {
           fd.append("files", file);
@@ -143,8 +143,8 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     try {
       const allJobs: StoredVideo[] = [];
 
-      for (let i = 0; i < cleaned.length; i += MAX_INGEST_BATCH) {
-        const chunk = cleaned.slice(i, i + MAX_INGEST_BATCH);
+      for (let i = 0; i < cleaned.length; i += UPLOAD_CHUNK_SIZE) {
+        const chunk = cleaned.slice(i, i + UPLOAD_CHUNK_SIZE);
         const res = await fetch("/api/jobs/from-url", {
           method: "POST",
           headers: { "Content-Type": "application/json" },

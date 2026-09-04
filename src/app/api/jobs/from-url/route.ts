@@ -1,12 +1,9 @@
 import { NextResponse } from "next/server";
 import { createJobFromUrl } from "@/lib/server/job-store";
-import { MAX_INGEST_BATCH } from "@/lib/ingest-links";
 import { parseAllowedVideoUrl } from "@/lib/server/url-download";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
-
-const MAX_URLS = MAX_INGEST_BATCH;
 
 function collectUrls(body: { url?: unknown; urls?: unknown }): string[] {
   const out: string[] = [];
@@ -48,12 +45,6 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: "Falta el link. Envía url o urls (lista)." },
       { status: 400 }
-    );
-  }
-  if (urls.length > MAX_URLS) {
-    return NextResponse.json(
-      { error: `Máximo ${MAX_URLS} links por petición` },
-      { status: 413 }
     );
   }
 
