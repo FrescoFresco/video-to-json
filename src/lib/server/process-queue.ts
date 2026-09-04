@@ -16,24 +16,39 @@ function getQueue() {
   return globalQueue.__vxProcessQueue;
 }
 
-function maxConcurrent() {
+export function maxConcurrent() {
   const n = Number(process.env.VX_MAX_CONCURRENT || 1);
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1;
 }
 
-export async function withProcessSlot<T>(fn: () => Promise<T>): Promise<T> {
+export function getQueueSnapshot() {
+  const q = getQueue();
+  return {
+    running: q.running,
+    waiting: q.waiters.length,
+    maxConcurrent: maxConcurrent(),
+  };
+}
+
+export async function withProcessSlot<T>(options: {
+  onWaiting?: () => void;
+  onStarted?: () => void;
+  run: () => Promise<T>;
+}): Promise<T> {
   const q = getQueue();
   const limit = maxConcurrent();
 
   if (q.running >= limit) {
+    options.onWaiting?.();
     await new Promise<void>((resolve) => {
       q.waiters.push(resolve);
     });
   }
 
   q.running += 1;
+  options.onStarted?.();
   try {
-    return await fn();
+    return await options.run();
   } finally {
     q.running -= 1;
     const next = q.waiters.shift();

@@ -90,11 +90,11 @@ export function StudioApp() {
     [s.videos, s.activeVideoId]
   );
 
-  const nav = (view: ViewName, icon: ReactNode) => (
+  const nav = (view: ViewName, icon: ReactNode, label: string) => (
     <button
       type="button"
-      title={view}
-      aria-label={view}
+      title={label}
+      aria-label={label}
       onClick={() => s.setView(view)}
       className={`grid size-10 place-items-center rounded-[9px] ${
         s.view === view || (s.view === "video-detail" && view === "videos") ?
@@ -115,10 +115,10 @@ export function StudioApp() {
           </div>
         </div>
         <div className="grid justify-items-center gap-1">
-          {nav("home", <Home className="size-[17px]" />)}
-          {nav("videos", <Video className="size-[17px]" />)}
-          {nav("docs", <BookOpen className="size-[17px]" />)}
-          {nav("settings", <Settings className="size-[17px]" />)}
+          {nav("home", <Home className="size-[17px]" />, "Inicio")}
+          {nav("videos", <Video className="size-[17px]" />, "Vídeos")}
+          {nav("docs", <BookOpen className="size-[17px]" />, "Docs")}
+          {nav("settings", <Settings className="size-[17px]" />, "Ajustes")}
         </div>
       </aside>
 
@@ -270,7 +270,12 @@ function HomeView() {
                   <StatusDot status={video.status} />
                   <div className="min-w-0">
                     <div className="truncate text-sm font-medium">{video.name}</div>
-                    <div className="mt-1 text-[12.5px] text-[#75757d]">{video.stage}</div>
+                    <div className="mt-1 text-[12.5px] text-[#75757d]">
+                      {video.status === "queued" ? "En espera" :
+                       video.status === "processing" ? "Procesando" :
+                       video.status === "ready" ? "Listo" : "Error"}
+                      {video.stage ? ` · ${video.stage}` : ""}
+                    </div>
                   </div>
                   <div className="text-[12px] text-[#75757d]">{video.progress}%</div>
                 </button>
@@ -283,15 +288,105 @@ function HomeView() {
   );
 }
 
+function statusLabel(status: JobStatus) {
+  if (status === "queued") return "En espera";
+  if (status === "processing") return "Procesando";
+  if (status === "ready") return "Listo";
+  return "Error";
+}
+
+function queueRank(status: JobStatus) {
+  if (status === "processing") return 0;
+  if (status === "queued") return 1;
+  if (status === "error") return 2;
+  return 3;
+}
+
+function QueueSummary({ videos }: { videos: StoredVideo[] }) {
+  const waiting = videos.filter((v) => v.status === "queued").length;
+  const processing = videos.filter((v) => v.status === "processing").length;
+  const ready = videos.filter((v) => v.status === "ready").length;
+  const errored = videos.filter((v) => v.status === "error").length;
+
+  const Chip = ({
+    label,
+    value,
+    tone,
+  }: {
+    label: string;
+    value: number;
+    tone: string;
+  }) => (
+    <div className={`rounded-xl px-3 py-2 ${tone}`}>
+      <div className="text-[11px] uppercase tracking-wide opacity-80">{label}</div>
+      <div className="mt-0.5 text-lg font-semibold">{value}</div>
+    </div>
+  );
+
+  return (
+    <div className="mb-5 grid grid-cols-2 gap-2 md:grid-cols-4">
+      <Chip label="En espera" value={waiting} tone="bg-[#fff6df] text-[#9a6700]" />
+      <Chip label="Procesando" value={processing} tone="bg-[#eef3f8] text-[#2f4d6a]" />
+      <Chip label="Listos" value={ready} tone="bg-[#edf6f1] text-[#177245]" />
+      <Chip label="Errores" value={errored} tone="bg-[#fff0ef] text-[#b42318]" />
+    </div>
+  );
+}
+
+function VideoQueueRow({ video, onOpen }: { video: StoredVideo; onOpen: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-t border-[#e7e7eb] px-4 py-4 text-left first:border-t-0"
+    >
+      <StatusDot status={video.status} />
+      <div className="min-w-0">
+        <div className="truncate text-sm font-medium">{video.name}</div>
+        <div className="mt-1 text-[12.5px] text-[#75757d]">
+          {statusLabel(video.status)}
+          {video.stage ? ` · ${video.stage}` : ""}
+          {video.probe ? ` · ${Math.round(video.probe.durationMs / 1000)} s` : ""}
+        </div>
+        {(video.status === "processing" || video.status === "queued") && (
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#eef0f3]">
+            <div
+              className={`h-full rounded-full transition-all ${
+                video.status === "queued" ? "bg-[#e2b340]" : "bg-[#3d6f99]"
+              }`}
+              style={{ width: `${Math.max(6, Math.min(100, video.progress))}%` }}
+            />
+          </div>
+        )}
+      </div>
+      <div className="text-right text-[12px] text-[#75757d]">
+        <div className="font-medium text-[#171719]">{statusLabel(video.status)}</div>
+        <div className="mt-1">{video.progress}%</div>
+      </div>
+    </button>
+  );
+}
+
 function VideosView() {
   const s = useStudio();
+  const ordered = useMemo(
+    () =>
+      [...s.videos].sort((a, b) => {
+        const rank = queueRank(a.status) - queueRank(b.status);
+        if (rank !== 0) return rank;
+        return b.createdAt.localeCompare(a.createdAt);
+      }),
+    [s.videos]
+  );
 
   return (
     <div>
-      <div className="mb-8 flex items-end justify-between gap-4">
+      <div className="mb-6 flex items-end justify-between gap-4">
         <div>
           <h1 className="text-[clamp(24px,2.4vw,32px)] font-semibold tracking-[-0.035em]">Vídeos</h1>
-          <p className="text-sm text-[#75757d]">Solo resultados reales extraídos aquí.</p>
+          <p className="text-sm text-[#75757d]">
+            Cola visible: en espera, procesando, listos y errores.
+          </p>
         </div>
         {s.videos.length > 0 && (
           <Button variant="outline" className="rounded-xl" onClick={s.clearAll}>
@@ -304,28 +399,21 @@ function VideosView() {
       {s.videos.length === 0 ? (
         <EmptyCard
           title="Aún no hay vídeos"
-          body="Vuelve a Home, sube un MP4 y aquí aparecerá lo que el sistema ha sacado de verdad."
+          body="Vuelve a Home, sube uno o varios MP4 y aquí verás la cola en tiempo real."
         />
       ) : (
-        <div className="rounded-2xl border border-[#e7e7eb] bg-white">
-          {s.videos.map((video) => (
-            <button
-              key={video.id}
-              type="button"
-              onClick={() => s.openVideo(video.id)}
-              className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-t border-[#e7e7eb] px-4 py-4 text-left first:border-t-0"
-            >
-              <StatusDot status={video.status} />
-              <div className="min-w-0">
-                <div className="truncate text-sm font-medium">{video.name}</div>
-                <div className="mt-1 text-[12.5px] text-[#75757d]">
-                  {video.probe ? `${Math.round(video.probe.durationMs / 1000)} s · ${video.probe.width}×${video.probe.height}` : video.stage}
-                </div>
-              </div>
-              <div className="text-[12px] capitalize text-[#75757d]">{video.status}</div>
-            </button>
-          ))}
-        </div>
+        <>
+          <QueueSummary videos={s.videos} />
+          <div className="rounded-2xl border border-[#e7e7eb] bg-white">
+            {ordered.map((video) => (
+              <VideoQueueRow
+                key={video.id}
+                video={video}
+                onOpen={() => s.openVideo(video.id)}
+              />
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
@@ -345,8 +433,21 @@ function VideoDetail({ video }: { video: StoredVideo }) {
           <h1 className="mt-3 text-[clamp(24px,2.4vw,32px)] font-semibold tracking-[-0.035em]">{video.name}</h1>
           <div className="mt-2 flex items-center gap-2 text-[12.5px] text-[#75757d]">
             <StatusDot status={video.status} />
-            <span>{video.stage}</span>
+            <span>
+              {video.status === "queued" ? "En espera" :
+               video.status === "processing" ? "Procesando" :
+               video.status === "ready" ? "Listo" : "Error"}
+              {video.stage ? ` · ${video.stage}` : ""}
+            </span>
           </div>
+          {(video.status === "processing" || video.status === "queued") && (
+            <div className="mt-3 h-1.5 max-w-sm overflow-hidden rounded-full bg-[#eef0f3]">
+              <div
+                className={`h-full rounded-full ${video.status === "queued" ? "bg-[#e2b340]" : "bg-[#3d6f99]"}`}
+                style={{ width: `${Math.max(6, Math.min(100, video.progress))}%` }}
+              />
+            </div>
+          )}
         </div>
         {extraction && (
           <Button className="rounded-xl" onClick={() => downloadJson("video-extraction.json", extraction)}>
@@ -366,8 +467,17 @@ function VideoDetail({ video }: { video: StoredVideo }) {
         <TabsContent value="overview">
           {!extraction ? (
             <EmptyCard
-              title={video.status === "error" ? "No se pudo procesar" : "Procesando"}
-              body={video.error || "La extracción todavía no está lista."}
+              title={
+                video.status === "error" ? "No se pudo procesar" :
+                video.status === "queued" ? "En espera" :
+                "Procesando"
+              }
+              body={
+                video.error ||
+                (video.status === "queued"
+                  ? "Hay otros vídeos delante. Este empezará cuando haya hueco."
+                  : "La extracción todavía no está lista.")
+              }
             />
           ) : (
             <div className="grid gap-5">

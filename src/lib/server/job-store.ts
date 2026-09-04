@@ -125,128 +125,144 @@ export async function createJobFromUpload(
     createdAt,
     status: "queued",
     progress: 5,
-    stage: "Vídeo recibido",
+    stage: "En espera",
     activity: [{ time: clock(), title: "Archivo recibido", detail: file.name, status: "ready" }],
   };
 
   getStore().jobs.set(id, job);
   schedulePersist(job, true);
 
-  void withProcessSlot(async () => {
-    try {
-      const result = await processVideoFile(tempPath, file.name, (progress, stage) => {
-        const current = getStore().jobs.get(id);
-        if (!current) return;
-        updateJob(id, {
-          status: "processing",
-          progress,
-          stage,
+  void withProcessSlot({
+    onWaiting: () => {
+      updateJob(id, {
+        status: "queued",
+        stage: "En espera",
+        progress: 5,
+      });
+    },
+    onStarted: () => {
+      updateJob(id, {
+        status: "processing",
+        stage: "Procesando",
+        progress: 8,
+      });
+    },
+    run: async () => {
+      try {
+        const result = await processVideoFile(tempPath, file.name, (progress, stage) => {
+          const current = getStore().jobs.get(id);
+          if (!current) return;
+          updateJob(id, {
+            status: "processing",
+            progress,
+            stage,
+          });
         });
-      });
 
-      updateJob(
-        id,
-        {
-          status: "ready",
-          progress: 100,
-          stage: "Listo",
-          probe: result.probe,
-          extraction: result.extraction,
+        updateJob(
+          id,
+          {
+            status: "ready",
+            progress: 100,
+            stage: "Listo",
+            probe: result.probe,
+            extraction: result.extraction,
+            result,
+            activity: [
+              ...(getStore().jobs.get(id)?.activity ?? []),
+              {
+                time: clock(),
+                title: "Media",
+                detail: `${result.probe.width}×${result.probe.height} · ${Math.round(result.probe.durationMs / 1000)} s`,
+                status: "ready",
+              },
+              ...result.modules.map((mod) => ({
+                time: clock(),
+                title: mod.title,
+                detail: mod.error ? `${mod.summary}: ${mod.error}` : mod.summary,
+                status: (mod.status === "error" ? "error" : "ready") as StoredVideo["status"],
+              })),
+            ],
+          },
+          true
+        );
+
+        const readyJob = getStore().jobs.get(id);
+        if (!readyJob) return;
+        const delivery = await deliverWebhook({
+          event: "job.ready",
+          job: readyJob,
           result,
-          activity: [
-            ...(getStore().jobs.get(id)?.activity ?? []),
+          webhookUrl,
+        });
+        if (delivery) {
+          updateJob(
+            id,
             {
-              time: clock(),
-              title: "Media",
-              detail: `${result.probe.width}×${result.probe.height} · ${Math.round(result.probe.durationMs / 1000)} s`,
-              status: "ready",
+              activity: [
+                ...(getStore().jobs.get(id)?.activity ?? []),
+                {
+                  time: clock(),
+                  title: "Webhook",
+                  detail: delivery.ok
+                    ? `Enviado a ${delivery.url} (HTTP ${delivery.status})`
+                    : `Falló: ${delivery.error || "error"}`,
+                  status: delivery.ok ? "ready" : "error",
+                },
+              ],
             },
-            ...result.modules.map((mod) => ({
-              time: clock(),
-              title: mod.title,
-              detail: mod.error ? `${mod.summary}: ${mod.error}` : mod.summary,
-              status: (mod.status === "error" ? "error" : "ready") as StoredVideo["status"],
-            })),
-          ],
-        },
-        true
-      );
-
-      const readyJob = getStore().jobs.get(id);
-      if (!readyJob) return;
-      const delivery = await deliverWebhook({
-        event: "job.ready",
-        job: readyJob,
-        result,
-        webhookUrl,
-      });
-      if (delivery) {
+            true
+          );
+        }
+      } catch (error) {
         updateJob(
           id,
           {
+            status: "error",
+            progress: 100,
+            stage: "Error",
+            error: error instanceof Error ? error.message : "No se pudo procesar el vídeo",
             activity: [
               ...(getStore().jobs.get(id)?.activity ?? []),
               {
                 time: clock(),
-                title: "Webhook",
-                detail: delivery.ok
-                  ? `Enviado a ${delivery.url} (HTTP ${delivery.status})`
-                  : `Falló: ${delivery.error || "error"}`,
-                status: delivery.ok ? "ready" : "error",
+                title: "Procesamiento",
+                detail: error instanceof Error ? error.message : "No se pudo procesar el vídeo",
+                status: "error",
               },
             ],
           },
           true
         );
-      }
-    } catch (error) {
-      updateJob(
-        id,
-        {
-          status: "error",
-          progress: 100,
-          stage: "Error",
-          error: error instanceof Error ? error.message : "No se pudo procesar el vídeo",
-          activity: [
-            ...(getStore().jobs.get(id)?.activity ?? []),
-            {
-              time: clock(),
-              title: "Procesamiento",
-              detail: error instanceof Error ? error.message : "No se pudo procesar el vídeo",
-              status: "error",
-            },
-          ],
-        },
-        true
-      );
 
-      const failedJob = getStore().jobs.get(id);
-      if (!failedJob) return;
-      const delivery = await deliverWebhook({
-        event: "job.error",
-        job: failedJob,
-        webhookUrl,
-      });
-      if (delivery) {
-        updateJob(
-          id,
-          {
-            activity: [
-              ...(getStore().jobs.get(id)?.activity ?? []),
-              {
-                time: clock(),
-                title: "Webhook",
-                detail: delivery.ok
-                  ? `Aviso de error enviado a ${delivery.url}`
-                  : `Falló el aviso: ${delivery.error || "error"}`,
-                status: delivery.ok ? "ready" : "error",
-              },
-            ],
-          },
-          true
-        );
+        const failedJob = getStore().jobs.get(id);
+        if (!failedJob) return;
+        const delivery = await deliverWebhook({
+          event: "job.error",
+          job: failedJob,
+          webhookUrl,
+        });
+        if (delivery) {
+          updateJob(
+            id,
+            {
+              activity: [
+                ...(getStore().jobs.get(id)?.activity ?? []),
+                {
+                  time: clock(),
+                  title: "Webhook",
+                  detail: delivery.ok
+                    ? `Aviso de error enviado a ${delivery.url}`
+                    : `Falló el aviso: ${delivery.error || "error"}`,
+                  status: delivery.ok ? "ready" : "error",
+                },
+              ],
+            },
+            true
+          );
+        }
       }
-    }
+    },
   });
 
   return (await getJob(id)) as StoredVideo;
