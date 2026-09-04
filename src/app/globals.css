@@ -545,6 +545,22 @@ body {
   width: 112px;
 }
 
+.vx-illu-app,
+.vx-illu-genai {
+  width: 120px;
+  color: var(--vx-loop-ink);
+  flex-shrink: 0;
+}
+
+.vx-illu-app--sm,
+.vx-illu-genai--sm {
+  width: 88px;
+}
+
+.vx-illu-genai {
+  color: var(--vx-loop-accent);
+}
+
 .vx-illu-stroke {
   opacity: 0.88;
 }
@@ -564,7 +580,7 @@ body {
   }
 
   .vx-loop--embedded {
-    max-width: 42rem;
+    max-width: 44rem;
   }
 
   .vx-loop-mob {
@@ -573,90 +589,114 @@ body {
 
   .vx-loop-desk {
     display: grid;
-    gap: 0.55rem;
+    gap: 0;
   }
 
-  .vx-loop-desk-top {
+  .vx-pair {
     display: grid;
-    grid-template-columns: 1fr minmax(8.5rem, 11rem) 1fr;
+    grid-template-columns: 1fr minmax(8rem, 11rem) 1fr;
     gap: 0.35rem;
     align-items: center;
   }
 
-  .vx-loop-desk .vx-loop-node {
+  .vx-pair .vx-loop-node {
     justify-items: center;
     text-align: center;
   }
 
-  .vx-loop-desk .vx-loop-node figcaption {
+  .vx-pair .vx-loop-node figcaption {
     justify-items: center;
   }
 
-  .vx-loop-desk .vx-loop-step-row {
+  .vx-pair .vx-loop-step-row {
     justify-content: center;
+  }
+
+  .vx-pair-down {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    height: 1.1rem;
+    margin: 0.15rem 0 0;
+  }
+
+  .vx-pair-down-line {
+    width: 1px;
+    height: 100%;
+    margin-left: 25%;
+    background: var(--vx-loop-line);
+  }
+
+  .vx-pair-down-line--right {
+    margin-left: auto;
+    margin-right: 25%;
+  }
+
+  .vx-engines {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+    align-items: start;
+  }
+
+  .vx-engines .vx-loop-node {
+    justify-items: center;
+    text-align: center;
+  }
+
+  .vx-engines .vx-loop-node figcaption {
+    justify-items: center;
+    max-width: 15rem;
+  }
+
+  .vx-engines .vx-loop-step-row {
+    justify-content: center;
+  }
+
+  .vx-engines-join {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    height: 1.1rem;
+    margin: 0.2rem 0 0.15rem;
+  }
+
+  .vx-engines-join-line {
+    width: 1px;
+    height: 100%;
+    margin-left: 25%;
+    background: var(--vx-loop-line);
+  }
+
+  .vx-engines-join-line--right {
+    margin-left: auto;
+    margin-right: 25%;
   }
 
   .vx-loop-node--text {
     justify-self: center;
     width: min(100%, 26rem);
-    margin-top: 0.25rem;
+    margin-top: 0.15rem;
   }
 
   .vx-loop-node--text figcaption {
     max-width: 24rem;
+    justify-items: center;
   }
 
-  .vx-loop-desk-rails {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    max-width: 32rem;
-    margin: 0 auto;
-    padding-inline: 0.75rem;
-  }
-
-  .vx-loop-desk-rail {
-    display: grid;
-    gap: 0.12rem;
-    position: relative;
-    padding-top: 1rem;
-  }
-
-  .vx-loop-desk-rail::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    width: 1px;
-    height: 0.75rem;
-    background: var(--vx-loop-line);
-  }
-
-  .vx-loop-desk-rail--left {
-    justify-items: start;
-    text-align: left;
-    padding-left: 0.35rem;
-  }
-
-  .vx-loop-desk-rail--left::before {
-    left: 1rem;
-  }
-
-  .vx-loop-desk-rail--right {
-    justify-items: end;
-    text-align: right;
-    padding-right: 0.35rem;
-  }
-
-  .vx-loop-desk-rail--right::before {
-    right: 1rem;
-    left: auto;
+  .vx-loop-node--text .vx-loop-step-row {
+    justify-content: center;
   }
 
   .vx-illu-phone {
-    width: 86px;
+    width: 82px;
   }
 
   .vx-illu-dossier {
     width: 250px;
+  }
+
+  .vx-illu-app,
+  .vx-illu-genai {
+    width: 138px;
   }
 }
 

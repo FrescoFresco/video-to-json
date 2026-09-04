@@ -30,20 +30,28 @@ export function IdeaView() {
       </section>
 
       <section className="vx-idea-block">
-        <h2 className="vx-idea-h2">Los tres bloques</h2>
+        <h2 className="vx-idea-h2">El recorrido</h2>
         <ol className="vx-idea-steps">
           <li>
             <strong>Vídeo original</strong>
             El clip real (archivo o link).
           </li>
           <li>
-            <strong>Texto de extracción</strong>
-            Lo único que produce este Studio: el dossier completo y denso.
+            <strong>Video Extraction Studio</strong>
+            Este software: convierte el vídeo en un texto de extracción denso.
           </li>
           <li>
-            <strong>Vídeo generado (fuera de aquí)</strong>
-            Lo que haría otra herramienta de IA a partir de ese texto. Cuanto más rico el 2,
-            más cerca puede quedar el 3 del 1.
+            <strong>Texto de extracción</strong>
+            El dossier JSON. Es lo único que produce el Studio.
+          </li>
+          <li>
+            <strong>Generador de vídeo IA (externo)</strong>
+            Otra herramienta: lee ese texto y puede regenerar un vídeo.
+          </li>
+          <li>
+            <strong>Vídeo generado</strong>
+            El resultado fuera de aquí. Cuanto más rico el texto, más cerca puede quedar del
+            original.
           </li>
         </ol>
       </section>
@@ -61,9 +69,9 @@ export function IdeaView() {
       <section className="vx-idea-block vx-idea-block--last">
         <h2 className="vx-idea-h2">La cercanía al original</h2>
         <p className="vx-idea-p">
-          En el diagrama, entre el vídeo 1 y el 3, ilustramos el objetivo: máximo parecido.
-          No es una nota automática; es la promesa del producto. El trabajo de este software
-          es hacer el texto del medio tan rico que esa cercanía sea posible.
+          Arriba, el original y el generado se miran de frente. La barra del medio no es una
+          nota automática: es el objetivo. El trabajo de este software es hacer el texto del
+          centro tan rico que esa cercanía sea posible.
         </p>
       </section>
     </div>
@@ -71,76 +79,109 @@ export function IdeaView() {
 }
 
 /**
- * Diagrama:
- * - Desktop: triángulo invertido (1 — cercanía — 3 / 2 abajo)
- * - Móvil: flujo vertical 1 → Studio → 2 → Generador externo → 3 → cercanía
+ * Desktop:
+ *   [Original] —— cercanía —— [Generado]
+ *       │                          ▲
+ *   [VX Studio]              [Generador IA]
+ *       │                          │
+ *       └──── [Texto extracción] ──┘
+ *
+ * Móvil: flujo vertical con cercanía al final.
  */
 export function RecreationDiagram() {
   return (
     <section aria-label="De vídeo a texto a vídeo generado" className="vx-loop vx-loop--embedded">
-      {/* —— Desktop: triángulo —— */}
-      <div className="vx-loop-desk" aria-hidden="false">
-        <div className="vx-loop-desk-top">
+      {/* —— Desktop —— */}
+      <div className="vx-loop-desk">
+        <div className="vx-pair">
           <Node
             step="1"
             title="Vídeo original"
-            copy="El clip que subes o importas por link"
+            copy="El clip que subes o importas"
             illu={<VideoFrameIllustration variant="origin" />}
           />
           <FidelityBridge />
           <Node
-            step="3"
+            step="5"
             title="Vídeo generado"
-            copy="Fuera de este Studio · texto → vídeo IA"
+            copy="Recreado fuera de este Studio"
             badge="Externo"
             illu={<VideoFrameIllustration variant="generated" />}
           />
         </div>
 
-        <div className="vx-loop-desk-rails" aria-hidden="true">
-          <div className="vx-loop-desk-rail vx-loop-desk-rail--left">
-            <span className="vx-loop-rail-tag">Video Extraction Studio</span>
-            <span className="vx-loop-rail-sub">vídeo → texto</span>
-          </div>
-          <div className="vx-loop-desk-rail vx-loop-desk-rail--right">
-            <span className="vx-loop-rail-tag">Generador IA (externo)</span>
-            <span className="vx-loop-rail-sub">texto → vídeo</span>
-          </div>
+        <div className="vx-pair-down" aria-hidden="true">
+          <span className="vx-pair-down-line" />
+          <span className="vx-pair-down-line vx-pair-down-line--right" />
+        </div>
+
+        <div className="vx-engines">
+          <Node
+            step="2"
+            title="Video Extraction Studio"
+            copy="Este software · vídeo → texto"
+            illu={<StudioAppIllustration />}
+          />
+          <Node
+            step="4"
+            title="Generador de vídeo IA"
+            copy="Herramienta externa · texto → vídeo"
+            badge="Externo"
+            illu={<AiGeneratorIllustration />}
+          />
+        </div>
+
+        <div className="vx-engines-join" aria-hidden="true">
+          <span className="vx-engines-join-line" />
+          <span className="vx-engines-join-line vx-engines-join-line--right" />
         </div>
 
         <Node
-          step="2"
+          step="3"
           title="Texto de extracción"
-          copy="JSON denso: planos, habla, pantalla, escena, audio… para recrear"
+          copy="JSON denso: planos, habla, pantalla, escena, audio… el puente"
           className="vx-loop-node--text"
           illu={<TextDossierIllustration />}
         />
       </div>
 
-      {/* —— Móvil: flujo vertical —— */}
+      {/* —— Móvil —— */}
       <div className="vx-loop-mob">
         <Node
           step="1"
           title="Vídeo original"
-          copy="El clip que subes o importas por link"
+          copy="El clip que subes o importas"
           layout="row"
           illu={<VideoFrameIllustration variant="origin" size="sm" />}
         />
-
-        <FlowArrow label="Video Extraction Studio" sub="vídeo → texto" />
-
+        <FlowArrow label="entra en" />
         <Node
           step="2"
+          title="Video Extraction Studio"
+          copy="Este software · vídeo → texto"
+          layout="row"
+          illu={<StudioAppIllustration size="sm" />}
+        />
+        <FlowArrow label="produce" />
+        <Node
+          step="3"
           title="Texto de extracción"
-          copy="JSON denso pensado para recrear el clip"
+          copy="JSON denso para recrear el clip"
           layout="row"
           illu={<TextDossierIllustration size="sm" />}
         />
-
-        <FlowArrow label="Generador IA (externo)" sub="texto → vídeo · fuera de este Studio" />
-
+        <FlowArrow label="si se inyecta en" sub="fuera de este Studio" />
         <Node
-          step="3"
+          step="4"
+          title="Generador de vídeo IA"
+          copy="Herramienta externa · texto → vídeo"
+          badge="Externo"
+          layout="row"
+          illu={<AiGeneratorIllustration size="sm" />}
+        />
+        <FlowArrow label="puede dar" />
+        <Node
+          step="5"
           title="Vídeo generado"
           copy="Recreado a partir del texto"
           badge="Externo"
@@ -156,7 +197,7 @@ export function RecreationDiagram() {
             <VideoFrameIllustration variant="generated" size="xs" />
           </div>
           <p className="vx-loop-fidelity-hint">
-            Cuanto más rico el texto (2), más cerca puede quedar el 3 del 1
+            Cuanto más rico el texto (3), más cerca puede quedar el 5 del 1
           </p>
         </div>
       </div>
@@ -198,13 +239,13 @@ function Node({
   );
 }
 
-function FlowArrow({ label, sub }: { label: string; sub: string }) {
+function FlowArrow({ label, sub }: { label: string; sub?: string }) {
   return (
     <div className="vx-flow-arrow" aria-hidden="true">
       <div className="vx-flow-arrow-line" />
       <div className="vx-flow-arrow-text">
         <span className="vx-loop-rail-tag">{label}</span>
-        <span className="vx-loop-rail-sub">{sub}</span>
+        {sub ? <span className="vx-loop-rail-sub">{sub}</span> : null}
       </div>
       <div className="vx-flow-arrow-line" />
     </div>
@@ -256,23 +297,18 @@ function VideoFrameIllustration({
         />
         <rect x="32" y="12" width="32" height="5" rx="2.5" fill="currentColor" opacity="0.18" />
         <rect x="14" y="26" width="68" height="108" rx="5" fill={`url(#screen-${uid})`} />
-
-        {/* cielo / fondo */}
         <path
           d="M14 26 H82 V70 Q48 78 14 70 Z"
           fill="currentColor"
           opacity={isGen ? 0.06 : 0.08}
         />
-        {/* sol / luz */}
         <circle cx="68" cy="40" r="7" fill="currentColor" opacity={isGen ? 0.12 : 0.2} />
-        {/* figura */}
         <circle cx="48" cy="62" r="11" fill="currentColor" opacity={isGen ? 0.16 : 0.32} />
         <path
           d="M28 118 C32 92 64 92 68 118 Z"
           fill="currentColor"
           opacity={isGen ? 0.12 : 0.26}
         />
-        {/* suelo */}
         <rect
           x="14"
           y="118"
@@ -281,10 +317,8 @@ function VideoFrameIllustration({
           fill="currentColor"
           opacity={isGen ? 0.05 : 0.08}
         />
-
         {isGen ? (
           <>
-            {/* trazo “reconstruido” */}
             <rect
               x="14"
               y="26"
@@ -303,13 +337,6 @@ function VideoFrameIllustration({
               strokeDasharray="2 3"
               opacity="0.3"
             />
-            <path
-              d="M26 96 H70"
-              stroke="currentColor"
-              strokeWidth="1"
-              strokeDasharray="2 3"
-              opacity="0.22"
-            />
           </>
         ) : (
           <g opacity="0.7">
@@ -317,7 +344,6 @@ function VideoFrameIllustration({
             <polygon points="44,72 56,78 44,84" fill="currentColor" opacity="0.75" />
           </g>
         )}
-
         <rect x="40" y="142" width="16" height="4" rx="2" fill="currentColor" opacity="0.22" />
         <defs>
           <linearGradient id={`screen-${uid}`} x1="14" y1="26" x2="82" y2="134">
@@ -325,6 +351,119 @@ function VideoFrameIllustration({
             <stop offset="1" stopColor={isGen ? "#3d6f99" : "#2a3340"} stopOpacity="0.2" />
           </linearGradient>
         </defs>
+      </svg>
+    </div>
+  );
+}
+
+/** Ilustración del propio Studio (ventana VX). */
+function StudioAppIllustration({ size = "md" }: { size?: "sm" | "md" }) {
+  return (
+    <div className={`vx-illu-app vx-illu-app--${size}`} aria-hidden="true">
+      <svg viewBox="0 0 148 112" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect
+          x="2"
+          y="2"
+          width="144"
+          height="108"
+          rx="12"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          className="vx-illu-stroke"
+        />
+        <rect x="2" y="2" width="144" height="22" rx="12" fill="currentColor" opacity="0.06" />
+        <rect x="2" y="18" width="144" height="6" fill="currentColor" opacity="0.06" />
+        <circle cx="16" cy="13" r="3" fill="currentColor" opacity="0.25" />
+        <circle cx="26" cy="13" r="3" fill="currentColor" opacity="0.18" />
+        <circle cx="36" cy="13" r="3" fill="currentColor" opacity="0.12" />
+        <rect x="58" y="10" width="32" height="6" rx="2" fill="currentColor" opacity="0.35" />
+        <text
+          x="64"
+          y="15"
+          fill="currentColor"
+          opacity="0.7"
+          fontSize="7"
+          fontFamily="ui-sans-serif, system-ui, sans-serif"
+          fontWeight="700"
+        >
+          VX
+        </text>
+        {/* sidebar */}
+        <rect x="10" y="32" width="18" height="68" rx="4" fill="currentColor" opacity="0.07" />
+        <rect x="14" y="38" width="10" height="6" rx="1.5" fill="currentColor" opacity="0.25" />
+        <rect x="14" y="50" width="10" height="6" rx="1.5" fill="currentColor" opacity="0.15" />
+        <rect x="14" y="62" width="10" height="6" rx="1.5" fill="currentColor" opacity="0.15" />
+        {/* content → text lines emerging */}
+        <rect x="38" y="34" width="48" height="36" rx="4" fill="currentColor" opacity="0.08" />
+        <polygon points="54,46 66,52 54,58" fill="currentColor" opacity="0.4" />
+        <rect x="96" y="34" width="42" height="8" rx="2" fill="currentColor" opacity="0.45" />
+        <rect x="96" y="48" width="42" height="3.5" rx="1" fill="currentColor" opacity="0.2" />
+        <rect x="96" y="56" width="36" height="3.5" rx="1" fill="currentColor" opacity="0.16" />
+        <rect x="96" y="64" width="40" height="3.5" rx="1" fill="currentColor" opacity="0.16" />
+        <path
+          d="M86 52 H96"
+          stroke="currentColor"
+          strokeWidth="1.2"
+          strokeDasharray="2 2"
+          opacity="0.4"
+        />
+        <rect x="38" y="80" width="100" height="18" rx="4" fill="currentColor" opacity="0.06" />
+        <rect x="46" y="86" width="28" height="6" rx="2" fill="currentColor" opacity="0.28" />
+        <rect x="80" y="86" width="48" height="6" rx="2" fill="currentColor" opacity="0.14" />
+      </svg>
+    </div>
+  );
+}
+
+/** Ilustración de un generador IA externo. */
+function AiGeneratorIllustration({ size = "md" }: { size?: "sm" | "md" }) {
+  return (
+    <div className={`vx-illu-genai vx-illu-genai--${size}`} aria-hidden="true">
+      <svg viewBox="0 0 148 112" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect
+          x="2"
+          y="2"
+          width="144"
+          height="108"
+          rx="12"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeDasharray="4 3"
+          className="vx-illu-stroke"
+        />
+        <rect x="14" y="14" width="70" height="10" rx="3" fill="currentColor" opacity="0.12" />
+        <rect x="14" y="14" width="70" height="10" rx="3" stroke="currentColor" strokeWidth="1" opacity="0.25" />
+        <rect x="18" y="17" width="40" height="4" rx="1.5" fill="currentColor" opacity="0.28" />
+        <rect x="14" y="32" width="70" height="4" rx="1.5" fill="currentColor" opacity="0.16" />
+        <rect x="14" y="40" width="58" height="4" rx="1.5" fill="currentColor" opacity="0.14" />
+        <rect x="14" y="48" width="64" height="4" rx="1.5" fill="currentColor" opacity="0.14" />
+        {/* spark / generate */}
+        <circle cx="112" cy="42" r="22" fill="currentColor" opacity="0.07" />
+        <path
+          d="M112 24 L115 36 L127 39 L115 42 L112 54 L109 42 L97 39 L109 36 Z"
+          fill="currentColor"
+          opacity="0.45"
+        />
+        <path
+          d="M84 42 H90"
+          stroke="currentColor"
+          strokeWidth="1.2"
+          strokeDasharray="2 2"
+          opacity="0.4"
+        />
+        {/* output phone thumbnail */}
+        <rect
+          x="98"
+          y="70"
+          width="36"
+          height="28"
+          rx="5"
+          stroke="currentColor"
+          strokeWidth="1.2"
+          opacity="0.55"
+        />
+        <circle cx="116" cy="82" r="5" fill="currentColor" opacity="0.18" />
+        <polygon points="114,79 120,82 114,85" fill="currentColor" opacity="0.5" />
       </svg>
     </div>
   );
@@ -345,12 +484,26 @@ function TextDossierIllustration({ size = "md" }: { size?: "sm" | "md" }) {
           className="vx-illu-stroke"
         />
         <rect x="16" y="16" width="64" height="9" rx="2.5" fill="currentColor" opacity="0.55" />
-        <text x="16" y="42" fill="currentColor" opacity="0.45" fontSize="9" fontFamily="ui-monospace, monospace">
+        <text
+          x="16"
+          y="42"
+          fill="currentColor"
+          opacity="0.45"
+          fontSize="9"
+          fontFamily="ui-monospace, monospace"
+        >
           00:00 · plano medio
         </text>
         <rect x="16" y="50" width="188" height="4" rx="1.5" fill="currentColor" opacity="0.2" />
         <rect x="16" y="60" width="172" height="4" rx="1.5" fill="currentColor" opacity="0.18" />
-        <text x="16" y="80" fill="currentColor" opacity="0.45" fontSize="9" fontFamily="ui-monospace, monospace">
+        <text
+          x="16"
+          y="80"
+          fill="currentColor"
+          opacity="0.45"
+          fontSize="9"
+          fontFamily="ui-monospace, monospace"
+        >
           00:04 · habla · S1
         </text>
         <rect x="16" y="88" width="188" height="4" rx="1.5" fill="currentColor" opacity="0.2" />
