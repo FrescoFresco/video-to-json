@@ -74,6 +74,12 @@ export const summaryModule: ExtractionModuleDefinition = {
       for (const line of takeLines(visual, 2)) parts.push(`- ${line}`);
     }
 
+    const reasoning = byId.get("ai_reasoning");
+    if (reasoning?.status === "ok" && reasoning.items.length) {
+      parts.push(`Razonamiento IA: ${reasoning.summary}.`);
+      for (const line of takeLines(reasoning, 3)) parts.push(`- ${line}`);
+    }
+
     const ambiance = byId.get("music_ambiance");
     if (ambiance?.status === "ok") {
       parts.push(`Música y ambiente: ${ambiance.summary}.`);

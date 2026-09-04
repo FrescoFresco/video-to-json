@@ -36,9 +36,17 @@ RECREATION_QUERIES = {
         "Describe visible faces: expression, emotion, gaze, age range if clear, "
         "and how close the face is in the frame. If no face, say so."
     ),
+    "camera_angle": (
+        "Describe the camera: angle (eye-level, high, low), distance "
+        "(close-up, medium, wide), movement feel, and composition."
+    ),
     "mood": (
         "What is the mood and cinematic feel? Lighting quality, color tone, "
         "energy level, and anything useful to recreate the shot."
+    ),
+    "recreate": (
+        "In 3 short bullet-like sentences, say how to recreate this exact shot: "
+        "who/what to place, how to frame, and what action or emotion to hit."
     ),
 }
 
@@ -99,7 +107,9 @@ def observe_image(model, image: Image.Image) -> dict:
         ("setting", "Lugar"),
         ("people_actions", "Acciones"),
         ("faces_emotion", "Caras/emoción"),
+        ("camera_angle", "Cámara"),
         ("mood", "Ambiente"),
+        ("recreate", "Recrear"),
     ):
         val = recreation.get(key)
         if val and val.lower() not in text.lower():

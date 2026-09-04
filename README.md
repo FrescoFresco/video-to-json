@@ -51,9 +51,11 @@ También puedes usar webhook (Make/n8n) si prefieres otro destino.
 - Sin tope de cantidad: todo entra en cola y se procesa por lotes (`VX_MAX_CONCURRENT`).
 - La API acepta listas grandes de archivos o links; el cliente parte las subidas HTTP en tandas si hace falta.
 - Pipeline por **módulos** registrados (mismo contrato para todos).
-- **Caras y encuadre** (OpenCV): rostros, escala de plano y pistas simples de boca.
+- **Caras y encuadre** (OpenCV YuNet): rostros, escala de plano y pistas simples de boca.
 - **Pose y acciones** (YOLOv8n-pose): postura corporal y gestos aproximados.
-- Observación visual con preguntas extra de recreación (lugar, acciones, caras/emoción, ambiente).
+- Observación visual con preguntas extra de recreación (lugar, acciones, caras/emoción, cámara, ambiente).
+- **Razonamiento IA**: une el dossier y razona un plan de recreación (+ VLM en fotogramas clave).
+- Diarización reforzada: Whisper `small` + atribución por palabra + WeSpeaker.
 - Muestreo temporal más denso en objetos/caras/pose.
 - Diarización con `diarize` (Silero + WeSpeaker): gratis, local, **sin token ni API de pago**.
 - **Música y ambiente** local (`librosa`): energía, ritmo/BPM si es claro, brillo del audio por pasajes. No identifica canciones.
@@ -134,7 +136,9 @@ Vídeos cortos: minutos en CPU. Largos o con visión: más tiempo. Un portátil 
 
 | Variable | Por defecto | Uso |
 | --- | --- | --- |
-| `WHISPER_MODEL` | `base` | Modelo Whisper (`tiny`, `base`, `small`…) |
+| `WHISPER_MODEL` | `small` | Modelo Whisper (`tiny`, `base`, `small`…). `small` mejora diarización. |
+| `WHISPER_BEAM_SIZE` | `5` | Beam de Whisper (más = mejor y más lento). |
+| `DIARIZE_MIN_SPEAKERS` / `DIARIZE_MAX_SPEAKERS` | `1` / `8` | Rango de hablantes para WeSpeaker. |
 | `VIDEO_PYTHON` | `video-py/bin/python` | Interprete Python del pipeline |
 | `VISION_MAX_FRAMES` | `6` | Máx. fotogramas a observar (CPU) |
 | `WEBHOOK_URL` | _(vacío)_ | URL por defecto si no hay config en disco |

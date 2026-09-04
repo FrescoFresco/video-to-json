@@ -1481,6 +1481,7 @@ function DocsView({ onOpenSettings }: { onOpenSettings: () => void }) {
 │   ├── visual_observation
 │   ├── music_ambiance
 │   ├── audio_events
+│   ├── ai_reasoning
 │   └── summary
 │         └── cada uno: { status, items, data, … }
 ├── timeline[]           ← todas las filas ordenadas por tiempo

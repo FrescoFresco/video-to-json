@@ -119,7 +119,7 @@ export async function transcribeVideoSpeech(
       if (/does not contain any stream/i.test(msg)) {
         return {
           engine: "faster-whisper",
-          model: process.env.WHISPER_MODEL || "base",
+          model: process.env.WHISPER_MODEL || "small",
           language: null,
           speakers: [],
           speaker_count: 0,
@@ -138,13 +138,17 @@ export async function transcribeVideoSpeech(
       "Falta el entorno Python del pipeline. Ejecuta ./install.sh en la raiz del proyecto."
     );
   }
-  const model = process.env.WHISPER_MODEL || "base";
+  // `small` mejora diarización/transcripción en CPU; override con WHISPER_MODEL.
+  const model = process.env.WHISPER_MODEL || "small";
   await execFileAsync(python, [script, wavPath, model, outJson], {
-    timeout: 240000,
-    maxBuffer: 8 * 1024 * 1024,
+    timeout: 480000,
+    maxBuffer: 16 * 1024 * 1024,
     env: {
       ...process.env,
       HF_HUB_DISABLE_TELEMETRY: "1",
+      WHISPER_BEAM_SIZE: process.env.WHISPER_BEAM_SIZE || "5",
+      DIARIZE_MIN_SPEAKERS: process.env.DIARIZE_MIN_SPEAKERS || "1",
+      DIARIZE_MAX_SPEAKERS: process.env.DIARIZE_MAX_SPEAKERS || "8",
     },
   });
   const raw = await readFile(outJson, "utf8");
@@ -635,4 +639,65 @@ export async function analyzeAudioEvents(
     },
   });
   return JSON.parse(await readFile(outJson, "utf8")) as AudioEventsResult;
+}
+
+export type RecreationReasoningResult = {
+  engine: string;
+  model?: string;
+  device?: string;
+  local?: {
+    brief_text?: string;
+    recreation_plan?: string[];
+    gaps?: string[];
+    dialogue_turns?: number;
+    speaker_changes?: number;
+  };
+  frame_insights?: unknown[];
+  items: Array<{
+    text: string;
+    start_ms: number;
+    end_ms: number;
+    label?: string;
+    role?: string;
+  }>;
+  vlm_error?: string;
+  error?: string;
+};
+
+/** Razonamiento de recreación: hechos del dossier + VLM en fotogramas clave. */
+export async function readRecreationReasoning(
+  facts: Record<string, unknown>,
+  factsPath: string,
+  outJson: string,
+  frames?: { path: string; start_ms: number; end_ms: number }[],
+  framesManifestPath?: string
+): Promise<RecreationReasoningResult> {
+  const python = resolvePythonBin();
+  const script = path.join(process.cwd(), "scripts", "from_video_reason.py");
+  if (!existsSync(/*turbopackIgnore: true*/ python)) {
+    throw new Error(
+      "Falta el entorno Python del pipeline. Ejecuta ./install.sh en la raiz del proyecto."
+    );
+  }
+  if (!existsSync(/*turbopackIgnore: true*/ script)) {
+    throw new Error("Falta scripts/from_video_reason.py");
+  }
+
+  await writeFile(factsPath, JSON.stringify(facts), "utf8");
+  const args = [script, factsPath, outJson];
+  if (frames && framesManifestPath) {
+    await writeFile(framesManifestPath, JSON.stringify({ frames }), "utf8");
+    args.push(framesManifestPath);
+  }
+
+  await execFileAsync(python, args, {
+    timeout: 900000,
+    maxBuffer: 16 * 1024 * 1024,
+    env: {
+      ...process.env,
+      HF_HUB_DISABLE_TELEMETRY: "1",
+      REASON_MAX_FRAMES: process.env.REASON_MAX_FRAMES || "4",
+    },
+  });
+  return JSON.parse(await readFile(outJson, "utf8")) as RecreationReasoningResult;
 }
