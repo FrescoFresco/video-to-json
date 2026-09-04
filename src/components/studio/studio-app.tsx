@@ -7,6 +7,7 @@ import {
   Check,
   Download,
   Home,
+  Lightbulb,
   RotateCcw,
   Search,
   Settings,
@@ -22,7 +23,7 @@ import { isLinkListFilename, readLinksFromFile } from "@/lib/ingest-links";
 import { useStudio } from "@/lib/store";
 import type { ExtractionModule, JobStatus, StoredVideo, ViewName } from "@/lib/types";
 import { isVideoFile } from "@/lib/video-file";
-import { RecreationDiagram } from "@/components/studio/recreation-diagram";
+import { IdeaView } from "@/components/studio/recreation-diagram";
 
 function downloadJson(name: string, obj: unknown) {
   const blob = new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" });
@@ -154,6 +155,7 @@ export function StudioApp() {
         </div>
         <div className="grid justify-items-center gap-1">
           {nav("home", <Home className="size-[17px]" />, "Inicio")}
+          {nav("idea", <Lightbulb className="size-[17px]" />, "La idea")}
           {nav("videos", <Video className="size-[17px]" />, "Vídeos")}
           {nav("docs", <BookOpen className="size-[17px]" />, "Docs")}
           {nav("settings", <Settings className="size-[17px]" />, "Ajustes")}
@@ -163,6 +165,7 @@ export function StudioApp() {
       <main className="min-w-0 overflow-x-hidden px-4 py-5 pb-[calc(5.75rem+env(safe-area-inset-bottom))] md:px-[clamp(22px,3vw,42px)] md:py-[clamp(22px,3vw,42px)] md:pb-[clamp(22px,3vw,42px)]">
         <div className="mx-auto w-full min-w-0 max-w-[1080px]">
           {s.view === "home" && <HomeView />}
+          {s.view === "idea" && <IdeaView />}
           {s.view === "videos" && <VideosView />}
           {s.view === "video-detail" && activeVideo && <VideoDetail video={activeVideo} />}
           {s.view === "docs" && <DocsView onOpenSettings={() => s.setView("settings")} />}
@@ -170,14 +173,15 @@ export function StudioApp() {
         </div>
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-[#e7e7eb] bg-[#fbfbfc] px-1.5 pb-[calc(6px+env(safe-area-inset-bottom))] pt-1.5 md:hidden">
-        <div className="grid grid-cols-4 gap-0.5">
+      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-[#e7e7eb] bg-[#fbfbfc] px-1 pb-[calc(6px+env(safe-area-inset-bottom))] pt-1.5 md:hidden">
+        <div className="grid grid-cols-5 gap-0.5">
           {(
             [
-              ["home", "Inicio", <Home key="h" className="size-[18px]" />],
-              ["videos", "Vídeos", <Video key="v" className="size-[18px]" />],
-              ["docs", "Docs", <BookOpen key="d" className="size-[18px]" />],
-              ["settings", "Ajustes", <Settings key="s" className="size-[18px]" />],
+              ["home", "Inicio", <Home key="h" className="size-[17px]" />],
+              ["idea", "Idea", <Lightbulb key="i" className="size-[17px]" />],
+              ["videos", "Vídeos", <Video key="v" className="size-[17px]" />],
+              ["docs", "Docs", <BookOpen key="d" className="size-[17px]" />],
+              ["settings", "Ajustes", <Settings key="s" className="size-[17px]" />],
             ] as const
           ).map(([view, label, icon]) => {
             const active =
@@ -187,12 +191,12 @@ export function StudioApp() {
                 key={view}
                 type="button"
                 onClick={() => s.setView(view)}
-                className={`grid min-h-12 place-items-center gap-0.5 rounded-[9px] px-1 ${
+                className={`grid min-h-12 place-items-center gap-0.5 rounded-[9px] px-0.5 ${
                   active ? "bg-[#f5f5f7] text-[#171719]" : "text-[#75757d]"
                 }`}
               >
                 {icon}
-                <span className="text-[10px] leading-none font-medium">{label}</span>
+                <span className="text-[9.5px] leading-none font-medium">{label}</span>
               </button>
             );
           })}
@@ -244,7 +248,7 @@ function HomeView() {
 
   return (
     <div className="vx-home-hero -mx-4 px-4 py-2 md:-mx-[clamp(22px,3vw,42px)] md:px-[clamp(22px,3vw,42px)] md:py-4">
-      <div className="mx-auto grid max-w-[820px] gap-10 py-10 md:gap-12 md:py-16">
+      <div className="mx-auto grid max-w-[720px] gap-10 py-10 md:gap-12 md:py-16">
         <div className="vx-home-fade max-w-[34rem]">
           <p className="vx-home-brand m-0 text-[clamp(34px,9vw,64px)] leading-[0.92] text-[#171719]">
             Video Extraction
@@ -422,8 +426,6 @@ function HomeView() {
             </div>
           </div>
         )}
-
-        <RecreationDiagram />
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 export type JobStatus = "queued" | "processing" | "ready" | "error";
 
-export type ViewName = "home" | "videos" | "video-detail" | "docs" | "settings";
+export type ViewName = "home" | "idea" | "videos" | "video-detail" | "docs" | "settings";
 
 /** Salida cruda de Whisper (interna al módulo speech). */
 export type VideoSpeech = {
