@@ -6,7 +6,7 @@ import type { ExtractionModuleDefinition, ModuleContext } from "./types";
 export const objectsPeopleModule: ExtractionModuleDefinition = {
   id: "objects_people",
   title: "Objetos y personas",
-  stage: "Detectando objetos y personas",
+  stage: "Detectando y describiendo objetos",
   async run(ctx: ModuleContext): Promise<ExtractionModule> {
     const framesDir = path.join(ctx.workDir, "object-frames");
     const manifestPath = path.join(ctx.workDir, "object-frames.json");
@@ -34,15 +34,20 @@ export const objectsPeopleModule: ExtractionModuleDefinition = {
         .slice(0, 4)
         .map(([k, v]) => `${v}× ${k}`)
         .join(", ");
+      const described = detected.vlm_described || 0;
+      const summary =
+        items.length === 0
+          ? "Nada detectado"
+          : described > 0
+            ? `${countBits || `${items.length} pistas`} · ${described} descritas`
+            : countBits || `${items.length} pistas`;
 
       return {
         id: "objects_people",
         title: "Objetos y personas",
         engine: detected.engine,
         status: items.length > 0 ? "ok" : "empty",
-        summary:
-          items.length === 0 ? "Nada detectado" :
-          countBits || `${items.length} pistas`,
+        summary,
         items,
         data: detected,
       };

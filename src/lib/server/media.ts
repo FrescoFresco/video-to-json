@@ -312,7 +312,9 @@ export async function readVisualObservations(
 export type ObjectDetectionResult = {
   engine: string;
   model?: string;
+  vision_model?: string | null;
   frame_count: number;
+  vlm_described?: number;
   class_counts?: Record<string, number>;
   tracks?: unknown[];
   detections?: unknown[];
@@ -322,7 +324,9 @@ export type ObjectDetectionResult = {
     end_ms: number;
     role?: string;
     label?: string;
+    description?: string | null;
   }>;
+  vlm_error?: string;
   error?: string;
 };
 
@@ -343,11 +347,14 @@ export async function readObjectDetections(
   }
   await writeFile(manifestPath, JSON.stringify({ frames }), "utf8");
   await execFileAsync(python, [script, manifestPath, outJson], {
-    timeout: 300000,
+    // YOLO + Moondream (primera carga) puede tardar en CPU.
+    timeout: 900000,
     maxBuffer: 16 * 1024 * 1024,
     env: {
       ...process.env,
+      HF_HUB_DISABLE_TELEMETRY: "1",
       OBJECTS_MAX_FRAMES: process.env.OBJECTS_MAX_FRAMES || "12",
+      OBJECTS_VLM_MAX: process.env.OBJECTS_VLM_MAX || "8",
       YOLO_CONF: process.env.YOLO_CONF || "0.35",
     },
   });
