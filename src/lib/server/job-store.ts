@@ -1,4 +1,4 @@
-import { writeFile, mkdir } from "node:fs/promises";
+import { writeFile, mkdir, copyFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import type { StoredVideo, VideoJobResult } from "@/lib/types";
@@ -17,6 +17,12 @@ type JobStore = {
   loaded: boolean;
   loadPromise?: Promise<void>;
   persistTimers: Map<string, ReturnType<typeof setTimeout>>;
+};
+
+type EnqueueOptions = {
+  webhookUrl?: string | null;
+  onReady?: (result: VideoJobResult, job: JobRecord) => Promise<void> | void;
+  onError?: (error: string, job: JobRecord) => Promise<void> | void;
 };
 
 const globalForJobs = globalThis as typeof globalThis & {
@@ -73,7 +79,6 @@ function schedulePersist(job: JobRecord, immediate = false) {
     return;
   }
 
-  // Progreso frecuente: no saturar disco.
   store.persistTimers.set(job.id, setTimeout(write, 400));
 }
 
@@ -106,27 +111,24 @@ export async function getJobResult(id: string): Promise<VideoJobResult | null> {
   return getStore().jobs.get(id)?.result ?? null;
 }
 
-export async function createJobFromUpload(
-  file: File,
-  options?: { webhookUrl?: string | null }
+async function enqueueVideoJob(
+  filename: string,
+  tempPath: string,
+  options?: EnqueueOptions
 ): Promise<StoredVideo> {
   await ensureLoaded();
   const id = createId();
   const createdAt = new Date().toISOString();
-  const dir = path.join(os.tmpdir(), "vx-jobs");
-  await mkdir(dir, { recursive: true });
-  const tempPath = path.join(dir, `${id}-${file.name.replace(/[^\w.-]+/g, "_")}`);
-  await writeFile(tempPath, Buffer.from(await file.arrayBuffer()));
   const webhookUrl = options?.webhookUrl?.trim() || null;
 
   const job: JobRecord = {
     id,
-    name: file.name,
+    name: filename,
     createdAt,
     status: "queued",
     progress: 5,
     stage: "En espera",
-    activity: [{ time: clock(), title: "Archivo recibido", detail: file.name, status: "ready" }],
+    activity: [{ time: clock(), title: "Archivo recibido", detail: filename, status: "ready" }],
   };
 
   getStore().jobs.set(id, job);
@@ -149,7 +151,7 @@ export async function createJobFromUpload(
     },
     run: async () => {
       try {
-        const result = await processVideoFile(tempPath, file.name, (progress, stage) => {
+        const result = await processVideoFile(tempPath, filename, (progress, stage) => {
           const current = getStore().jobs.get(id);
           if (!current) return;
           updateJob(id, {
@@ -189,6 +191,11 @@ export async function createJobFromUpload(
 
         const readyJob = getStore().jobs.get(id);
         if (!readyJob) return;
+        try {
+          await options?.onReady?.(result, readyJob);
+        } catch {
+          // El callback de carpeta no debe tumbar el job.
+        }
         const delivery = await deliverWebhook({
           event: "job.ready",
           job: readyJob,
@@ -215,19 +222,20 @@ export async function createJobFromUpload(
           );
         }
       } catch (error) {
+        const message = error instanceof Error ? error.message : "No se pudo procesar el vídeo";
         updateJob(
           id,
           {
             status: "error",
             progress: 100,
             stage: "Error",
-            error: error instanceof Error ? error.message : "No se pudo procesar el vídeo",
+            error: message,
             activity: [
               ...(getStore().jobs.get(id)?.activity ?? []),
               {
                 time: clock(),
                 title: "Procesamiento",
-                detail: error instanceof Error ? error.message : "No se pudo procesar el vídeo",
+                detail: message,
                 status: "error",
               },
             ],
@@ -237,6 +245,11 @@ export async function createJobFromUpload(
 
         const failedJob = getStore().jobs.get(id);
         if (!failedJob) return;
+        try {
+          await options?.onError?.(message, failedJob);
+        } catch {
+          // ignore
+        }
         const delivery = await deliverWebhook({
           event: "job.error",
           job: failedJob,
@@ -266,6 +279,31 @@ export async function createJobFromUpload(
   });
 
   return (await getJob(id)) as StoredVideo;
+}
+
+export async function createJobFromUpload(
+  file: File,
+  options?: { webhookUrl?: string | null }
+): Promise<StoredVideo> {
+  const dir = path.join(os.tmpdir(), "vx-jobs");
+  await mkdir(dir, { recursive: true });
+  const idHint = createId();
+  const tempPath = path.join(dir, `${idHint}-${file.name.replace(/[^\w.-]+/g, "_")}`);
+  await writeFile(tempPath, Buffer.from(await file.arrayBuffer()));
+  return enqueueVideoJob(file.name, tempPath, options);
+}
+
+/** Encola un vídeo ya presente en disco (carpeta inbox / Drive Desktop). */
+export async function createJobFromLocalPath(
+  filePath: string,
+  options?: EnqueueOptions & { displayName?: string }
+): Promise<StoredVideo> {
+  const filename = options?.displayName || path.basename(filePath);
+  const dir = path.join(os.tmpdir(), "vx-jobs");
+  await mkdir(dir, { recursive: true });
+  const tempPath = path.join(dir, `${createId()}-${filename.replace(/[^\w.-]+/g, "_")}`);
+  await copyFile(/*turbopackIgnore: true*/ filePath, /*turbopackIgnore: true*/ tempPath);
+  return enqueueVideoJob(filename, tempPath, options);
 }
 
 export async function clearJobs() {

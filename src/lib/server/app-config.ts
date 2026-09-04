@@ -5,11 +5,20 @@ export type AppConfig = {
   webhookUrl: string;
   /** Cabecera opcional Authorization (ej. Bearer xxx). */
   webhookSecret: string;
+  /** Carpeta de entrada: vídeos nuevos se procesan solos (útil con Google Drive Desktop). */
+  inboxPath: string;
+  /** Carpeta de salida: aquí se escriben los JSON. */
+  outboxPath: string;
+  /** Si true, vigila la carpeta inbox. */
+  inboxEnabled: boolean;
 };
 
 const DEFAULT_CONFIG: AppConfig = {
   webhookUrl: "",
   webhookSecret: "",
+  inboxPath: "",
+  outboxPath: "",
+  inboxEnabled: false,
 };
 
 function configPath() {
@@ -27,6 +36,9 @@ export async function readAppConfig(): Promise<AppConfig> {
       webhookUrl: typeof parsed.webhookUrl === "string" ? parsed.webhookUrl.trim() : "",
       webhookSecret:
         typeof parsed.webhookSecret === "string" ? parsed.webhookSecret.trim() : "",
+      inboxPath: typeof parsed.inboxPath === "string" ? parsed.inboxPath.trim() : "",
+      outboxPath: typeof parsed.outboxPath === "string" ? parsed.outboxPath.trim() : "",
+      inboxEnabled: Boolean(parsed.inboxEnabled),
     };
   } catch {
     const fromEnv = (process.env.WEBHOOK_URL || "").trim();
@@ -34,6 +46,9 @@ export async function readAppConfig(): Promise<AppConfig> {
       ...DEFAULT_CONFIG,
       webhookUrl: fromEnv,
       webhookSecret: (process.env.WEBHOOK_SECRET || "").trim(),
+      inboxPath: (process.env.VX_INBOX || "").trim(),
+      outboxPath: (process.env.VX_OUTBOX || "").trim(),
+      inboxEnabled: process.env.VX_INBOX_ENABLED === "1" || Boolean(process.env.VX_INBOX),
     };
   }
 }
@@ -47,6 +62,12 @@ export async function writeAppConfig(patch: Partial<AppConfig>): Promise<AppConf
       typeof patch.webhookSecret === "string"
         ? patch.webhookSecret.trim()
         : current.webhookSecret,
+    inboxPath:
+      typeof patch.inboxPath === "string" ? patch.inboxPath.trim() : current.inboxPath,
+    outboxPath:
+      typeof patch.outboxPath === "string" ? patch.outboxPath.trim() : current.outboxPath,
+    inboxEnabled:
+      typeof patch.inboxEnabled === "boolean" ? patch.inboxEnabled : current.inboxEnabled,
   };
   const file = configPath();
   await mkdir(/*turbopackIgnore: true*/ path.dirname(file), { recursive: true });

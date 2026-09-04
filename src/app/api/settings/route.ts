@@ -9,6 +9,9 @@ export async function GET() {
   return NextResponse.json({
     webhookUrl: config.webhookUrl,
     webhookSecretSet: Boolean(config.webhookSecret),
+    inboxPath: config.inboxPath,
+    outboxPath: config.outboxPath,
+    inboxEnabled: config.inboxEnabled,
   });
 }
 
@@ -16,6 +19,9 @@ export async function PUT(request: Request) {
   const body = (await request.json().catch(() => null)) as {
     webhookUrl?: string;
     webhookSecret?: string;
+    inboxPath?: string;
+    outboxPath?: string;
+    inboxEnabled?: boolean;
   } | null;
 
   if (!body || typeof body !== "object") {
@@ -25,11 +31,17 @@ export async function PUT(request: Request) {
   const next = await writeAppConfig({
     webhookUrl: typeof body.webhookUrl === "string" ? body.webhookUrl : undefined,
     webhookSecret: typeof body.webhookSecret === "string" ? body.webhookSecret : undefined,
+    inboxPath: typeof body.inboxPath === "string" ? body.inboxPath : undefined,
+    outboxPath: typeof body.outboxPath === "string" ? body.outboxPath : undefined,
+    inboxEnabled: typeof body.inboxEnabled === "boolean" ? body.inboxEnabled : undefined,
   });
 
   return NextResponse.json({
     webhookUrl: next.webhookUrl,
     webhookSecretSet: Boolean(next.webhookSecret),
+    inboxPath: next.inboxPath,
+    outboxPath: next.outboxPath,
+    inboxEnabled: next.inboxEnabled,
   });
 }
 

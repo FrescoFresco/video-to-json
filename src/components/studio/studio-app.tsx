@@ -713,6 +713,9 @@ function SettingsView() {
   const [webhookUrl, setWebhookUrl] = useState("");
   const [webhookSecret, setWebhookSecret] = useState("");
   const [secretSet, setSecretSet] = useState(false);
+  const [inboxEnabled, setInboxEnabled] = useState(false);
+  const [inboxPath, setInboxPath] = useState("");
+  const [outboxPath, setOutboxPath] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -727,12 +730,18 @@ function SettingsView() {
         const data = (await res.json()) as {
           webhookUrl?: string;
           webhookSecretSet?: boolean;
+          inboxEnabled?: boolean;
+          inboxPath?: string;
+          outboxPath?: string;
           error?: string;
         };
         if (!res.ok) throw new Error(data.error || "No se pudo cargar ajustes");
         if (cancelled) return;
         setWebhookUrl(data.webhookUrl || "");
         setSecretSet(Boolean(data.webhookSecretSet));
+        setInboxEnabled(Boolean(data.inboxEnabled));
+        setInboxPath(data.inboxPath || "");
+        setOutboxPath(data.outboxPath || "");
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : "No se pudo cargar ajustes");
@@ -757,18 +766,27 @@ function SettingsView() {
         body: JSON.stringify({
           webhookUrl,
           ...(webhookSecret.trim() ? { webhookSecret: webhookSecret.trim() } : {}),
+          inboxEnabled,
+          inboxPath,
+          outboxPath,
         }),
       });
       const data = (await res.json()) as {
         webhookUrl?: string;
         webhookSecretSet?: boolean;
+        inboxEnabled?: boolean;
+        inboxPath?: string;
+        outboxPath?: string;
         error?: string;
       };
       if (!res.ok) throw new Error(data.error || "No se pudo guardar");
       setWebhookUrl(data.webhookUrl || "");
       setSecretSet(Boolean(data.webhookSecretSet));
       setWebhookSecret("");
-      setMessage("Webhook guardado. Se enviará al terminar cada vídeo.");
+      setInboxEnabled(Boolean(data.inboxEnabled));
+      setInboxPath(data.inboxPath || "");
+      setOutboxPath(data.outboxPath || "");
+      setMessage("Ajustes guardados.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo guardar");
     } finally {
@@ -801,9 +819,50 @@ function SettingsView() {
       <div className="min-w-0">
         <h1 className="text-[clamp(24px,2.4vw,32px)] font-semibold tracking-[-0.035em]">Ajustes</h1>
         <p className="text-sm leading-relaxed text-[#75757d]">
-          Conecta otras apps: cuando un vídeo termine, enviamos el JSON a tu URL.
+          Webhook, carpeta automática (Drive Desktop) y conexiones.
         </p>
       </div>
+
+      <section className="min-w-0 overflow-hidden rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
+        <div className="text-sm font-semibold">Carpeta automática (Google Drive)</div>
+        <p className="mt-1 text-[12.5px] leading-relaxed text-[#75757d]">
+          Con Google Drive para escritorio: sincroniza una carpeta local. El programa vigila
+          «entrada», procesa cada vídeo nuevo y deja el JSON en «salida».
+        </p>
+        {loading ? (
+          <p className="mt-4 text-sm text-[#75757d]">Cargando…</p>
+        ) : (
+          <div className="mt-4 grid min-w-0 gap-3">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={inboxEnabled}
+                onChange={(e) => setInboxEnabled(e.target.checked)}
+                className="size-4 rounded border-[#d7d7dc]"
+              />
+              <span>Activar vigilancia de carpeta</span>
+            </label>
+            <label className="grid min-w-0 gap-1.5 text-sm">
+              <span className="text-[#75757d]">Carpeta de entrada (vídeos)</span>
+              <input
+                value={inboxPath}
+                onChange={(e) => setInboxPath(e.target.value)}
+                placeholder="/Users/tú/Google Drive/VX-entrada"
+                className="h-10 w-full min-w-0 rounded-xl border border-[#d7d7dc] bg-[#fbfbfc] px-3 outline-none focus:border-[#9e9ea5]"
+              />
+            </label>
+            <label className="grid min-w-0 gap-1.5 text-sm">
+              <span className="text-[#75757d]">Carpeta de salida (JSON)</span>
+              <input
+                value={outboxPath}
+                onChange={(e) => setOutboxPath(e.target.value)}
+                placeholder="/Users/tú/Google Drive/VX-salida"
+                className="h-10 w-full min-w-0 rounded-xl border border-[#d7d7dc] bg-[#fbfbfc] px-3 outline-none focus:border-[#9e9ea5]"
+              />
+            </label>
+          </div>
+        )}
+      </section>
 
       <section className="min-w-0 overflow-hidden rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
         <div className="text-sm font-semibold">Webhook</div>
@@ -853,6 +912,10 @@ function SettingsView() {
         )}
       </section>
 
+      <EmptyCard
+        title="Cómo usar Drive"
+        body="Instala Google Drive para escritorio, elige una carpeta local de entrada y otra de salida en Ajustes, activa la vigilancia y deja el Studio encendido. Subes el vídeo a Drive → aparece en la carpeta local → sale el JSON en la de salida."
+      />
       <EmptyCard
         title="Qué recibe la otra app"
         body='Un POST JSON con event ("job.ready" o "job.error"), datos del trabajo y el bloque extraction con todos los módulos. Si subes varios vídeos, cada uno avisa cuando termina.'

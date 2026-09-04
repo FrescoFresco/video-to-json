@@ -6,9 +6,17 @@ La idea: cualquiera lo instala de un golpe, abre el navegador, sube un vídeo y 
 
 ## Instalación de un golpe
 
-### Opción A — Docker (recomendada)
+### Opción A — Lanzador nativo (recomendado si no quieres terminal)
 
-Necesitas solo [Docker Desktop](https://www.docker.com/products/docker-desktop/) (o Docker Engine + Compose).
+- **Mac:** `./scripts/build-macos-app.sh` → abre `dist/Video Extraction Studio.app`
+- **Windows:** doble clic en `desktop/windows/Launch.bat`
+- **Linux:** `./desktop/launch.sh`
+
+Detalles: [desktop/README.md](desktop/README.md).
+
+### Opción B — Docker
+
+Docker es una “caja” con el programa y sus dependencias. Necesitas [Docker Desktop](https://www.docker.com/products/docker-desktop/).
 
 ```bash
 ./install.sh
@@ -16,13 +24,7 @@ Necesitas solo [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 
 Abre [http://localhost:43141](http://localhost:43141).
 
-Equivale a:
-
-```bash
-docker compose up --build
-```
-
-### Opción B — Sin Docker (local)
+### Opción C — Sin Docker (local)
 
 Hace falta Node 20+, Python 3.12, ffmpeg y ffprobe.
 
@@ -30,7 +32,7 @@ Hace falta Node 20+, Python 3.12, ffmpeg y ffprobe.
 ./install.sh
 ```
 
-Si no detecta Docker, instala dependencias npm/Python y arranca el servidor de desarrollo en el mismo comando.
+Si no detecta Docker, instala dependencias npm/Python y arranca el servidor.
 
 Producción local:
 
@@ -38,6 +40,15 @@ Producción local:
 ./install.sh prod
 ```
 
+## Google Drive (vídeo in → JSON out)
+
+Con **Google Drive para escritorio** (carpetas locales sincronizadas):
+
+1. Carpeta de entrada + carpeta de salida en Drive.
+2. En **Ajustes** del Studio: activa vigilancia y pon las rutas locales.
+3. Deja el Studio encendido. Subes un vídeo a la entrada → el JSON aparece en la salida.
+
+También puedes usar webhook (Make/n8n) si prefieres otro destino.
 ## Qué hace hoy
 
 - Acepta vídeos (`MP4`, `MOV`, `MKV`, `WebM`).
