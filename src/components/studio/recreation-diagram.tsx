@@ -100,7 +100,6 @@ export function RecreationDiagram() {
               copy="El clip que subes o importas"
               illu={<VideoFrameIllustration variant="origin" />}
             />
-            <div className="vx-col-link" aria-hidden="true" />
             <Node
               step="2"
               title="Video Extraction Studio"
@@ -123,7 +122,6 @@ export function RecreationDiagram() {
               badge="Externo"
               illu={<VideoFrameIllustration variant="generated" />}
             />
-            <div className="vx-col-link" aria-hidden="true" />
             <Node
               step="4"
               title="Generador de vídeo IA"
@@ -132,11 +130,6 @@ export function RecreationDiagram() {
               illu={<AiGeneratorIllustration />}
             />
           </div>
-        </div>
-
-        <div className="vx-bridge-links" aria-hidden="true">
-          <span className="vx-bridge-link vx-bridge-link--left" />
-          <span className="vx-bridge-link vx-bridge-link--right" />
         </div>
 
         <Node

@@ -605,19 +605,12 @@ body {
   .vx-col {
     display: grid;
     justify-items: center;
-    gap: 0;
+    gap: 1.25rem;
   }
 
   .vx-col--mid {
     align-self: start;
     padding-top: 2.75rem; /* alinea la barra con los teléfonos (nodo 1/5) */
-  }
-
-  .vx-col-link {
-    width: 1px;
-    height: 1.15rem;
-    background: var(--vx-loop-line);
-    margin: 0.15rem 0;
   }
 
   .vx-col .vx-loop-node {
@@ -634,29 +627,10 @@ body {
     justify-content: center;
   }
 
-  .vx-bridge-links {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    height: 1.15rem;
-    margin: 0.2rem 0 0.1rem;
-  }
-
-  .vx-bridge-link {
-    width: 1px;
-    height: 100%;
-    background: var(--vx-loop-line);
-    margin-left: 25%;
-  }
-
-  .vx-bridge-link--right {
-    margin-left: auto;
-    margin-right: 25%;
-  }
-
   .vx-loop-node--text {
     justify-self: center;
     width: min(100%, 26rem);
-    margin-top: 0.1rem;
+    margin-top: 1.5rem;
   }
 
   .vx-loop-node--text figcaption {
