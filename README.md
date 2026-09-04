@@ -91,6 +91,16 @@ Crea un vídeo de prueba (persona + texto + 2 voces), lo procesa y exige que cad
 2. Regístralo en `src/lib/server/modules/index.ts`.
 3. La UI y `GET /api/jobs/:id/result` lo recogen solos — sin tocar pantallas fijas.
 
+## Requisitos del ordenador
+
+Todo corre en local (GPU opcional; este build va en CPU).
+
+**Mínimo usable:** Windows 10/11, macOS 12+ o Linux; **16 GB RAM** (8 GB va justo); CPU reciente o Apple Silicon; **15–25 GB** libres; Docker Desktop o Node + Python + ffmpeg.
+
+**Recomendado:** **32 GB RAM**, SSD con **30+ GB** libres, 6+ núcleos (o M1/M2/M3).
+
+Vídeos cortos: minutos en CPU. Largos o con visión: más tiempo. Un portátil viejo de 8 GB no es buen candidato.
+
 ## Variables útiles
 
 | Variable | Por defecto | Uso |
