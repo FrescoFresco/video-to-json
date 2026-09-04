@@ -155,9 +155,9 @@ export function StudioApp() {
         </div>
         <div className="grid justify-items-center gap-1">
           {nav("home", <Home className="size-[17px]" />, "Inicio")}
-          {nav("idea", <Lightbulb className="size-[17px]" />, "La idea")}
           {nav("videos", <Video className="size-[17px]" />, "Vídeos")}
           {nav("docs", <BookOpen className="size-[17px]" />, "Docs")}
+          {nav("idea", <Lightbulb className="size-[17px]" />, "La idea")}
           {nav("settings", <Settings className="size-[17px]" />, "Ajustes")}
         </div>
       </aside>
@@ -178,9 +178,9 @@ export function StudioApp() {
           {(
             [
               ["home", "Inicio", <Home key="h" className="size-[17px]" />],
-              ["idea", "Idea", <Lightbulb key="i" className="size-[17px]" />],
               ["videos", "Vídeos", <Video key="v" className="size-[17px]" />],
               ["docs", "Docs", <BookOpen key="d" className="size-[17px]" />],
+              ["idea", "Idea", <Lightbulb key="i" className="size-[17px]" />],
               ["settings", "Ajustes", <Settings key="s" className="size-[17px]" />],
             ] as const
           ).map(([view, label, icon]) => {
