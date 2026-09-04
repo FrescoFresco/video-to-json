@@ -594,7 +594,7 @@ function ModuleItemsList({ module }: { module: ExtractionModule }) {
 function DocsCode({ children }: { children: string }) {
   return (
     <div className="mt-3 min-w-0 max-w-full overflow-x-auto rounded-xl bg-[#151517]">
-      <pre className="m-0 min-w-0 p-3 text-[12px] leading-[1.55] text-[#e9e9ed] whitespace-pre-wrap break-all sm:p-4 sm:text-[12.5px] sm:whitespace-pre sm:break-normal">
+      <pre className="m-0 min-w-0 p-3 text-[12px] leading-[1.55] text-[#e9e9ed] whitespace-pre-wrap break-words sm:p-4 sm:text-[12.5px] sm:whitespace-pre sm:break-normal">
         <code>{children}</code>
       </pre>
     </div>
@@ -684,23 +684,23 @@ curl http://localhost:43141/api/jobs/JOB_ID/result`}</DocsCode>
         <div className="text-sm font-semibold">Endpoints útiles</div>
         <div className="mt-3 grid min-w-0 gap-2 text-sm">
           <div className="grid min-w-0 gap-1 border-t border-[#e7e7eb] py-3 first:border-t-0 md:grid-cols-[minmax(0,180px)_minmax(0,1fr)]">
-            <code className="break-all text-[12.5px]">POST /api/jobs</code>
+            <code className="break-words text-[12.5px]">POST /api/jobs</code>
             <span className="text-[#75757d]">Crear uno o varios trabajos</span>
           </div>
           <div className="grid min-w-0 gap-1 border-t border-[#e7e7eb] py-3 md:grid-cols-[minmax(0,180px)_minmax(0,1fr)]">
-            <code className="break-all text-[12.5px]">GET /api/jobs/:id</code>
+            <code className="break-words text-[12.5px]">GET /api/jobs/:id</code>
             <span className="text-[#75757d]">Estado del trabajo</span>
           </div>
           <div className="grid min-w-0 gap-1 border-t border-[#e7e7eb] py-3 md:grid-cols-[minmax(0,180px)_minmax(0,1fr)]">
-            <code className="break-all text-[12.5px]">GET /api/jobs/:id/result</code>
+            <code className="break-words text-[12.5px]">GET /api/jobs/:id/result</code>
             <span className="text-[#75757d]">JSON completo</span>
           </div>
           <div className="grid min-w-0 gap-1 border-t border-[#e7e7eb] py-3 md:grid-cols-[minmax(0,180px)_minmax(0,1fr)]">
-            <code className="break-all text-[12.5px]">GET /api/modules</code>
+            <code className="break-words text-[12.5px]">GET /api/modules</code>
             <span className="text-[#75757d]">Cajitas registradas</span>
           </div>
           <div className="grid min-w-0 gap-1 border-t border-[#e7e7eb] py-3 md:grid-cols-[minmax(0,180px)_minmax(0,1fr)]">
-            <code className="break-all text-[12.5px]">PUT /api/settings</code>
+            <code className="break-words text-[12.5px]">PUT /api/settings</code>
             <span className="text-[#75757d]">Guardar URL del webhook</span>
           </div>
         </div>
