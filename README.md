@@ -47,6 +47,7 @@ También puedes usar webhook (Make/n8n) si prefieres otro destino.
 ## Qué hace hoy
 
 - Acepta vídeos (`MP4`, `MOV`, `MKV`, `WebM`) por archivo o por **link** (TikTok, Instagram, Facebook, YouTube, X…).
+- En la home puedes pegar **varios links** (uno por línea, máx. 20). También `POST /api/jobs/from-url` con `urls: [...]`.
 - Pipeline por **módulos** registrados (mismo contrato para todos).
 - Diarización con `diarize` (Silero + WeSpeaker): gratis, local, **sin token ni API de pago**.
 - **Música y ambiente** local (`librosa`): energía, ritmo/BPM si es claro, brillo del audio por pasajes. No identifica canciones.
@@ -74,6 +75,26 @@ curl -F "files=@video1.mp4" -F "files=@video2.mp4" -F "files=@video3.mp4" \
 ```
 
 Respuesta: lista de trabajos. Se procesan en cola (`VX_MAX_CONCURRENT`, por defecto 1). Cada uno, al terminar, puede disparar el webhook.
+
+## Importar muchos links
+
+En la **home**: pega varios links (uno por línea) → **Analizar links**.
+
+Por API (máx. 20):
+
+```bash
+# Uno
+curl -X POST http://localhost:43141/api/jobs/from-url \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://www.tiktok.com/@cuenta/video/123"}'
+
+# Varios
+curl -X POST http://localhost:43141/api/jobs/from-url \
+  -H "Content-Type: application/json" \
+  -d '{"urls":["https://www.tiktok.com/@a/video/1","https://www.youtube.com/watch?v=xyz"]}'
+```
+
+Solo vídeos públicos (TikTok, Instagram, Facebook, YouTube, X…). Detalle en **Docs** dentro de la app.
 
 Con el servidor en marcha:
 

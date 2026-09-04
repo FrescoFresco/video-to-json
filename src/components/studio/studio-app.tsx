@@ -180,11 +180,14 @@ function HomeView() {
 
   async function handleLinkSubmit(e?: FormEvent) {
     e?.preventDefault();
-    const value = link.trim();
-    if (!value || linkBusy) return;
+    const lines = link
+      .split(/[\n,]+/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+    if (!lines.length || linkBusy) return;
     setLinkBusy(true);
     try {
-      await s.ingestUrl(value);
+      await s.ingestUrls(lines);
       setLink("");
     } finally {
       setLinkBusy(false);
@@ -261,32 +264,30 @@ function HomeView() {
           className="vx-home-fade vx-home-fade-delay grid gap-3"
         >
           <label className="text-[13px] font-medium text-[#6a7380]" htmlFor="vx-video-url">
-            O pega un link
+            O pega uno o varios links
           </label>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
-            <input
-              id="vx-video-url"
-              type="url"
-              inputMode="url"
-              autoComplete="off"
-              placeholder="TikTok, Instagram, Facebook, YouTube, X…"
-              value={link}
-              onChange={(e) => setLink(e.target.value)}
-              disabled={linkBusy}
-              className="min-w-0 flex-1 rounded-lg border border-[#d0d4da] bg-white px-3.5 py-2.5 text-sm text-[#171719] outline-none placeholder:text-[#9aa1ab] focus:border-[#171719] disabled:opacity-60"
-            />
+          <textarea
+            id="vx-video-url"
+            rows={3}
+            autoComplete="off"
+            placeholder={"https://www.tiktok.com/@cuenta/video/…\nhttps://www.instagram.com/reel/…\nhttps://www.youtube.com/watch?v=…"}
+            value={link}
+            onChange={(e) => setLink(e.target.value)}
+            disabled={linkBusy}
+            className="min-w-0 w-full resize-y rounded-lg border border-[#d0d4da] bg-white px-3.5 py-2.5 text-sm text-[#171719] outline-none placeholder:text-[#9aa1ab] focus:border-[#171719] disabled:opacity-60"
+          />
+          <div className="flex flex-wrap items-center gap-3">
             <Button
               type="submit"
-              className="rounded-lg sm:shrink-0"
+              className="rounded-lg"
               disabled={linkBusy || !link.trim()}
             >
-              {linkBusy ? "Descargando…" : "Analizar link"}
+              {linkBusy ? "Encolando…" : "Analizar links"}
             </Button>
+            <p className="m-0 text-[12.5px] leading-relaxed text-[#6a7380]">
+              Un link por línea (máx. 20). TikTok, Instagram, Facebook, YouTube, X…
+            </p>
           </div>
-          <p className="m-0 text-[12.5px] leading-relaxed text-[#6a7380]">
-            Solo vídeos públicos. En algunos servidores la red puede bloquear la descarga; en tu PC
-            suele ir bien.
-          </p>
         </form>
 
         {s.videos.length > 0 && (
@@ -1037,11 +1038,48 @@ curl http://localhost:43141/api/jobs/JOB_ID/result`}</DocsCode>
       </section>
 
       <section className="min-w-0 overflow-hidden rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
+        <div className="text-sm font-semibold">Importar links (TikTok, Instagram, YouTube…)</div>
+        <p className="mt-2 text-sm leading-relaxed text-[#75757d]">
+          En la home puedes pegar varios links (uno por línea) y pulsar «Analizar links».
+          También desde fuera, con la API. Solo vídeos públicos. Máximo 20 por petición.
+        </p>
+        <ol className="mt-4 grid gap-2 text-sm text-[#171719]">
+          <li>1. Copia los links de vídeos públicos.</li>
+          <li>2. Pégalos en la home (uno por línea) o mándalos a la API.</li>
+          <li>3. Cada link crea un trabajo: primero descarga, luego extrae el JSON.</li>
+        </ol>
+        <p className="mt-4 text-[12.5px] text-[#75757d]">Un solo link:</p>
+        <DocsCode>{`curl -X POST http://localhost:43141/api/jobs/from-url \\
+  -H "Content-Type: application/json" \\
+  -d '{"url":"https://www.tiktok.com/@cuenta/video/123"}'`}</DocsCode>
+        <p className="mt-4 text-[12.5px] text-[#75757d]">Muchos links de golpe:</p>
+        <DocsCode>{`curl -X POST http://localhost:43141/api/jobs/from-url \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "urls": [
+      "https://www.tiktok.com/@a/video/1",
+      "https://www.instagram.com/reel/ABC/",
+      "https://www.youtube.com/watch?v=xyz",
+      "https://www.facebook.com/watch/?v=123"
+    ]
+  }'`}</DocsCode>
+        <p className="mt-3 text-[12.5px] leading-relaxed text-[#75757d]">
+          Respuesta: lista de trabajos en cola. Mira el estado en Vídeos o con{" "}
+          <code className="text-[12px]">GET /api/jobs/JOB_ID</code>. Si un link falla (privado,
+          bloqueado…), el resto sigue.
+        </p>
+      </section>
+
+      <section className="min-w-0 overflow-hidden rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
         <div className="text-sm font-semibold">Endpoints útiles</div>
         <div className="mt-3 grid min-w-0 gap-2 text-sm">
           <div className="grid min-w-0 gap-1 border-t border-[#e7e7eb] py-3 first:border-t-0 md:grid-cols-[minmax(0,180px)_minmax(0,1fr)]">
             <code className="break-words text-[12.5px]">POST /api/jobs</code>
-            <span className="text-[#75757d]">Crear uno o varios trabajos</span>
+            <span className="text-[#75757d]">Crear uno o varios trabajos (archivos)</span>
+          </div>
+          <div className="grid min-w-0 gap-1 border-t border-[#e7e7eb] py-3 md:grid-cols-[minmax(0,180px)_minmax(0,1fr)]">
+            <code className="break-words text-[12.5px]">POST /api/jobs/from-url</code>
+            <span className="text-[#75757d]">Crear trabajos desde uno o varios links</span>
           </div>
           <div className="grid min-w-0 gap-1 border-t border-[#e7e7eb] py-3 md:grid-cols-[minmax(0,180px)_minmax(0,1fr)]">
             <code className="break-words text-[12.5px]">GET /api/jobs/:id</code>
