@@ -161,8 +161,15 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
             };
 
         if (!res.ok) {
+          const rejected =
+            "rejected" in data && Array.isArray(data.rejected) ? data.rejected : [];
+          const detail =
+            rejected[0] && typeof rejected[0].error === "string"
+              ? rejected[0].error
+              : null;
           throw new Error(
-            ("error" in data && data.error) ||
+            detail ||
+              ("error" in data && data.error) ||
               "No se pudieron crear los trabajos desde los links"
           );
         }
