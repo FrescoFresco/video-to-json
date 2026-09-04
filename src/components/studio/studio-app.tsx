@@ -167,7 +167,7 @@ export function StudioApp() {
         </div>
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-[#e7e7eb] bg-[#fbfbfc]/94 px-1.5 pb-[calc(6px+env(safe-area-inset-bottom))] pt-1.5 backdrop-blur-md md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-[#e7e7eb] bg-[#fbfbfc] px-1.5 pb-[calc(6px+env(safe-area-inset-bottom))] pt-1.5 md:hidden">
         <div className="grid grid-cols-4 gap-0.5">
           {(
             [
