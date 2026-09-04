@@ -532,20 +532,35 @@ function VideoDetail({ video }: { video: StoredVideo }) {
         )}
       </div>
 
-      <Tabs defaultValue="overview" className="gap-5">
-        <TabsList variant="line" className="border-b border-[#e7e7eb] p-0">
-          <TabsTrigger value="overview">Resumen</TabsTrigger>
-          <TabsTrigger value="json">JSON</TabsTrigger>
-          <TabsTrigger value="activity">Actividad</TabsTrigger>
+      <Tabs defaultValue="estado" className="gap-4">
+        <TabsList
+          variant="line"
+          className="max-w-full flex-nowrap justify-start overflow-x-auto border-b border-[#e7e7eb] p-0"
+        >
+          <TabsTrigger value="estado" className="shrink-0">
+            Estado
+          </TabsTrigger>
+          {liveRows.map((row) => (
+            <TabsTrigger key={row.id} value={row.id} className="shrink-0">
+              {row.title}
+              {row.phase === "done" ? " ✓" : row.phase === "running" ? "…" : ""}
+            </TabsTrigger>
+          ))}
+          <TabsTrigger value="json" className="shrink-0">
+            JSON
+          </TabsTrigger>
+          <TabsTrigger value="activity" className="shrink-0">
+            Actividad
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview">
+        <TabsContent value="estado">
           {video.status === "error" && !extraction ? (
             <EmptyCard title="No se pudo procesar" body={video.error || "Error desconocido"} />
           ) : (
-            <div className="grid gap-5">
+            <div className="grid gap-4">
               {extraction?.media ? (
-                <div className="grid gap-4 md:grid-cols-4">
+                <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
                   <Metric label="Duración" value={extraction.media.duration} />
                   <Metric
                     label="Resolución"
@@ -555,7 +570,7 @@ function VideoDetail({ video }: { video: StoredVideo }) {
                   <Metric label="Módulos listos" value={`${doneCount}/${liveRows.length || "—"}`} />
                 </div>
               ) : video.probe ? (
-                <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-3 sm:grid-cols-3">
                   <Metric label="Duración" value={msToClock(video.probe.durationMs)} />
                   <Metric
                     label="Resolución"
@@ -565,13 +580,13 @@ function VideoDetail({ video }: { video: StoredVideo }) {
                 </div>
               ) : null}
 
-              <section className="rounded-2xl border border-[#e7e7eb] bg-white p-5">
-                <div className="text-sm font-semibold">Módulos de este vídeo</div>
+              <section className="rounded-xl border border-[#e7e7eb] bg-white p-4">
+                <div className="text-sm font-semibold">Progreso de módulos</div>
                 <p className="mt-1 text-[12.5px] text-[#75757d]">
-                  Se van rellenando solos al terminar cada extractor. Si mañana registras otro
-                  módulo, aparece aquí igual.
+                  Abre cada pestaña de arriba para ver el detalle. Los módulos nuevos aparecen
+                  solos al registrarse.
                 </p>
-                <div className="mt-4 grid gap-2">
+                <div className="mt-3 grid gap-1.5">
                   {liveRows.length === 0 ? (
                     <p className="text-sm text-[#75757d]">
                       {video.status === "queued"
@@ -579,28 +594,35 @@ function VideoDetail({ video }: { video: StoredVideo }) {
                         : "Preparando extractores…"}
                     </p>
                   ) : (
-                    liveRows.map((row) => (
-                      <ModuleLiveRow key={row.id} row={row} />
-                    ))
+                    liveRows.map((row) => <ModuleLiveRow key={row.id} row={row} />)
                   )}
                 </div>
               </section>
-
-              {(extraction?.modules || []).filter((m) => m.items.length > 0).length > 0 && (
-                <section className="grid gap-5 lg:grid-cols-2">
-                  {(extraction?.modules || [])
-                    .filter((m) => m.items.length > 0)
-                    .map((mod) => (
-                      <ModuleItemsList key={`${mod.id}-items`} module={mod} />
-                    ))}
-                </section>
-              )}
             </div>
           )}
         </TabsContent>
 
+        {liveRows.map((row) => (
+          <TabsContent key={`panel-${row.id}`} value={row.id}>
+            {row.module ? (
+              <ModuleItemsList module={row.module} />
+            ) : (
+              <EmptyCard
+                title={row.title}
+                body={
+                  row.phase === "running"
+                    ? "Extrayendo este módulo…"
+                    : video.status === "queued"
+                      ? "En espera de empezar el vídeo."
+                      : "Este módulo aún no ha terminado."
+                }
+              />
+            )}
+          </TabsContent>
+        ))}
+
         <TabsContent value="json">
-          <div className="rounded-2xl bg-[#151517] p-4 text-[12.5px] leading-[1.55] text-[#e9e9ed]">
+          <div className="rounded-xl bg-[#151517] p-4 text-[12.5px] leading-[1.55] text-[#e9e9ed]">
             <pre className="overflow-auto whitespace-pre-wrap break-words">
               {JSON.stringify(
                 extraction ?? {
@@ -616,11 +638,11 @@ function VideoDetail({ video }: { video: StoredVideo }) {
         </TabsContent>
 
         <TabsContent value="activity">
-          <div className="rounded-2xl border border-[#e7e7eb] bg-white p-4">
+          <div className="rounded-xl border border-[#e7e7eb] bg-white p-4">
             {video.activity.map((item, index) => (
               <div
                 key={`${item.time}-${index}`}
-                className="grid grid-cols-[60px_24px_minmax(0,1fr)] gap-3 border-t border-[#e7e7eb] py-3 first:border-t-0"
+                className="grid grid-cols-[60px_24px_minmax(0,1fr)] gap-3 border-t border-[#e7e7eb] py-2.5 first:border-t-0"
               >
                 <div className="text-xs text-[#75757d]">{item.time}</div>
                 <StatusDot status={item.status} />
@@ -670,12 +692,12 @@ function ModuleLiveRow({
         : "En espera";
 
   return (
-    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-[#ececf0] bg-[#fbfbfc] px-3 py-3">
+    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2.5 rounded-lg border border-[#ececf0] bg-[#fbfbfc] px-3 py-2">
       {mark}
       <div className="min-w-0">
-        <div className="truncate text-sm font-medium">{row.title}</div>
+        <div className="truncate text-sm font-medium leading-tight">{row.title}</div>
         <div
-          className={`mt-0.5 text-[12.5px] ${
+          className={`mt-0.5 text-[12px] leading-snug ${
             row.phase === "done"
               ? row.module?.status === "error"
                 ? "text-[#b42318]"
@@ -707,40 +729,38 @@ function Metric({ label, value }: { label: string; value: string }) {
 
 function ModuleItemsList({ module }: { module: ExtractionModule }) {
   return (
-    <section className="min-w-0 rounded-2xl border border-[#e7e7eb] bg-white p-5">
+    <section className="min-w-0 self-start rounded-xl border border-[#e7e7eb] bg-white p-3.5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <div className="text-sm font-semibold">{module.title}</div>
+        <div className="text-sm font-semibold leading-tight">{module.title}</div>
         <div className="text-[12px] text-[#75757d]">{module.summary}</div>
       </div>
       {module.items.length === 0 ? (
-        <p className="mt-4 text-sm text-[#75757d]">
+        <p className="mt-2 text-sm text-[#75757d]">
           {module.error || "Este módulo no devolvió filas para este vídeo."}
         </p>
       ) : (
-        <div className="mt-4 grid min-w-0 gap-0">
+        <div className="mt-2 grid min-w-0 gap-0">
           {module.items.map((item, index) => {
-            const showLabel =
-              Boolean(item.label) &&
-              item.label !== module.id &&
-              item.label !== module.title;
+            const label = (item.label || "").trim();
+            const text = (item.text || "").trim();
+            const redundantLabel =
+              !label ||
+              label === module.id ||
+              label === module.title ||
+              label === text;
+            const line = redundantLabel ? text || label || "—" : `${label} · ${text || "—"}`;
+
             return (
               <div
                 key={`${module.id}-${index}`}
-                className="grid min-w-0 gap-1 border-t border-[#e7e7eb] py-3 first:border-t-0 first:pt-0"
+                className="grid min-w-0 grid-cols-[4.75rem_minmax(0,1fr)] items-baseline gap-x-3 border-t border-[#e7e7eb] py-1.5 first:border-t-0 first:pt-0"
               >
-                <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5 text-[12.5px]">
-                  <span className="shrink-0 tabular-nums text-[#75757d]">
-                    {typeof item.start_ms === "number" ? msToClock(item.start_ms) : "—"}
-                  </span>
-                  {showLabel ? (
-                    <span className="min-w-0 font-medium break-words text-[#2f363e]">
-                      {item.label}
-                    </span>
-                  ) : null}
+                <span className="shrink-0 tabular-nums text-[12.5px] text-[#75757d]">
+                  {typeof item.start_ms === "number" ? msToClock(item.start_ms) : "—"}
+                </span>
+                <div className="min-w-0 text-sm leading-snug break-words text-[#171719]">
+                  {line}
                 </div>
-                <p className="m-0 min-w-0 text-sm leading-relaxed break-words text-[#171719]">
-                  {item.text}
-                </p>
               </div>
             );
           })}
