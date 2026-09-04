@@ -27,6 +27,8 @@ type JobStore = {
 
 type EnqueueOptions = {
   webhookUrl?: string | null;
+  sourceUrl?: string | null;
+  sourceKind?: StoredVideo["sourceKind"];
   onReady?: (result: VideoJobResult, job: JobRecord) => Promise<void> | void;
   onError?: (error: string, job: JobRecord) => Promise<void> | void;
 };
@@ -151,6 +153,8 @@ async function enqueueVideoJob(
     status: "queued",
     progress: 5,
     stage: "En espera",
+    sourceKind: options?.sourceKind || "upload",
+    ...(options?.sourceUrl ? { sourceUrl: options.sourceUrl } : {}),
     activity: [{ time: clock(), title: "Archivo recibido", detail: filename, status: "ready" }],
   };
 
@@ -171,7 +175,7 @@ export async function createJobFromUpload(
   const idHint = createId();
   const tempPath = path.join(dir, `${idHint}-${file.name.replace(/[^\w.-]+/g, "_")}`);
   await writeFile(tempPath, Buffer.from(await file.arrayBuffer()));
-  return enqueueVideoJob(file.name, tempPath, options);
+  return enqueueVideoJob(file.name, tempPath, { ...options, sourceKind: "upload" });
 }
 
 /** Encola un vídeo ya presente en disco (carpeta inbox / Drive Desktop). */
@@ -184,7 +188,7 @@ export async function createJobFromLocalPath(
   await mkdir(dir, { recursive: true });
   const tempPath = path.join(dir, `${createId()}-${filename.replace(/[^\w.-]+/g, "_")}`);
   await copyFile(/*turbopackIgnore: true*/ filePath, /*turbopackIgnore: true*/ tempPath);
-  return enqueueVideoJob(filename, tempPath, options);
+  return enqueueVideoJob(filename, tempPath, { ...options, sourceKind: "folder" });
 }
 
 /**
@@ -211,6 +215,8 @@ export async function createJobFromUrl(
     progress: 3,
     stage: "Descargando desde link…",
     processingStartedAt: createdAt,
+    sourceKind: "url",
+    sourceUrl: url.href,
     activity: [
       {
         time: clock(),
@@ -267,6 +273,8 @@ export async function createJobFromUrl(
 
       await runQueuedProcessing(id, downloaded.filename, tempPath, {
         webhookUrl,
+        sourceUrl: downloaded.sourceUrl || url.href,
+        sourceKind: "url",
       });
     } catch (error) {
       await cleanupDownloadDir(workDir);
@@ -351,7 +359,13 @@ async function runQueuedProcessing(
     },
     run: async () => {
       try {
+        const currentJob = getStore().jobs.get(id);
+        const sourceUrl = options?.sourceUrl || currentJob?.sourceUrl || null;
+        const sourceKind =
+          options?.sourceKind || currentJob?.sourceKind || (sourceUrl ? "url" : "upload");
+
         const result = await processVideoFile(tempPath, filename, {
+          source: { url: sourceUrl, kind: sourceKind },
           onProgress: (progress, stage) => {
             const current = getStore().jobs.get(id);
             if (!current) return;
@@ -391,6 +405,8 @@ async function runQueuedProcessing(
               processedAt: new Date().toISOString(),
               probe,
               modules,
+              sourceUrl: current.sourceUrl || sourceUrl,
+              sourceKind: current.sourceKind || sourceKind,
             });
             updateJob(
               id,
@@ -427,6 +443,8 @@ async function runQueuedProcessing(
             extraction: result.extraction,
             result,
             completedAt: new Date().toISOString(),
+            ...(sourceUrl ? { sourceUrl } : {}),
+            sourceKind,
           },
           true
         );

@@ -113,6 +113,10 @@ export function buildVideoExtraction(input: {
   processedAt: string;
   probe: ProbeResult;
   modules: ExtractionModule[];
+  /** Link original (si vino de URL). */
+  sourceUrl?: string | null;
+  /** Cómo entró el vídeo. */
+  sourceKind?: VideoExtraction["source"]["input"];
 }): VideoExtraction {
   const modules = input.modules;
   const ok = modules.filter((m) => m.status === "ok").length;
@@ -121,6 +125,8 @@ export function buildVideoExtraction(input: {
   const totalDurationMs = modules.reduce((sum, m) => sum + (m.duration_ms || 0), 0);
   const content = buildContentPack(modules);
   const timeline = buildTimeline(modules);
+  const url = input.sourceUrl?.trim() || undefined;
+  const inputKind = input.sourceKind || (url ? "url" : "upload");
 
   return {
     schema_version: EXTRACTION_SCHEMA_VERSION,
@@ -128,6 +134,8 @@ export function buildVideoExtraction(input: {
     source: {
       filename: input.filename,
       processed_at: input.processedAt,
+      input: inputKind,
+      ...(url ? { url } : {}),
     },
     media: {
       duration_ms: input.probe.durationMs,
@@ -170,6 +178,8 @@ export function buildCompleteExtraction(input: {
   processedAt: string;
   probe: ProbeResult;
   modules: ExtractionModule[];
+  sourceUrl?: string | null;
+  sourceKind?: VideoExtraction["source"]["input"];
 }): VideoExtraction {
   return buildVideoExtraction(input);
 }
@@ -210,6 +220,8 @@ export function ensureCompleteExtraction(
     processedAt: extraction.source.processed_at,
     probe,
     modules: extraction.modules,
+    sourceUrl: extraction.source.url,
+    sourceKind: extraction.source.input,
   });
 }
 

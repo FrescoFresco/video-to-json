@@ -1033,6 +1033,17 @@ function VideoDetail({ video }: { video: StoredVideo }) {
           <h1 className="mt-3 break-words text-[clamp(20px,5vw,32px)] font-semibold tracking-[-0.035em]">
             {video.name}
           </h1>
+          {video.sourceUrl ? (
+            <a
+              href={video.sourceUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-2 block max-w-full truncate text-[12.5px] text-[#3d6f99] underline-offset-2 hover:underline"
+              title={video.sourceUrl}
+            >
+              {video.sourceUrl}
+            </a>
+          ) : null}
           <div className="mt-2 flex items-start gap-2 text-[12px] text-[#75757d] sm:text-[12.5px]">
             <StatusDot status={video.status} />
             <span className="min-w-0 leading-snug break-words">
@@ -1446,7 +1457,12 @@ function DocsView({ onOpenSettings }: { onOpenSettings: () => void }) {
           <code className="text-[12.5px]">&quot;2.0&quot;</code>.
         </p>
         <DocsCode>{`extraction  (schema_version: "2.0", kind: "video_complete")
-├── source / media
+├── source
+│   ├── filename
+│   ├── processed_at
+│   ├── input            ← "upload" | "url" | "folder"
+│   └── url?             ← link original si vino de TikTok/YouTube/…
+├── media
 ├── run                  ← conteos y tiempos de cada módulo
 ├── content              ← TODOS los JSON juntos, por id
 │   ├── scene_cuts
@@ -1528,7 +1544,7 @@ function DocsView({ onOpenSettings }: { onOpenSettings: () => void }) {
   "extraction": {
     "schema_version": "2.0",
     "kind": "video_complete",
-    "source": { "filename": "clip.mp4", "processed_at": "..." },
+    "source": { "filename": "clip.mp4", "processed_at": "...", "input": "url", "url": "https://www.tiktok.com/@cuenta/video/123" },
     "media": { "duration_ms": 12000, "width": 1080, "height": 1920 },
     "run": { "module_count": 10, "ok": 9, "empty": 1, "error": 0 },
     "content": {

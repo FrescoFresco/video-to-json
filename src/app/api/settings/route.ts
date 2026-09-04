@@ -76,7 +76,12 @@ export async function POST(request: Request) {
       extraction: {
         schema_version: EXTRACTION_SCHEMA_VERSION,
         kind: "video_complete",
-        source: { filename: "prueba-webhook.mp4", processed_at: processedAt },
+        source: {
+          filename: "prueba-webhook.mp4",
+          processed_at: processedAt,
+          input: "url",
+          url: "https://www.tiktok.com/@demo/video/123",
+        },
         media: {
           duration_ms: 1000,
           duration: "00:01.000",

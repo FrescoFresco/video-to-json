@@ -14,6 +14,11 @@ export type ProcessVideoCallbacks = {
     probe: ProbeResult;
   }) => void;
   onProbe?: (probe: ProbeResult) => void;
+  /** Origen del vídeo (link, subida, carpeta). */
+  source?: {
+    url?: string | null;
+    kind?: "upload" | "url" | "folder";
+  };
 };
 
 export async function processVideoFile(
@@ -63,6 +68,8 @@ export async function processVideoFile(
       processedAt: new Date().toISOString(),
       probe,
       modules,
+      sourceUrl: cb.source?.url,
+      sourceKind: cb.source?.kind,
     });
 
     return {

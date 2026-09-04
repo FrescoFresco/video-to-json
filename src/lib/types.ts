@@ -86,6 +86,8 @@ export type ExtractionModule = {
   data?: unknown;
 };
 
+export type VideoSourceInput = "upload" | "url" | "folder";
+
 export type VideoExtraction = {
   /** Versión del contrato JSON. Si cambia la forma, sube este número. */
   schema_version: string;
@@ -94,6 +96,10 @@ export type VideoExtraction = {
   source: {
     filename: string;
     processed_at: string;
+    /** Origen del archivo: subida, link o carpeta vigilada. */
+    input?: VideoSourceInput;
+    /** Link original si el vídeo se importó por URL (TikTok, YouTube…). */
+    url?: string;
   };
   media: {
     duration_ms: number;
@@ -151,6 +157,10 @@ export type StoredVideo = {
   progress: number;
   stage: string;
   error?: string;
+  /** Cómo entró el vídeo al Studio. */
+  sourceKind?: VideoSourceInput;
+  /** Link original si se importó por URL. */
+  sourceUrl?: string;
   /** ISO: cuando empezó el procesado real (para ETA). */
   processingStartedAt?: string;
   /** ISO: cuando terminó (listo o error tras procesar). */
