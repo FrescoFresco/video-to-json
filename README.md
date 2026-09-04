@@ -52,7 +52,15 @@ Producción local:
 - Análisis de música / ambiente.
 - Webhook al terminar / API key.
 
-## Añadir otro módulo / repo
+## Comprobar que todos los módulos funcionan
+
+Con el servidor en marcha:
+
+```bash
+npm run verify
+```
+
+Crea un vídeo de prueba (persona + texto + 2 voces), lo procesa y exige que cada módulo responda `ok` con datos.
 
 1. Implementa el contrato `ExtractionModuleDefinition` (`id`, `title`, `stage`, `run`).
 2. Regístralo en `src/lib/server/modules/index.ts`.
