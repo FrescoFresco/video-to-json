@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Caras y encuadre (OpenCV FaceDetectorYN / YuNet, local).
+"""Caras y encuadre (YuNet) + descripción VLM (Moondream) por pista.
 
-Detecta rostros en fotogramas densos y estima escala de plano
-(primerísimo / primer plano / medio / general) según el área de la cara.
-Heurística ligera de boca; no inventa emociones finas.
+YuNet localiza rostros y escala de plano; la IA describe el crop
+(expresión, mirada, pelo/barba/gafas). Si el VLM falla, queda la geometría.
 """
 from __future__ import annotations
 
@@ -16,16 +15,31 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+from PIL import Image
 
 MAX_FRAMES = int(os.environ.get("FACES_MAX_FRAMES", "16"))
 SCORE_TH = float(os.environ.get("FACES_SCORE", "0.6"))
 NMS_TH = float(os.environ.get("FACES_NMS", "0.3"))
+VLM_ENABLED = os.environ.get("FACES_VLM", "1").strip().lower() not in (
+    "0",
+    "false",
+    "no",
+    "off",
+)
+VISION_MODEL = os.environ.get("VISION_MODEL", "vikhyatk/moondream2")
+VISION_REVISION = os.environ.get("VISION_MODEL_REVISION", "2025-01-09")
 
 YUNET_URL = (
     "https://github.com/opencv/opencv_zoo/raw/main/models/"
     "face_detection_yunet/face_detection_yunet_2023mar.onnx"
 )
 YUNET_NAME = "face_detection_yunet_2023mar.onnx"
+
+DESCRIBE_PROMPT = (
+    "In one short sentence, describe this cropped face for recreating the shot: "
+    "expression, gaze direction, approximate age range if clear, hair, facial hair, "
+    "glasses or makeup if visible. Do not invent what you cannot see."
+)
 
 
 def resolve_yunet_model() -> Path:
@@ -59,7 +73,7 @@ def shot_scale(face_area: float, frame_area: float) -> str:
     return "plano general"
 
 
-def expression_hint(gray: np.ndarray, x: int, y: int, w: int, h: int) -> str | None:
+def mouth_hint(gray: np.ndarray, x: int, y: int, w: int, h: int) -> str | None:
     if h < 40 or w < 40:
         return None
     mouth = gray[y + int(h * 0.62) : y + int(h * 0.88), x + int(w * 0.25) : x + int(w * 0.75)]
@@ -82,12 +96,62 @@ def detect_faces(detector: cv2.FaceDetectorYN, img: np.ndarray):
         return []
     out = []
     for row in faces:
-        # x, y, w, h, score, ...landmarks
         x, y, fw, fh, score = [float(v) for v in row[:5]]
         if score < SCORE_TH:
             continue
         out.append((int(x), int(y), int(fw), int(fh), float(score)))
     return out
+
+
+def track_key(cx_norm: float, cy_norm: float) -> str:
+    return f"face:{int(cx_norm * 10)}:{int(cy_norm * 10)}"
+
+
+def load_vlm():
+    import torch
+    from transformers import AutoModelForCausalLM
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model = AutoModelForCausalLM.from_pretrained(
+        VISION_MODEL,
+        revision=VISION_REVISION,
+        trust_remote_code=True,
+        torch_dtype=torch.float32 if device == "cpu" else torch.float16,
+        device_map={"": device},
+    )
+    model.eval()
+    return model, device
+
+
+def describe_crop(model, image: Image.Image) -> str:
+    encoded = model.encode_image(image)
+    try:
+        if hasattr(model, "query"):
+            ans = model.query(encoded, DESCRIBE_PROMPT)
+            text = (ans.get("answer") if isinstance(ans, dict) else str(ans) or "").strip()
+            if text:
+                return text
+        if hasattr(model, "caption"):
+            cap = model.caption(encoded, length="short")
+            return (cap.get("caption") if isinstance(cap, dict) else str(cap) or "").strip()
+    except Exception:
+        return ""
+    return ""
+
+
+def crop_face(image: Image.Image, bbox: list[int], pad: float = 0.25) -> Image.Image | None:
+    w, h = image.size
+    x1, y1, x2, y2 = bbox
+    bw, bh = x2 - x1, y2 - y1
+    x1 = max(0, int(x1 - bw * pad))
+    y1 = max(0, int(y1 - bh * pad))
+    x2 = min(w, int(x2 + bw * pad))
+    y2 = min(h, int(y2 + bh * pad))
+    if x2 - x1 < 12 or y2 - y1 < 12:
+        return None
+    crop = image.crop((x1, y1, x2, y2))
+    crop.thumbnail((384, 384))
+    return crop
 
 
 def main() -> int:
@@ -137,6 +201,8 @@ def main() -> int:
         return 1
 
     detections: list[dict] = []
+    buckets: dict[str, list[dict]] = defaultdict(list)
+    best_crop: dict[str, dict] = {}
     scale_counts: dict[str, int] = defaultdict(int)
 
     for frame in frames:
@@ -157,50 +223,128 @@ def main() -> int:
             scale_counts[scale] += 1
             cx = round((fx + fw / 2) / w, 3)
             cy = round((fy + fh / 2) / h, 3)
-            expr = expression_hint(gray, fx, fy, fw, fh)
+            expr = mouth_hint(gray, fx, fy, fw, fh)
+            key = track_key(cx, cy)
             bits = [f"cara {i + 1}", scale, f"pos ({cx:.2f},{cy:.2f})", f"conf {score:.2f}"]
             if expr:
                 bits.append(expr)
-            detections.append(
-                {
-                    "face_index": i + 1,
-                    "bbox": [fx, fy, fx + fw, fy + fh],
-                    "center_norm": [cx, cy],
-                    "area_ratio": round(area / max(w * h, 1), 4),
-                    "shot_scale": scale,
-                    "score": round(score, 3),
-                    "expression_hint": expr,
-                    "start_ms": start_ms,
-                    "end_ms": end_ms,
-                    "text": " · ".join(bits),
-                }
-            )
+            det = {
+                "track_key": key,
+                "face_index": i + 1,
+                "bbox": [fx, fy, fx + fw, fy + fh],
+                "center_norm": [cx, cy],
+                "area_ratio": round(area / max(w * h, 1), 4),
+                "shot_scale": scale,
+                "score": round(score, 3),
+                "expression_hint": expr,
+                "start_ms": start_ms,
+                "end_ms": end_ms,
+                "text": " · ".join(bits),
+                "frame_path": path,
+            }
+            detections.append(det)
+            buckets[key].append(det)
+            prev = best_crop.get(key)
+            if prev is None or score > prev["score"]:
+                best_crop[key] = det
 
-    items = [
-        {
-            "start_ms": d["start_ms"],
-            "end_ms": d["end_ms"],
-            "label": d["shot_scale"],
-            "role": "face",
-            "text": d["text"],
-        }
-        for d in detections
-    ]
+    tracks: list[dict] = []
+    for key, rows in buckets.items():
+        scales = [r["shot_scale"] for r in rows]
+        dominant = max(set(scales), key=scales.count)
+        mouths = [r["expression_hint"] for r in rows if r.get("expression_hint")]
+        tracks.append(
+            {
+                "id": key,
+                "count": len(rows),
+                "start_ms": min(r["start_ms"] for r in rows),
+                "end_ms": max(r["end_ms"] for r in rows),
+                "dominant_shot": dominant,
+                "mouth_hints": sorted(set(mouths)),
+                "avg_score": round(sum(r["score"] for r in rows) / len(rows), 3),
+                "description": None,
+            }
+        )
+    tracks.sort(key=lambda t: (-t["count"], -t["avg_score"], t["id"]))
+
+    vlm_error = None
+    vlm_used = 0
+    if VLM_ENABLED and tracks:
+        try:
+            vlm, _device = load_vlm()
+            image_cache: dict[str, Image.Image] = {}
+            for track in tracks:
+                tip = best_crop.get(track["id"])
+                if not tip:
+                    continue
+                fpath = tip.get("frame_path")
+                if not fpath or not Path(fpath).exists():
+                    continue
+                if fpath not in image_cache:
+                    image_cache[fpath] = Image.open(fpath).convert("RGB")
+                crop = crop_face(image_cache[fpath], tip["bbox"])
+                if crop is None:
+                    continue
+                desc = describe_crop(vlm, crop)
+                if desc:
+                    track["description"] = desc
+                    vlm_used += 1
+        except Exception as exc:  # noqa: BLE001
+            vlm_error = str(exc)
+
+    items: list[dict] = []
+    for t in tracks:
+        if t.get("description"):
+            text = f"{t['dominant_shot']}: {t['description']}"
+        else:
+            bits = [t["dominant_shot"], f"{t['count']} frames"] + t["mouth_hints"][:2]
+            text = " · ".join(bits)
+        items.append(
+            {
+                "start_ms": t["start_ms"],
+                "end_ms": t["end_ms"],
+                "label": t["dominant_shot"],
+                "role": "face",
+                "text": text,
+                "description": t.get("description"),
+            }
+        )
+
+    for d in detections:
+        items.append(
+            {
+                "start_ms": d["start_ms"],
+                "end_ms": d["end_ms"],
+                "label": d["shot_scale"],
+                "role": "face_frame",
+                "text": d["text"],
+            }
+        )
+
+    clean_dets = [{k: v for k, v in d.items() if k != "frame_path"} for d in detections]
     dominant = sorted(scale_counts.items(), key=lambda x: (-x[1], x[0]))
     profile = {
         "face_detections": len(detections),
+        "tracks": len(tracks),
         "frames_with_faces": len({d["start_ms"] for d in detections}),
         "shot_scale_counts": dict(dominant),
         "dominant_shot": dominant[0][0] if dominant else None,
     }
+
+    engine = "opencv-yunet+moondream2" if vlm_used else "opencv-yunet"
     payload = {
-        "engine": "opencv-yunet",
+        "engine": engine,
         "model": YUNET_NAME,
+        "vision_model": VISION_MODEL if vlm_used else None,
         "frame_count": len(frames),
+        "vlm_described": vlm_used,
         "profile": profile,
-        "detections": detections,
+        "tracks": tracks,
+        "detections": clean_dets,
         "items": items,
     }
+    if vlm_error:
+        payload["vlm_error"] = vlm_error
     if not detections:
         payload["error"] = "Sin caras detectadas en los fotogramas muestreados"
 

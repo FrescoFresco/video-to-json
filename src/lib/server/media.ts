@@ -363,13 +363,18 @@ export async function readObjectDetections(
 
 export type FacesFramingResult = {
   engine: string;
+  model?: string;
+  vision_model?: string | null;
   frame_count?: number;
+  vlm_described?: number;
   profile?: {
     face_detections?: number;
+    tracks?: number;
     frames_with_faces?: number;
     shot_scale_counts?: Record<string, number>;
     dominant_shot?: string | null;
   };
+  tracks?: unknown[];
   detections?: unknown[];
   items: Array<{
     text: string;
@@ -377,7 +382,9 @@ export type FacesFramingResult = {
     end_ms: number;
     role?: string;
     label?: string;
+    description?: string | null;
   }>;
+  vlm_error?: string;
   error?: string;
 };
 
@@ -398,11 +405,14 @@ export async function readFacesFraming(
   }
   await writeFile(manifestPath, JSON.stringify({ frames }), "utf8");
   await execFileAsync(python, [script, manifestPath, outJson], {
-    timeout: 180000,
+    // YuNet + Moondream (primera carga) puede tardar en CPU.
+    timeout: 900000,
     maxBuffer: 16 * 1024 * 1024,
     env: {
       ...process.env,
+      HF_HUB_DISABLE_TELEMETRY: "1",
       FACES_MAX_FRAMES: process.env.FACES_MAX_FRAMES || "16",
+      FACES_VLM: process.env.FACES_VLM || "1",
     },
   });
   return JSON.parse(await readFile(outJson, "utf8")) as FacesFramingResult;

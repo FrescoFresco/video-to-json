@@ -51,7 +51,7 @@ También puedes usar webhook (Make/n8n) si prefieres otro destino.
 - Sin tope de cantidad: todo entra en cola y se procesa por lotes (`VX_MAX_CONCURRENT`).
 - La API acepta listas grandes de archivos o links; el cliente parte las subidas HTTP en tandas si hace falta.
 - Pipeline por **módulos** registrados (mismo contrato para todos).
-- **Caras y encuadre** (OpenCV YuNet): rostros, escala de plano y pistas simples de boca.
+- **Caras y encuadre** (OpenCV YuNet + Moondream): rostros, escala de plano y descripción del crop (expresión, mirada, pelo/gafas).
 - **Objetos y personas** (YOLOv8n + Moondream): detección y descripción del crop (color, ropa, estado) dentro del mismo módulo.
 - **Pose y acciones** (YOLOv8n-pose + Moondream): postura geométrica y descripción de la acción en el crop.
 - Observación visual con preguntas de recreación (lugar, acciones, caras, cámara).
