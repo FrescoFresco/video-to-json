@@ -1,5 +1,4 @@
 import type { ExtractionModuleDefinition } from "./types";
-import { aiReasoningModule } from "./ai-reasoning";
 import { audioEventsModule } from "./audio-events";
 import { cameraMotionModule } from "./camera-motion";
 import { facesFramingModule } from "./faces-framing";
@@ -13,10 +12,7 @@ import { speechModule } from "./speech";
 import { summaryModule } from "./summary";
 import { visualObservationModule } from "./visual-observation";
 
-/**
- * Registro de módulos activos (orden = orden de ejecución).
- * ai_reasoning va casi al final (necesita hechos previos); summary cierra.
- */
+/** Orden = orden de ejecución. summary al final. */
 export const EXTRACTION_MODULES: ExtractionModuleDefinition[] = [
   sceneCutsModule,
   cameraMotionModule,
@@ -29,7 +25,6 @@ export const EXTRACTION_MODULES: ExtractionModuleDefinition[] = [
   visualObservationModule,
   musicAmbianceModule,
   audioEventsModule,
-  aiReasoningModule,
   summaryModule,
 ];
 
