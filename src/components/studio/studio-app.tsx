@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { HomeFlowDiagram } from "@/components/studio/home-flow-diagram";
 import { msToClock } from "@/lib/extraction";
 import { useStudio } from "@/lib/store";
 import type { ExtractionModule, JobStatus, StoredVideo, ViewName } from "@/lib/types";
@@ -180,32 +179,20 @@ function HomeView() {
 
   return (
     <div className="vx-home-hero -mx-4 px-4 py-2 md:-mx-[clamp(22px,3vw,42px)] md:px-[clamp(22px,3vw,42px)] md:py-4">
-      <div className="mx-auto grid max-w-[1080px] gap-10 py-6 md:gap-12 md:py-10">
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:items-center">
-          <div>
-            <p className="vx-home-brand m-0 text-[clamp(34px,5vw,56px)] font-semibold leading-[0.95] tracking-[-0.06em] text-[#171719]">
-              Video Extraction Studio
-            </p>
-            <h1 className="mt-4 m-0 text-[clamp(22px,2.6vw,34px)] font-semibold leading-tight tracking-[-0.035em] text-[#2a323c]">
-              Subes un vídeo. Sales con un JSON claro.
-            </h1>
-            <p className="mt-3 max-w-[36rem] text-[15px] leading-relaxed text-[#5c6570]">
-              El programa mira el vídeo con varias cajitas: cortes, habla, quién habla,
-              texto, objetos, visión con IA y un resumen. Cada una escribe su parte.
-              Nada inventado.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-2 text-[12.5px] text-[#5c6570]">
-              <span className="rounded-md bg-white/80 px-2.5 py-1 ring-1 ring-[#e2e5ea]">1. Sube</span>
-              <span className="text-[#9aa3ad]">→</span>
-              <span className="rounded-md bg-white/80 px-2.5 py-1 ring-1 ring-[#e2e5ea]">2. Extrae</span>
-              <span className="text-[#9aa3ad]">→</span>
-              <span className="rounded-md bg-white/80 px-2.5 py-1 ring-1 ring-[#e2e5ea]">3. JSON / webhook</span>
-            </div>
-          </div>
-
-          <div className="rounded-[28px] bg-white/70 p-3 ring-1 ring-[#e2e5ea] backdrop-blur-sm md:p-4">
-            <HomeFlowDiagram />
-          </div>
+      <div className="mx-auto grid max-w-[720px] gap-10 py-10 md:gap-12 md:py-16">
+        <div className="vx-home-fade max-w-[34rem]">
+          <p className="vx-home-brand m-0 text-[clamp(40px,6.2vw,64px)] leading-[0.92] text-[#171719]">
+            Video Extraction
+            <br />
+            Studio
+          </p>
+          <p className="mt-5 m-0 text-[17px] leading-snug tracking-[-0.02em] text-[#2f363e]">
+            Subes un vídeo. Sales con un JSON claro.
+          </p>
+          <p className="mt-3 m-0 max-w-[28rem] text-[14.5px] leading-relaxed text-[#6a7380]">
+            Cortes, habla, interlocutores, texto en pantalla, objetos y un resumen.
+            Cada módulo escribe solo lo que encuentra.
+          </p>
         </div>
 
         <div
@@ -224,42 +211,48 @@ function HomeView() {
             setDrag(false);
             await handleFiles(e.dataTransfer.files);
           }}
-          className={`grid min-h-[220px] place-items-center rounded-[28px] border border-dashed border-[#c9ced6] bg-white/90 p-8 transition ${
-            drag ? "scale-[1.01] border-[#7f8792] bg-white" : ""
+          className={`vx-home-fade vx-home-fade-delay flex min-h-[168px] flex-col items-start justify-center gap-4 border border-dashed px-6 py-7 transition md:px-8 ${
+            drag ? "border-[#171719] bg-white" : "border-[#c9ced6] bg-transparent"
           }`}
         >
-          <div className="grid justify-items-center gap-3 text-center">
-            <div className="grid size-[52px] place-items-center rounded-[16px] bg-[#eef2f4]">
-              <Upload className="size-[22px]" />
-            </div>
-            <div className="text-lg font-semibold tracking-[-0.02em]">Empieza aquí: añade vídeos</div>
-            <div className="text-[13px] text-[#6a7380]">MP4 · MOV · MKV · WebM · varios a la vez</div>
-            <input
-              ref={inputRef}
-              type="file"
-              multiple
-              accept="video/*,.mp4,.mov,.mkv,.webm,.m4v"
-              hidden
-              onChange={async (e) => {
-                await handleFiles(e.target.files);
-                e.target.value = "";
-              }}
-            />
-            <Button className="rounded-xl" onClick={() => inputRef.current?.click()}>
-              Seleccionar vídeos
-            </Button>
+          <div className="flex items-center gap-3 text-[#171719]">
+            <Upload className="size-[18px] shrink-0 opacity-70" strokeWidth={1.75} />
+            <span className="text-[15px] font-medium tracking-[-0.015em]">
+              Arrastra vídeos o elige archivos
+            </span>
           </div>
+          <p className="m-0 text-[13px] text-[#6a7380]">MP4, MOV, MKV, WebM · varios a la vez</p>
+          <input
+            ref={inputRef}
+            type="file"
+            multiple
+            accept="video/*,.mp4,.mov,.mkv,.webm,.m4v"
+            hidden
+            onChange={async (e) => {
+              await handleFiles(e.target.files);
+              e.target.value = "";
+            }}
+          />
+          <Button
+            variant="outline"
+            className="rounded-lg border-[#d0d4da] bg-white hover:bg-[#f5f5f7]"
+            onClick={() => inputRef.current?.click()}
+          >
+            Seleccionar vídeos
+          </Button>
         </div>
 
         {s.videos.length > 0 && (
-          <div>
+          <div className="vx-home-fade vx-home-fade-delay-2">
             <div className="mb-3 flex items-center justify-between">
-              <p className="text-xs font-semibold tracking-wide text-[#6a7380] uppercase">Recientes</p>
-              <Button variant="outline" className="rounded-xl" onClick={s.clearAll}>
+              <p className="text-xs font-medium tracking-[0.04em] text-[#6a7380] uppercase">
+                Recientes
+              </p>
+              <Button variant="outline" className="rounded-lg" onClick={s.clearAll}>
                 Limpiar historial
               </Button>
             </div>
-            <div className="rounded-2xl border border-[#e7e7eb] bg-white">
+            <div className="border border-[#e7e7eb] bg-white">
               {s.videos.slice(0, 5).map((video) => (
                 <button
                   key={video.id}
