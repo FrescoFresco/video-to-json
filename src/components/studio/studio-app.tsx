@@ -797,15 +797,15 @@ function SettingsView() {
   }
 
   return (
-    <div className="grid gap-4">
-      <div>
+    <div className="grid min-w-0 gap-4">
+      <div className="min-w-0">
         <h1 className="text-[clamp(24px,2.4vw,32px)] font-semibold tracking-[-0.035em]">Ajustes</h1>
-        <p className="text-sm text-[#75757d]">
+        <p className="text-sm leading-relaxed text-[#75757d]">
           Conecta otras apps: cuando un vídeo termine, enviamos el JSON a tu URL.
         </p>
       </div>
 
-      <section className="rounded-2xl border border-[#e7e7eb] bg-white p-5">
+      <section className="min-w-0 overflow-hidden rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
         <div className="text-sm font-semibold">Webhook</div>
         <p className="mt-1 text-[12.5px] text-[#75757d]">
           Pon la URL de Make, n8n, Zapier, tu backend, etc. Recibirá un POST con el resultado.
@@ -813,17 +813,17 @@ function SettingsView() {
         {loading ? (
           <p className="mt-4 text-sm text-[#75757d]">Cargando…</p>
         ) : (
-          <div className="mt-4 grid gap-3">
-            <label className="grid gap-1.5 text-sm">
+          <div className="mt-4 grid min-w-0 gap-3">
+            <label className="grid min-w-0 gap-1.5 text-sm">
               <span className="text-[#75757d]">URL del webhook</span>
               <input
                 value={webhookUrl}
                 onChange={(e) => setWebhookUrl(e.target.value)}
                 placeholder="https://hooks.ejemplo.com/vx"
-                className="h-10 rounded-xl border border-[#d7d7dc] bg-[#fbfbfc] px-3 outline-none focus:border-[#9e9ea5]"
+                className="h-10 w-full min-w-0 rounded-xl border border-[#d7d7dc] bg-[#fbfbfc] px-3 outline-none focus:border-[#9e9ea5]"
               />
             </label>
-            <label className="grid gap-1.5 text-sm">
+            <label className="grid min-w-0 gap-1.5 text-sm">
               <span className="text-[#75757d]">
                 Secreto opcional {secretSet ? "(ya hay uno guardado)" : ""}
               </span>
@@ -831,7 +831,7 @@ function SettingsView() {
                 value={webhookSecret}
                 onChange={(e) => setWebhookSecret(e.target.value)}
                 placeholder={secretSet ? "Dejar vacío para no cambiarlo" : "Bearer token o clave"}
-                className="h-10 rounded-xl border border-[#d7d7dc] bg-[#fbfbfc] px-3 outline-none focus:border-[#9e9ea5]"
+                className="h-10 w-full min-w-0 rounded-xl border border-[#d7d7dc] bg-[#fbfbfc] px-3 outline-none focus:border-[#9e9ea5]"
               />
             </label>
             <div className="flex flex-wrap gap-2 pt-1">
