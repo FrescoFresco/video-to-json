@@ -12,6 +12,11 @@ import { processVideoFile } from "./process-video";
 import { withProcessSlot } from "./process-queue";
 import { deliverWebhook } from "./webhook";
 import { buildVideoExtraction } from "@/lib/extraction";
+import {
+  cleanupDownloadDir,
+  downloadVideoFromUrl,
+  parseAllowedVideoUrl,
+} from "./url-download";
 
 type JobStore = {
   jobs: Map<string, JobRecord>;
@@ -152,7 +157,180 @@ async function enqueueVideoJob(
   getStore().jobs.set(id, job);
   schedulePersist(job, true);
 
-  void withProcessSlot({
+  void runQueuedProcessing(id, filename, tempPath, options);
+
+  return (await getJob(id)) as StoredVideo;
+}
+
+export async function createJobFromUpload(
+  file: File,
+  options?: { webhookUrl?: string | null }
+): Promise<StoredVideo> {
+  const dir = path.join(os.tmpdir(), "vx-jobs");
+  await mkdir(dir, { recursive: true });
+  const idHint = createId();
+  const tempPath = path.join(dir, `${idHint}-${file.name.replace(/[^\w.-]+/g, "_")}`);
+  await writeFile(tempPath, Buffer.from(await file.arrayBuffer()));
+  return enqueueVideoJob(file.name, tempPath, options);
+}
+
+/** Encola un vídeo ya presente en disco (carpeta inbox / Drive Desktop). */
+export async function createJobFromLocalPath(
+  filePath: string,
+  options?: EnqueueOptions & { displayName?: string }
+): Promise<StoredVideo> {
+  const filename = options?.displayName || path.basename(filePath);
+  const dir = path.join(os.tmpdir(), "vx-jobs");
+  await mkdir(dir, { recursive: true });
+  const tempPath = path.join(dir, `${createId()}-${filename.replace(/[^\w.-]+/g, "_")}`);
+  await copyFile(/*turbopackIgnore: true*/ filePath, /*turbopackIgnore: true*/ tempPath);
+  return enqueueVideoJob(filename, tempPath, options);
+}
+
+/**
+ * Crea un trabajo desde un link (TikTok, Instagram, YouTube…).
+ * Primero descarga; luego entra en la misma cola de extracción.
+ */
+export async function createJobFromUrl(
+  rawUrl: string,
+  options?: { webhookUrl?: string | null }
+): Promise<StoredVideo> {
+  const url = parseAllowedVideoUrl(rawUrl);
+  await ensureLoaded();
+
+  const id = createId();
+  const createdAt = new Date().toISOString();
+  const webhookUrl = options?.webhookUrl?.trim() || null;
+  const displayHost = url.hostname.replace(/^www\./, "");
+
+  const job: JobRecord = {
+    id,
+    name: displayHost,
+    createdAt,
+    status: "processing",
+    progress: 3,
+    stage: "Descargando desde link…",
+    activity: [
+      {
+        time: clock(),
+        title: "Link recibido",
+        detail: url.href.slice(0, 120),
+        status: "ready",
+      },
+    ],
+  };
+
+  getStore().jobs.set(id, job);
+  schedulePersist(job, true);
+
+  void (async () => {
+    let workDir: string | undefined;
+    try {
+      const downloaded = await downloadVideoFromUrl(url.href);
+      workDir = downloaded.workDir;
+
+      const dir = path.join(os.tmpdir(), "vx-jobs");
+      await mkdir(dir, { recursive: true });
+      const tempPath = path.join(
+        dir,
+        `${id}-${downloaded.filename.replace(/[^\w.-]+/g, "_")}`
+      );
+      await copyFile(
+        /*turbopackIgnore: true*/ downloaded.filePath,
+        /*turbopackIgnore: true*/ tempPath
+      );
+      await cleanupDownloadDir(workDir);
+      workDir = undefined;
+
+      updateJob(
+        id,
+        {
+          name: downloaded.filename,
+          status: "queued",
+          progress: 5,
+          stage: "En espera",
+          activity: [
+            ...(getStore().jobs.get(id)?.activity ?? []),
+            {
+              time: clock(),
+              title: "Descarga",
+              detail: downloaded.extractor
+                ? `${downloaded.filename} · ${downloaded.extractor}`
+                : downloaded.filename,
+              status: "ready",
+            },
+          ],
+        },
+        true
+      );
+
+      await runQueuedProcessing(id, downloaded.filename, tempPath, {
+        webhookUrl,
+      });
+    } catch (error) {
+      await cleanupDownloadDir(workDir);
+      const message =
+        error instanceof Error ? error.message : "No se pudo descargar el vídeo";
+      updateJob(
+        id,
+        {
+          status: "error",
+          progress: 100,
+          stage: "Error",
+          error: message,
+          activity: [
+            ...(getStore().jobs.get(id)?.activity ?? []),
+            {
+              time: clock(),
+              title: "Descarga",
+              detail: message,
+              status: "error",
+            },
+          ],
+        },
+        true
+      );
+
+      const failedJob = getStore().jobs.get(id);
+      if (!failedJob) return;
+      const delivery = await deliverWebhook({
+        event: "job.error",
+        job: failedJob,
+        webhookUrl,
+      });
+      if (delivery) {
+        updateJob(
+          id,
+          {
+            activity: [
+              ...(getStore().jobs.get(id)?.activity ?? []),
+              {
+                time: clock(),
+                title: "Webhook",
+                detail: delivery.ok
+                  ? `Aviso de error enviado a ${delivery.url}`
+                  : `Falló el aviso: ${delivery.error || "error"}`,
+                status: delivery.ok ? "ready" : "error",
+              },
+            ],
+          },
+          true
+        );
+      }
+    }
+  })();
+
+  return (await getJob(id)) as StoredVideo;
+}
+
+/** Cola + processVideoFile compartido por upload, inbox y links. */
+async function runQueuedProcessing(
+  id: string,
+  filename: string,
+  tempPath: string,
+  options?: EnqueueOptions
+) {
+  await withProcessSlot({
     onWaiting: () => {
       updateJob(id, {
         status: "queued",
@@ -255,7 +433,7 @@ async function enqueueVideoJob(
           event: "job.ready",
           job: readyJob,
           result,
-          webhookUrl,
+          webhookUrl: options?.webhookUrl,
         });
         if (delivery) {
           updateJob(
@@ -308,7 +486,7 @@ async function enqueueVideoJob(
         const delivery = await deliverWebhook({
           event: "job.error",
           job: failedJob,
-          webhookUrl,
+          webhookUrl: options?.webhookUrl,
         });
         if (delivery) {
           updateJob(
@@ -332,33 +510,6 @@ async function enqueueVideoJob(
       }
     },
   });
-
-  return (await getJob(id)) as StoredVideo;
-}
-
-export async function createJobFromUpload(
-  file: File,
-  options?: { webhookUrl?: string | null }
-): Promise<StoredVideo> {
-  const dir = path.join(os.tmpdir(), "vx-jobs");
-  await mkdir(dir, { recursive: true });
-  const idHint = createId();
-  const tempPath = path.join(dir, `${idHint}-${file.name.replace(/[^\w.-]+/g, "_")}`);
-  await writeFile(tempPath, Buffer.from(await file.arrayBuffer()));
-  return enqueueVideoJob(file.name, tempPath, options);
-}
-
-/** Encola un vídeo ya presente en disco (carpeta inbox / Drive Desktop). */
-export async function createJobFromLocalPath(
-  filePath: string,
-  options?: EnqueueOptions & { displayName?: string }
-): Promise<StoredVideo> {
-  const filename = options?.displayName || path.basename(filePath);
-  const dir = path.join(os.tmpdir(), "vx-jobs");
-  await mkdir(dir, { recursive: true });
-  const tempPath = path.join(dir, `${createId()}-${filename.replace(/[^\w.-]+/g, "_")}`);
-  await copyFile(/*turbopackIgnore: true*/ filePath, /*turbopackIgnore: true*/ tempPath);
-  return enqueueVideoJob(filename, tempPath, options);
 }
 
 export async function clearJobs() {

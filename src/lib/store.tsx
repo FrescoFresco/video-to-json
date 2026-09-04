@@ -20,6 +20,7 @@ type StudioContextValue = {
   activeVideoId: string | null;
   openVideo: (id: string) => void;
   ingestFiles: (files: File[]) => Promise<void>;
+  ingestUrl: (url: string) => Promise<void>;
   clearAll: () => void;
 };
 
@@ -123,6 +124,57 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     }
   }, [refreshJobs]);
 
+  const ingestUrl = useCallback(async (url: string) => {
+    const trimmed = url.trim();
+    if (!trimmed) return;
+
+    try {
+      const res = await fetch("/api/jobs/from-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: trimmed }),
+      });
+      const data = (await res.json()) as StoredVideo & { error?: string };
+      if (!res.ok) {
+        throw new Error(data.error || "No se pudo crear el trabajo desde el link");
+      }
+      if (!data.id) {
+        throw new Error("No se creó ningún trabajo");
+      }
+
+      setVideos((prev) => [data, ...prev.filter((item) => item.id !== data.id)]);
+      setActiveVideoId(data.id);
+      setView("video-detail");
+      void refreshJobs();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "No se pudo usar ese link";
+      const fallbackId = `local_${Date.now()}`;
+      setVideos((prev) => [
+        {
+          id: fallbackId,
+          name: trimmed.slice(0, 48),
+          createdAt: new Date().toISOString(),
+          status: "error",
+          progress: 100,
+          stage: "Error",
+          error: message,
+          activity: [
+            {
+              time: clock(),
+              title: "Link",
+              detail: message,
+              status: "error",
+            },
+          ],
+        },
+        ...prev,
+      ]);
+      setActiveVideoId(fallbackId);
+      setView("video-detail");
+    }
+  }, [refreshJobs]);
+
   const clearAll = useCallback(() => {
     setVideos([]);
     setActiveVideoId(null);
@@ -141,9 +193,10 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       activeVideoId,
       openVideo,
       ingestFiles,
+      ingestUrl,
       clearAll,
     }),
-    [videos, view, activeVideoId, openVideo, ingestFiles, clearAll]
+    [videos, view, activeVideoId, openVideo, ingestFiles, ingestUrl, clearAll]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

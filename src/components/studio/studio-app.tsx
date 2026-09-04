@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useEffect, type ReactNode } from "react";
+import { useMemo, useRef, useState, useEffect, type FormEvent, type ReactNode } from "react";
 import {
   ArrowLeft,
   BookOpen,
@@ -14,7 +14,6 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { msToClock } from "@/lib/extraction";
 import { useStudio } from "@/lib/store";
 import type { ExtractionModule, JobStatus, StoredVideo, ViewName } from "@/lib/types";
@@ -171,10 +170,25 @@ function HomeView() {
   const s = useStudio();
   const inputRef = useRef<HTMLInputElement>(null);
   const [drag, setDrag] = useState(false);
+  const [link, setLink] = useState("");
+  const [linkBusy, setLinkBusy] = useState(false);
 
   async function handleFiles(files: FileList | null) {
     if (!files?.length) return;
     await s.ingestFiles([...files]);
+  }
+
+  async function handleLinkSubmit(e?: FormEvent) {
+    e?.preventDefault();
+    const value = link.trim();
+    if (!value || linkBusy) return;
+    setLinkBusy(true);
+    try {
+      await s.ingestUrl(value);
+      setLink("");
+    } finally {
+      setLinkBusy(false);
+    }
   }
 
   return (
@@ -241,6 +255,39 @@ function HomeView() {
             Seleccionar vídeos
           </Button>
         </div>
+
+        <form
+          onSubmit={(e) => void handleLinkSubmit(e)}
+          className="vx-home-fade vx-home-fade-delay grid gap-3"
+        >
+          <label className="text-[13px] font-medium text-[#6a7380]" htmlFor="vx-video-url">
+            O pega un link
+          </label>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+            <input
+              id="vx-video-url"
+              type="url"
+              inputMode="url"
+              autoComplete="off"
+              placeholder="TikTok, Instagram, Facebook, YouTube, X…"
+              value={link}
+              onChange={(e) => setLink(e.target.value)}
+              disabled={linkBusy}
+              className="min-w-0 flex-1 rounded-lg border border-[#d0d4da] bg-white px-3.5 py-2.5 text-sm text-[#171719] outline-none placeholder:text-[#9aa1ab] focus:border-[#171719] disabled:opacity-60"
+            />
+            <Button
+              type="submit"
+              className="rounded-lg sm:shrink-0"
+              disabled={linkBusy || !link.trim()}
+            >
+              {linkBusy ? "Descargando…" : "Analizar link"}
+            </Button>
+          </div>
+          <p className="m-0 text-[12.5px] leading-relaxed text-[#6a7380]">
+            Solo vídeos públicos. En algunos servidores la red puede bloquear la descarga; en tu PC
+            suele ir bien.
+          </p>
+        </form>
 
         {s.videos.length > 0 && (
           <div className="vx-home-fade vx-home-fade-delay-2">

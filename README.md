@@ -46,7 +46,7 @@ Con **Google Drive para escritorio** (carpetas locales sincronizadas):
 También puedes usar webhook (Make/n8n) si prefieres otro destino.
 ## Qué hace hoy
 
-- Acepta vídeos (`MP4`, `MOV`, `MKV`, `WebM`).
+- Acepta vídeos (`MP4`, `MOV`, `MKV`, `WebM`) por archivo o por **link** (TikTok, Instagram, Facebook, YouTube, X…).
 - Pipeline por **módulos** registrados (mismo contrato para todos).
 - Diarización con `diarize` (Silero + WeSpeaker): gratis, local, **sin token ni API de pago**.
 - **Música y ambiente** local (`librosa`): energía, ritmo/BPM si es claro, brillo del audio por pasajes. No identifica canciones.
