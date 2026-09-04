@@ -167,36 +167,32 @@ export function StudioApp() {
         </div>
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-[#e7e7eb] bg-[#fbfbfc]/94 px-2.5 pb-[calc(8px+env(safe-area-inset-bottom))] pt-2 backdrop-blur-md md:hidden">
-        <div className="grid grid-cols-4 gap-1">
-          <button
-            type="button"
-            onClick={() => s.setView("home")}
-            className={`grid min-h-12 place-items-center rounded-[9px] ${s.view === "home" ? "bg-[#f5f5f7] text-[#171719]" : "text-[#75757d]"}`}
-          >
-            <Home className="size-[18px]" />
-          </button>
-          <button
-            type="button"
-            onClick={() => s.setView("videos")}
-            className={`grid min-h-12 place-items-center rounded-[9px] ${s.view === "videos" || s.view === "video-detail" ? "bg-[#f5f5f7] text-[#171719]" : "text-[#75757d]"}`}
-          >
-            <Video className="size-[18px]" />
-          </button>
-          <button
-            type="button"
-            onClick={() => s.setView("docs")}
-            className={`grid min-h-12 place-items-center rounded-[9px] ${s.view === "docs" ? "bg-[#f5f5f7] text-[#171719]" : "text-[#75757d]"}`}
-          >
-            <BookOpen className="size-[18px]" />
-          </button>
-          <button
-            type="button"
-            onClick={() => s.setView("settings")}
-            className={`grid min-h-12 place-items-center rounded-[9px] ${s.view === "settings" ? "bg-[#f5f5f7] text-[#171719]" : "text-[#75757d]"}`}
-          >
-            <Settings className="size-[18px]" />
-          </button>
+      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-[#e7e7eb] bg-[#fbfbfc]/94 px-1.5 pb-[calc(6px+env(safe-area-inset-bottom))] pt-1.5 backdrop-blur-md md:hidden">
+        <div className="grid grid-cols-4 gap-0.5">
+          {(
+            [
+              ["home", "Inicio", <Home key="h" className="size-[18px]" />],
+              ["videos", "Vídeos", <Video key="v" className="size-[18px]" />],
+              ["docs", "Docs", <BookOpen key="d" className="size-[18px]" />],
+              ["settings", "Ajustes", <Settings key="s" className="size-[18px]" />],
+            ] as const
+          ).map(([view, label, icon]) => {
+            const active =
+              s.view === view || (view === "videos" && s.view === "video-detail");
+            return (
+              <button
+                key={view}
+                type="button"
+                onClick={() => s.setView(view)}
+                className={`grid min-h-12 place-items-center gap-0.5 rounded-[9px] px-1 ${
+                  active ? "bg-[#f5f5f7] text-[#171719]" : "text-[#75757d]"
+                }`}
+              >
+                {icon}
+                <span className="text-[10px] leading-none font-medium">{label}</span>
+              </button>
+            );
+          })}
         </div>
       </nav>
     </div>
@@ -247,15 +243,15 @@ function HomeView() {
     <div className="vx-home-hero -mx-4 px-4 py-2 md:-mx-[clamp(22px,3vw,42px)] md:px-[clamp(22px,3vw,42px)] md:py-4">
       <div className="mx-auto grid max-w-[720px] gap-10 py-10 md:gap-12 md:py-16">
         <div className="vx-home-fade max-w-[34rem]">
-          <p className="vx-home-brand m-0 text-[clamp(40px,6.2vw,64px)] leading-[0.92] text-[#171719]">
+          <p className="vx-home-brand m-0 text-[clamp(34px,9vw,64px)] leading-[0.92] text-[#171719]">
             Video Extraction
             <br />
             Studio
           </p>
-          <p className="mt-5 m-0 text-[17px] leading-snug tracking-[-0.02em] text-[#2f363e]">
+          <p className="mt-5 m-0 text-[16px] leading-snug tracking-[-0.02em] text-[#2f363e] sm:text-[17px]">
             Subes un vídeo. Sales con un JSON claro.
           </p>
-          <p className="mt-3 m-0 max-w-[28rem] text-[14.5px] leading-relaxed text-[#6a7380]">
+          <p className="mt-3 m-0 max-w-[28rem] text-[14px] leading-relaxed text-[#6a7380] sm:text-[14.5px]">
             Cortes, cámara, habla, texto, objetos, ambiente, eventos de sonido y un resumen.
             Cada módulo escribe solo lo que encuentra.
           </p>
@@ -282,19 +278,19 @@ function HomeView() {
               setFolderBusy(false);
             }
           }}
-          className={`vx-home-fade vx-home-fade-delay flex min-h-[168px] flex-col items-start justify-center gap-4 border border-dashed px-6 py-7 transition md:px-8 ${
+          className={`vx-home-fade vx-home-fade-delay flex min-h-[148px] flex-col items-start justify-center gap-3 border border-dashed px-4 py-5 transition sm:min-h-[168px] sm:gap-4 sm:px-6 sm:py-7 md:px-8 ${
             drag ? "border-[#171719] bg-white" : "border-[#c9ced6] bg-transparent"
           }`}
         >
-          <div className="flex items-center gap-3 text-[#171719]">
-            <Upload className="size-[18px] shrink-0 opacity-70" strokeWidth={1.75} />
-            <span className="text-[15px] font-medium tracking-[-0.015em]">
+          <div className="flex items-start gap-3 text-[#171719] sm:items-center">
+            <Upload className="mt-0.5 size-[18px] shrink-0 opacity-70 sm:mt-0" strokeWidth={1.75} />
+            <span className="text-[14px] leading-snug font-medium tracking-[-0.015em] sm:text-[15px]">
               {folderBusy
                 ? "Encolando…"
                 : "Arrastra vídeos, una carpeta o un .txt con links"}
             </span>
           </div>
-          <p className="m-0 text-[13px] text-[#6a7380]">
+          <p className="m-0 text-[12.5px] leading-relaxed text-[#6a7380] sm:text-[13px]">
             MP4, MOV, MKV, WebM · carpeta completa · lista de links (.txt)
           </p>
           <input
@@ -328,10 +324,10 @@ function HomeView() {
               }
             }}
           />
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
             <Button
               variant="outline"
-              className="rounded-lg border-[#d0d4da] bg-white hover:bg-[#f5f5f7]"
+              className="w-full rounded-lg border-[#d0d4da] bg-white hover:bg-[#f5f5f7] sm:w-auto"
               disabled={folderBusy}
               onClick={() => inputRef.current?.click()}
             >
@@ -339,7 +335,7 @@ function HomeView() {
             </Button>
             <Button
               variant="outline"
-              className="rounded-lg border-[#d0d4da] bg-white hover:bg-[#f5f5f7]"
+              className="w-full rounded-lg border-[#d0d4da] bg-white hover:bg-[#f5f5f7] sm:w-auto"
               disabled={folderBusy}
               onClick={() => {
                 const el = folderRef.current;
@@ -371,10 +367,10 @@ function HomeView() {
             disabled={linkBusy}
             className="min-w-0 w-full resize-y rounded-lg border border-[#d0d4da] bg-white px-3.5 py-2.5 text-sm text-[#171719] outline-none placeholder:text-[#9aa1ab] focus:border-[#171719] disabled:opacity-60"
           />
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
             <Button
               type="submit"
-              className="rounded-lg"
+              className="w-full rounded-lg sm:w-auto"
               disabled={linkBusy || !link.trim()}
             >
               {linkBusy ? "Encolando…" : "Analizar links"}
@@ -386,16 +382,20 @@ function HomeView() {
         </form>
 
         {s.videos.length > 0 && (
-          <div className="vx-home-fade vx-home-fade-delay-2">
-            <div className="mb-3 flex items-center justify-between">
+          <div className="vx-home-fade vx-home-fade-delay-2 min-w-0">
+            <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs font-medium tracking-[0.04em] text-[#6a7380] uppercase">
                 Recientes
               </p>
-              <Button variant="outline" className="rounded-lg" onClick={s.clearAll}>
+              <Button
+                variant="outline"
+                className="w-full rounded-lg sm:w-auto"
+                onClick={s.clearAll}
+              >
                 Limpiar historial
               </Button>
             </div>
-            <div className="border border-[#e7e7eb] bg-white">
+            <div className="min-w-0 overflow-hidden border border-[#e7e7eb] bg-white">
               {s.videos.slice(0, 5).map((video) => {
                 const eta = etaLabel(video, s.videos);
                 return (
@@ -403,12 +403,12 @@ function HomeView() {
                   key={video.id}
                   type="button"
                   onClick={() => s.openVideo(video.id)}
-                  className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-t border-[#e7e7eb] px-4 py-4 text-left first:border-t-0"
+                  className="grid w-full min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2.5 border-t border-[#e7e7eb] px-3 py-3.5 text-left first:border-t-0 sm:gap-3 sm:px-4 sm:py-4"
                 >
                   <StatusDot status={video.status} />
                   <div className="min-w-0">
                     <div className="truncate text-sm font-medium">{video.name}</div>
-                    <div className="mt-1 text-[12.5px] text-[#75757d]">
+                    <div className="mt-1 text-[12px] leading-snug break-words text-[#75757d] sm:text-[12.5px]">
                       {video.status === "queued" ? "En espera" :
                        video.status === "processing" ? "Procesando" :
                        video.status === "ready" ? "Listo" : "Error"}
@@ -416,7 +416,7 @@ function HomeView() {
                       {eta ? ` · ${eta}` : ""}
                     </div>
                   </div>
-                  <div className="text-[12px] text-[#75757d]">{video.progress}%</div>
+                  <div className="shrink-0 text-[12px] text-[#75757d]">{video.progress}%</div>
                 </button>
                 );
               })}
@@ -515,7 +515,7 @@ function VideoQueueRow({
 }) {
   return (
     <div
-      className={`grid w-full grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-3 border-t border-[#e7e7eb] px-3 py-3.5 first:border-t-0 sm:gap-3 sm:px-4 sm:py-4 ${
+      className={`grid w-full min-w-0 grid-cols-[auto_auto_minmax(0,1fr)] items-start gap-2.5 border-t border-[#e7e7eb] px-3 py-3 first:border-t-0 sm:grid-cols-[auto_auto_minmax(0,1fr)_auto] sm:items-center sm:gap-3 sm:px-4 sm:py-4 ${
         selected ? "bg-[#f7f7f9]" : "bg-white"
       }`}
     >
@@ -524,21 +524,34 @@ function VideoQueueRow({
         checked={selected}
         onChange={onToggle}
         aria-label={`Seleccionar ${video.name}`}
-        className="size-4 shrink-0 accent-[#171719]"
+        className="mt-1 size-4 shrink-0 accent-[#171719] sm:mt-0"
       />
-      <button type="button" onClick={onOpen} className="shrink-0" title="Abrir">
+      <button type="button" onClick={onOpen} className="mt-0.5 shrink-0 sm:mt-0" title="Abrir">
         <StatusDot status={video.status} />
       </button>
       <button type="button" onClick={onOpen} className="min-w-0 text-left">
-        <div className="truncate text-sm font-medium">{video.name}</div>
-        <div className="mt-1 text-[12.5px] text-[#75757d]">
-          {statusLabel(video.status)}
-          {video.stage ? ` · ${video.stage}` : ""}
-          {video.probe ? ` · ${Math.round(video.probe.durationMs / 1000)} s` : ""}
-          {eta ? ` · ${eta}` : ""}
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 truncate text-sm font-medium">{video.name}</div>
+          <div className="shrink-0 text-right text-[11px] text-[#75757d] sm:hidden">
+            <div className="font-medium text-[#171719]">{statusLabel(video.status)}</div>
+            <div>{video.progress}%</div>
+          </div>
+        </div>
+        <div className="mt-1 text-[12px] leading-snug break-words text-[#75757d] sm:text-[12.5px]">
+          <span className="sm:hidden">
+            {[video.stage, video.probe ? `${Math.round(video.probe.durationMs / 1000)} s` : null, eta]
+              .filter(Boolean)
+              .join(" · ") || "—"}
+          </span>
+          <span className="hidden sm:inline">
+            {statusLabel(video.status)}
+            {video.stage ? ` · ${video.stage}` : ""}
+            {video.probe ? ` · ${Math.round(video.probe.durationMs / 1000)} s` : ""}
+            {eta ? ` · ${eta}` : ""}
+          </span>
         </div>
         {(video.status === "processing" || video.status === "queued") && (
-          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#eef0f3]">
+          <div className="mt-2 h-1.5 max-w-full overflow-hidden rounded-full bg-[#eef0f3]">
             <div
               className={`h-full rounded-full transition-all ${
                 video.status === "queued" ? "bg-[#e2b340]" : "bg-[#3d6f99]"
@@ -548,7 +561,11 @@ function VideoQueueRow({
           </div>
         )}
       </button>
-      <button type="button" onClick={onOpen} className="text-right text-[12px] text-[#75757d]">
+      <button
+        type="button"
+        onClick={onOpen}
+        className="hidden text-right text-[12px] text-[#75757d] sm:block"
+      >
         <div className="font-medium text-[#171719]">{statusLabel(video.status)}</div>
         <div className="mt-1">{video.progress}%</div>
       </button>
@@ -693,16 +710,20 @@ function VideosView() {
   }
 
   return (
-    <div>
-      <div className="mb-6 flex items-end justify-between gap-4">
-        <div>
-          <h1 className="text-[clamp(24px,2.4vw,32px)] font-semibold tracking-[-0.035em]">Vídeos</h1>
-          <p className="text-sm text-[#75757d]">
-            Selecciona varios y descarga su JSON. También puedes buscar y filtrar.
+    <div className="min-w-0">
+      <div className="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+        <div className="min-w-0">
+          <h1 className="text-[clamp(22px,5vw,32px)] font-semibold tracking-[-0.035em]">Vídeos</h1>
+          <p className="mt-1 text-[13px] leading-relaxed text-[#75757d] sm:text-sm">
+            Selecciona varios y descarga su JSON. Busca y filtra como quieras.
           </p>
         </div>
         {s.videos.length > 0 && (
-          <Button variant="outline" className="rounded-xl" onClick={s.clearAll}>
+          <Button
+            variant="outline"
+            className="w-full shrink-0 rounded-xl sm:w-auto"
+            onClick={s.clearAll}
+          >
             <RotateCcw className="mr-2 size-4" />
             Limpiar
           </Button>
@@ -722,7 +743,7 @@ function VideosView() {
             onSelect={setStatusFilter}
           />
 
-          <div className="mb-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center">
+          <div className="mb-3 grid min-w-0 gap-2">
             <label className="relative block min-w-0">
               <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[#9a9aa3]" />
               <input
@@ -733,50 +754,54 @@ function VideosView() {
                 className="w-full rounded-xl border border-[#e7e7eb] bg-white py-2.5 pr-3 pl-10 text-sm outline-none placeholder:text-[#9a9aa3] focus:border-[#171719]"
               />
             </label>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-              className="rounded-xl border border-[#e7e7eb] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#171719]"
-              aria-label="Filtrar por estado"
-            >
-              <option value="all">Todos</option>
-              <option value="queued">En espera</option>
-              <option value="processing">Procesando</option>
-              <option value="ready">Listos</option>
-              <option value="error">Errores</option>
-            </select>
-            <select
-              value={sortMode}
-              onChange={(e) => setSortMode(e.target.value as SortMode)}
-              className="rounded-xl border border-[#e7e7eb] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#171719]"
-              aria-label="Ordenar"
-            >
-              <option value="newest">Más recientes</option>
-              <option value="oldest">Más antiguos</option>
-              <option value="name-asc">Nombre A→Z</option>
-              <option value="name-desc">Nombre Z→A</option>
-              <option value="status">Estado (activos primero)</option>
-            </select>
+            <div className="grid grid-cols-2 gap-2">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+                className="min-w-0 rounded-xl border border-[#e7e7eb] bg-white px-2.5 py-2.5 text-sm outline-none focus:border-[#171719] sm:px-3"
+                aria-label="Filtrar por estado"
+              >
+                <option value="all">Todos</option>
+                <option value="queued">En espera</option>
+                <option value="processing">Procesando</option>
+                <option value="ready">Listos</option>
+                <option value="error">Errores</option>
+              </select>
+              <select
+                value={sortMode}
+                onChange={(e) => setSortMode(e.target.value as SortMode)}
+                className="min-w-0 rounded-xl border border-[#e7e7eb] bg-white px-2.5 py-2.5 text-sm outline-none focus:border-[#171719] sm:px-3"
+                aria-label="Ordenar"
+              >
+                <option value="newest">Más recientes</option>
+                <option value="oldest">Más antiguos</option>
+                <option value="name-asc">Nombre A→Z</option>
+                <option value="name-desc">Nombre Z→A</option>
+                <option value="status">Activos primero</option>
+              </select>
+            </div>
           </div>
 
-          <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-[#e7e7eb] bg-white px-3 py-2.5">
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-[#171719]">
-              <input
-                type="checkbox"
-                checked={allFilteredSelected}
-                onChange={toggleAllFiltered}
-                disabled={filtered.length === 0}
-                className="size-4 accent-[#171719]"
-              />
-              Seleccionar todos
-            </label>
-            <span className="text-[12.5px] text-[#75757d]">
-              {selectedIds.size === 0
-                ? "Ninguno seleccionado"
-                : `${selectedIds.size} seleccionado${selectedIds.size === 1 ? "" : "s"}`}
-              {selectedIds.size > 0 ? ` · ${selectedWithJson} con JSON` : ""}
-            </span>
-            <div className="flex flex-wrap gap-2 sm:ml-auto">
+          <div className="mb-3 grid min-w-0 gap-2 rounded-xl border border-[#e7e7eb] bg-white p-3">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <label className="flex cursor-pointer items-center gap-2 text-sm text-[#171719]">
+                <input
+                  type="checkbox"
+                  checked={allFilteredSelected}
+                  onChange={toggleAllFiltered}
+                  disabled={filtered.length === 0}
+                  className="size-4 accent-[#171719]"
+                />
+                Seleccionar todos
+              </label>
+              <span className="text-[12px] text-[#75757d] sm:text-[12.5px]">
+                {selectedIds.size === 0
+                  ? "Ninguno seleccionado"
+                  : `${selectedIds.size} seleccionado${selectedIds.size === 1 ? "" : "s"}`}
+                {selectedIds.size > 0 ? ` · ${selectedWithJson} con JSON` : ""}
+              </span>
+            </div>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               <Button
                 type="button"
                 variant="outline"
@@ -784,8 +809,8 @@ function VideosView() {
                 disabled={selectedWithJson === 0}
                 onClick={handleDownloadSelected}
               >
-                <Download className="mr-1.5 size-3.5" />
-                Descargar JSON
+                <Download className="mr-1.5 size-3.5 shrink-0" />
+                <span className="truncate">Descargar JSON</span>
               </Button>
               <Button
                 type="button"
@@ -959,35 +984,37 @@ function VideoDetail({ video }: { video: StoredVideo }) {
         key={id}
         type="button"
         onClick={() => setDetailTab(id)}
-        className={`shrink-0 border-b-2 px-3 py-2.5 text-sm transition-colors ${
+        className={`shrink-0 border-b-2 px-2.5 py-2 text-[13px] transition-colors sm:px-3 sm:py-2.5 sm:text-sm ${
           active
             ? "border-[#171719] font-semibold text-[#171719]"
             : "border-transparent font-medium text-[#75757d] hover:text-[#171719]"
         }`}
       >
-        {label}
-        {hint ? (
-          <span className={`ml-1 text-[11px] ${active ? "text-[#171719]" : "text-[#9a9aa3]"}`}>
-            {hint}
-          </span>
-        ) : null}
+        <span className="inline-flex max-w-[9.5rem] items-baseline gap-1 truncate sm:max-w-none">
+          <span className="truncate">{label}</span>
+          {hint ? (
+            <span className={`shrink-0 text-[10px] sm:text-[11px] ${active ? "text-[#171719]" : "text-[#9a9aa3]"}`}>
+              {hint}
+            </span>
+          ) : null}
+        </span>
       </button>
     );
   };
 
   return (
-    <div>
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
+    <div className="min-w-0">
+      <div className="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between sm:gap-4">
+        <div className="min-w-0">
           <IconBtn title="Volver" onClick={() => s.setView("videos")}>
             <ArrowLeft className="size-[18px]" />
           </IconBtn>
-          <h1 className="mt-3 text-[clamp(24px,2.4vw,32px)] font-semibold tracking-[-0.035em]">
+          <h1 className="mt-3 break-words text-[clamp(20px,5vw,32px)] font-semibold tracking-[-0.035em]">
             {video.name}
           </h1>
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-[12.5px] text-[#75757d]">
+          <div className="mt-2 flex items-start gap-2 text-[12px] text-[#75757d] sm:text-[12.5px]">
             <StatusDot status={video.status} />
-            <span>
+            <span className="min-w-0 leading-snug break-words">
               {statusLabel(video.status)}
               {video.stage ? ` · ${video.stage}` : ""}
               {liveRows.length > 0 ? ` · ${doneCount}/${liveRows.length} módulos` : ""}
@@ -995,7 +1022,7 @@ function VideoDetail({ video }: { video: StoredVideo }) {
             </span>
           </div>
           {(video.status === "processing" || video.status === "queued") && (
-            <div className="mt-3 h-1.5 max-w-sm overflow-hidden rounded-full bg-[#eef0f3]">
+            <div className="mt-3 h-1.5 max-w-full overflow-hidden rounded-full bg-[#eef0f3] sm:max-w-sm">
               <div
                 className={`h-full rounded-full ${video.status === "queued" ? "bg-[#e2b340]" : "bg-[#3d6f99]"}`}
                 style={{ width: `${Math.max(6, Math.min(100, video.progress))}%` }}
@@ -1003,14 +1030,14 @@ function VideoDetail({ video }: { video: StoredVideo }) {
             </div>
           )}
           {eta && (video.status === "processing" || video.status === "queued") ? (
-            <p className="mt-2 text-[12.5px] text-[#6a7380]">
+            <p className="mt-2 text-[12px] leading-relaxed text-[#6a7380] sm:text-[12.5px]">
               Tiempo estimado (orientativo en CPU). Se ajusta según el progreso real.
             </p>
           ) : null}
         </div>
         {extraction && (
           <Button
-            className="rounded-xl"
+            className="w-full rounded-xl sm:w-auto"
             onClick={() =>
               downloadJson(
                 video.status === "ready" ? "video-extraction.json" : "video-extraction-parcial.json",
@@ -1027,7 +1054,7 @@ function VideoDetail({ video }: { video: StoredVideo }) {
       <div
         role="tablist"
         aria-label="Resultados del vídeo"
-        className="sticky top-0 z-10 -mx-1 flex max-w-full gap-0 overflow-x-auto border-b border-[#e7e7eb] bg-[#fbfbfc]/95 px-1 backdrop-blur-sm"
+        className="vx-tab-scroll sticky top-0 z-10 -mx-4 flex gap-0 overflow-x-auto overscroll-x-contain border-b border-[#e7e7eb] bg-[#fbfbfc]/95 px-4 backdrop-blur-sm md:mx-0 md:px-0"
       >
         {tabBtn("estado", "Estado")}
         {liveRows.map((row) =>
@@ -1156,7 +1183,7 @@ function VideoDetail({ video }: { video: StoredVideo }) {
             {video.activity.map((item, index) => (
               <div
                 key={`${item.time}-${index}`}
-                className="grid grid-cols-[60px_24px_minmax(0,1fr)] gap-3 border-t border-[#e7e7eb] py-2.5 first:border-t-0"
+                className="grid grid-cols-[4.5rem_1.25rem_minmax(0,1fr)] gap-2 border-t border-[#e7e7eb] py-2.5 first:border-t-0 sm:grid-cols-[60px_24px_minmax(0,1fr)] sm:gap-3"
               >
                 <div className="text-xs text-[#75757d]">{item.time}</div>
                 <StatusDot status={item.status} />
@@ -1220,12 +1247,12 @@ function ModuleLiveRow({
   }
 
   return (
-    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2.5 rounded-lg border border-[#ececf0] bg-[#fbfbfc] px-3 py-2">
+    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-[#ececf0] bg-[#fbfbfc] px-2.5 py-2 sm:gap-2.5 sm:px-3">
       {mark}
       <div className="min-w-0">
-        <div className="truncate text-sm font-medium leading-tight">{row.title}</div>
+        <div className="truncate text-[13px] font-medium leading-tight sm:text-sm">{row.title}</div>
         <div
-          className={`mt-0.5 text-[12px] leading-snug ${
+          className={`mt-0.5 text-[11px] leading-snug break-words sm:text-[12px] ${
             row.phase === "done"
               ? row.module?.status === "error"
                 ? "text-[#b42318]"
@@ -1242,7 +1269,9 @@ function ModuleLiveRow({
       <div className="shrink-0 text-right text-[11px] text-[#9a9aa3]">
         {timeLabel ? <div className="tabular-nums text-[#75757d]">{timeLabel}</div> : null}
         {row.module?.engine ? (
-          <div className="mt-0.5 hidden max-w-[9rem] truncate sm:block">{row.module.engine}</div>
+          <div className="mt-0.5 hidden max-w-[7rem] truncate sm:block sm:max-w-[9rem]">
+            {row.module.engine}
+          </div>
         ) : null}
       </div>
     </div>
@@ -1305,7 +1334,7 @@ function ModuleItemsList({ module }: { module: ExtractionModule }) {
             return (
               <div
                 key={`${module.id}-${index}`}
-                className="grid min-w-0 grid-cols-[7.5rem_minmax(0,1fr)] items-baseline gap-x-4 border-b border-[#ececf0] py-2.5 last:border-b-0 sm:grid-cols-[9rem_minmax(0,1fr)]"
+                className="grid min-w-0 grid-cols-1 items-baseline gap-y-0.5 border-b border-[#ececf0] py-2.5 last:border-b-0 sm:grid-cols-[9rem_minmax(0,1fr)] sm:gap-x-4"
               >
                 <span className="shrink-0 tabular-nums text-[12.5px] text-[#75757d]">
                   {typeof item.start_ms === "number" ? `${msToClock(item.start_ms)}${end}` : "—"}
@@ -1749,7 +1778,11 @@ function SettingsView() {
               />
             </label>
             <div className="pt-1">
-              <Button className="rounded-xl" disabled={saving} onClick={() => void save()}>
+              <Button
+                className="w-full rounded-xl sm:w-auto"
+                disabled={saving}
+                onClick={() => void save()}
+              >
                 {saving ? "Guardando…" : "Guardar carpeta"}
               </Button>
             </div>
@@ -1786,13 +1819,17 @@ function SettingsView() {
                 className="h-10 w-full min-w-0 rounded-xl border border-[#d7d7dc] bg-[#fbfbfc] px-3 outline-none focus:border-[#9e9ea5]"
               />
             </label>
-            <div className="flex flex-wrap gap-2 pt-1">
-              <Button className="rounded-xl" disabled={saving} onClick={() => void save()}>
+            <div className="grid grid-cols-1 gap-2 pt-1 sm:flex sm:flex-wrap">
+              <Button
+                className="w-full rounded-xl sm:w-auto"
+                disabled={saving}
+                onClick={() => void save()}
+              >
                 {saving ? "Guardando…" : "Guardar"}
               </Button>
               <Button
                 variant="outline"
-                className="rounded-xl"
+                className="w-full rounded-xl sm:w-auto"
                 disabled={testing || !webhookUrl.trim()}
                 onClick={() => void testWebhook()}
               >
@@ -1801,7 +1838,7 @@ function SettingsView() {
               {secretSet ? (
                 <Button
                   variant="outline"
-                  className="rounded-xl"
+                  className="w-full rounded-xl sm:w-auto"
                   disabled={saving}
                   onClick={() => void clearSecret()}
                 >

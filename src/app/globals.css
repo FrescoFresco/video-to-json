@@ -213,3 +213,12 @@ body {
 .vx-home-fade-delay-2 {
   animation-delay: 160ms;
 }
+
+/* Horizontal tab strip on phones — hide scrollbar, keep swipe */
+.vx-tab-scroll {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.vx-tab-scroll::-webkit-scrollbar {
+  display: none;
+}
