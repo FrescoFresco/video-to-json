@@ -416,6 +416,7 @@ function VideoDetail({ video }: { video: StoredVideo }) {
   const s = useStudio();
   const extraction = video.extraction;
   const [catalog, setCatalog] = useState<Array<{ id: string; title: string; stage: string }>>([]);
+  const [detailTab, setDetailTab] = useState("estado");
 
   useEffect(() => {
     let cancelled = false;
@@ -435,6 +436,11 @@ function VideoDetail({ video }: { video: StoredVideo }) {
       cancelled = true;
     };
   }, []);
+
+  // Al abrir otro vídeo, vuelve a Estado
+  useEffect(() => {
+    setDetailTab("estado");
+  }, [video.id]);
 
   const doneById = useMemo(() => {
     const map = new Map<string, ExtractionModule>();
@@ -488,10 +494,34 @@ function VideoDetail({ video }: { video: StoredVideo }) {
   }, [catalog, doneById, extraction, video.status, video.stage]);
 
   const doneCount = liveRows.filter((r) => r.phase === "done").length;
+  const activeModuleRow = liveRows.find((r) => r.id === detailTab);
+
+  const tabBtn = (id: string, label: string, hint?: string) => {
+    const active = detailTab === id;
+    return (
+      <button
+        key={id}
+        type="button"
+        onClick={() => setDetailTab(id)}
+        className={`shrink-0 border-b-2 px-3 py-2.5 text-sm transition-colors ${
+          active
+            ? "border-[#171719] font-semibold text-[#171719]"
+            : "border-transparent font-medium text-[#75757d] hover:text-[#171719]"
+        }`}
+      >
+        {label}
+        {hint ? (
+          <span className={`ml-1 text-[11px] ${active ? "text-[#171719]" : "text-[#9a9aa3]"}`}>
+            {hint}
+          </span>
+        ) : null}
+      </button>
+    );
+  };
 
   return (
     <div>
-      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <IconBtn title="Volver" onClick={() => s.setView("videos")}>
             <ArrowLeft className="size-[18px]" />
@@ -532,30 +562,26 @@ function VideoDetail({ video }: { video: StoredVideo }) {
         )}
       </div>
 
-      <Tabs defaultValue="estado" className="gap-4">
-        <TabsList
-          variant="line"
-          className="max-w-full flex-nowrap justify-start overflow-x-auto border-b border-[#e7e7eb] p-0"
-        >
-          <TabsTrigger value="estado" className="shrink-0">
-            Estado
-          </TabsTrigger>
-          {liveRows.map((row) => (
-            <TabsTrigger key={row.id} value={row.id} className="shrink-0">
-              {row.title}
-              {row.phase === "done" ? " ✓" : row.phase === "running" ? "…" : ""}
-            </TabsTrigger>
-          ))}
-          <TabsTrigger value="json" className="shrink-0">
-            JSON
-          </TabsTrigger>
-          <TabsTrigger value="activity" className="shrink-0">
-            Actividad
-          </TabsTrigger>
-        </TabsList>
+      <div
+        role="tablist"
+        aria-label="Resultados del vídeo"
+        className="sticky top-0 z-10 -mx-1 flex max-w-full gap-0 overflow-x-auto border-b border-[#e7e7eb] bg-[#fbfbfc]/95 px-1 backdrop-blur-sm"
+      >
+        {tabBtn("estado", "Estado")}
+        {liveRows.map((row) =>
+          tabBtn(
+            row.id,
+            row.title,
+            row.phase === "done" ? "✓" : row.phase === "running" ? "…" : undefined
+          )
+        )}
+        {tabBtn("json", "JSON")}
+        {tabBtn("activity", "Actividad")}
+      </div>
 
-        <TabsContent value="estado">
-          {video.status === "error" && !extraction ? (
+      <div className="mt-5 min-w-0" role="tabpanel">
+        {detailTab === "estado" ? (
+          video.status === "error" && !extraction ? (
             <EmptyCard title="No se pudo procesar" body={video.error || "Error desconocido"} />
           ) : (
             <div className="grid gap-4">
@@ -583,8 +609,7 @@ function VideoDetail({ video }: { video: StoredVideo }) {
               <section className="rounded-xl border border-[#e7e7eb] bg-white p-4">
                 <div className="text-sm font-semibold">Progreso de módulos</div>
                 <p className="mt-1 text-[12.5px] text-[#75757d]">
-                  Abre cada pestaña de arriba para ver el detalle. Los módulos nuevos aparecen
-                  solos al registrarse.
+                  Pulsa la pestaña de cada módulo arriba para ver su resultado a pantalla completa.
                 </p>
                 <div className="mt-3 grid gap-1.5">
                   {liveRows.length === 0 ? (
@@ -594,34 +619,41 @@ function VideoDetail({ video }: { video: StoredVideo }) {
                         : "Preparando extractores…"}
                     </p>
                   ) : (
-                    liveRows.map((row) => <ModuleLiveRow key={row.id} row={row} />)
+                    liveRows.map((row) => (
+                      <button
+                        key={row.id}
+                        type="button"
+                        className="w-full text-left"
+                        onClick={() => setDetailTab(row.id)}
+                      >
+                        <ModuleLiveRow row={row} />
+                      </button>
+                    ))
                   )}
                 </div>
               </section>
             </div>
-          )}
-        </TabsContent>
+          )
+        ) : null}
 
-        {liveRows.map((row) => (
-          <TabsContent key={`panel-${row.id}`} value={row.id}>
-            {row.module ? (
-              <ModuleItemsList module={row.module} />
-            ) : (
-              <EmptyCard
-                title={row.title}
-                body={
-                  row.phase === "running"
-                    ? "Extrayendo este módulo…"
-                    : video.status === "queued"
-                      ? "En espera de empezar el vídeo."
-                      : "Este módulo aún no ha terminado."
-                }
-              />
-            )}
-          </TabsContent>
-        ))}
+        {activeModuleRow ? (
+          activeModuleRow.module ? (
+            <ModuleItemsList module={activeModuleRow.module} />
+          ) : (
+            <EmptyCard
+              title={activeModuleRow.title}
+              body={
+                activeModuleRow.phase === "running"
+                  ? "Extrayendo este módulo…"
+                  : video.status === "queued"
+                    ? "En espera de empezar el vídeo."
+                    : "Este módulo aún no ha terminado."
+              }
+            />
+          )
+        ) : null}
 
-        <TabsContent value="json">
+        {detailTab === "json" ? (
           <div className="rounded-xl bg-[#151517] p-4 text-[12.5px] leading-[1.55] text-[#e9e9ed]">
             <pre className="overflow-auto whitespace-pre-wrap break-words">
               {JSON.stringify(
@@ -635,9 +667,9 @@ function VideoDetail({ video }: { video: StoredVideo }) {
               )}
             </pre>
           </div>
-        </TabsContent>
+        ) : null}
 
-        <TabsContent value="activity">
+        {detailTab === "activity" ? (
           <div className="rounded-xl border border-[#e7e7eb] bg-white p-4">
             {video.activity.map((item, index) => (
               <div
@@ -653,8 +685,8 @@ function VideoDetail({ video }: { video: StoredVideo }) {
               </div>
             ))}
           </div>
-        </TabsContent>
-      </Tabs>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -729,17 +761,20 @@ function Metric({ label, value }: { label: string; value: string }) {
 
 function ModuleItemsList({ module }: { module: ExtractionModule }) {
   return (
-    <section className="min-w-0 self-start rounded-xl border border-[#e7e7eb] bg-white p-3.5">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <div className="text-sm font-semibold leading-tight">{module.title}</div>
-        <div className="text-[12px] text-[#75757d]">{module.summary}</div>
+    <section className="min-w-0 w-full">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-[#e7e7eb] pb-3">
+        <h2 className="text-base font-semibold leading-tight tracking-[-0.02em]">{module.title}</h2>
+        <p className="text-[12.5px] text-[#75757d]">{module.summary}</p>
       </div>
+      {module.error ? (
+        <p className="mt-3 text-sm text-[#b42318]">{module.error}</p>
+      ) : null}
       {module.items.length === 0 ? (
-        <p className="mt-2 text-sm text-[#75757d]">
+        <p className="mt-3 text-sm text-[#75757d]">
           {module.error || "Este módulo no devolvió filas para este vídeo."}
         </p>
       ) : (
-        <div className="mt-2 grid min-w-0 gap-0">
+        <div className="mt-1 grid min-w-0 gap-0">
           {module.items.map((item, index) => {
             const label = (item.label || "").trim();
             const text = (item.text || "").trim();
@@ -749,14 +784,18 @@ function ModuleItemsList({ module }: { module: ExtractionModule }) {
               label === module.title ||
               label === text;
             const line = redundantLabel ? text || label || "—" : `${label} · ${text || "—"}`;
+            const end =
+              typeof item.end_ms === "number" && item.end_ms !== item.start_ms
+                ? ` → ${msToClock(item.end_ms)}`
+                : "";
 
             return (
               <div
                 key={`${module.id}-${index}`}
-                className="grid min-w-0 grid-cols-[4.75rem_minmax(0,1fr)] items-baseline gap-x-3 border-t border-[#e7e7eb] py-1.5 first:border-t-0 first:pt-0"
+                className="grid min-w-0 grid-cols-[7.5rem_minmax(0,1fr)] items-baseline gap-x-4 border-b border-[#ececf0] py-2.5 last:border-b-0 sm:grid-cols-[9rem_minmax(0,1fr)]"
               >
                 <span className="shrink-0 tabular-nums text-[12.5px] text-[#75757d]">
-                  {typeof item.start_ms === "number" ? msToClock(item.start_ms) : "—"}
+                  {typeof item.start_ms === "number" ? `${msToClock(item.start_ms)}${end}` : "—"}
                 </span>
                 <div className="min-w-0 text-sm leading-snug break-words text-[#171719]">
                   {line}
