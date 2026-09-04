@@ -15,12 +15,32 @@ from PIL import Image
 
 MODEL_ID = os.environ.get("VISION_MODEL", "vikhyatk/moondream2")
 MODEL_REVISION = os.environ.get("VISION_MODEL_REVISION", "2025-01-09")
-MAX_FRAMES = int(os.environ.get("VISION_MAX_FRAMES", "6"))
+MAX_FRAMES = int(os.environ.get("VISION_MAX_FRAMES", "8"))
 
 PROMPT = (
     "Describe this video frame in detail. Mention the setting, people, objects, "
     "text if any, actions, mood and anything notable. Be concrete, not vague."
 )
+
+# Preguntas extra para densificar el dossier de recreación (misma carga del modelo).
+RECREATION_QUERIES = {
+    "setting": (
+        "Where is this scene? Describe the place, background, indoor/outdoor, "
+        "furniture, architecture and lighting. Be specific."
+    ),
+    "people_actions": (
+        "What are the people doing? Describe body posture, gestures, gaze direction, "
+        "interactions and movement. If nobody, say so."
+    ),
+    "faces_emotion": (
+        "Describe visible faces: expression, emotion, gaze, age range if clear, "
+        "and how close the face is in the frame. If no face, say so."
+    ),
+    "mood": (
+        "What is the mood and cinematic feel? Lighting quality, color tone, "
+        "energy level, and anything useful to recreate the shot."
+    ),
+}
 
 
 def load_model():
@@ -39,6 +59,20 @@ def load_model():
     return model, device
 
 
+def ask(model, encoded, prompt: str) -> str:
+    try:
+        if hasattr(model, "query"):
+            ans = model.query(encoded, prompt)
+            if isinstance(ans, dict):
+                return (ans.get("answer") or "").strip()
+            return str(ans).strip()
+        if hasattr(model, "answer_question"):
+            return str(model.answer_question(encoded, prompt)).strip()
+    except Exception:
+        return ""
+    return ""
+
+
 def observe_image(model, image: Image.Image) -> dict:
     encoded = model.encode_image(image)
 
@@ -52,27 +86,31 @@ def observe_image(model, image: Image.Image) -> dict:
     except Exception:
         caption = ""
 
-    detail = ""
-    try:
-        if hasattr(model, "query"):
-            ans = model.query(encoded, PROMPT)
-            if isinstance(ans, dict):
-                detail = (ans.get("answer") or "").strip()
-            else:
-                detail = str(ans).strip()
-        elif hasattr(model, "answer_question"):
-            detail = str(model.answer_question(encoded, PROMPT)).strip()
-    except Exception as exc:
-        if not caption:
-            raise RuntimeError(f"VLM no pudo observar el frame: {exc}") from exc
+    detail = ask(model, encoded, PROMPT)
+    if not detail and not caption:
+        raise RuntimeError("VLM no pudo observar el frame")
+
+    recreation = {key: ask(model, encoded, q) or None for key, q in RECREATION_QUERIES.items()}
 
     text = detail or caption
-    if not text:
-        raise RuntimeError("VLM devolvió una descripción vacía")
+    # Empaqueta pistas de recreación en el texto principal si aportan algo nuevo
+    extras = []
+    for key, label in (
+        ("setting", "Lugar"),
+        ("people_actions", "Acciones"),
+        ("faces_emotion", "Caras/emoción"),
+        ("mood", "Ambiente"),
+    ):
+        val = recreation.get(key)
+        if val and val.lower() not in text.lower():
+            extras.append(f"{label}: {val}")
+    if extras:
+        text = text + "\n" + "\n".join(extras)
 
     return {
         "caption": caption or None,
         "observation": detail or caption,
+        "recreation": recreation,
         "text": text,
     }
 
@@ -124,6 +162,7 @@ def main() -> int:
                     "text": obs["text"],
                     "caption": obs.get("caption"),
                     "observation": obs.get("observation"),
+                    "recreation": obs.get("recreation"),
                     "role": "visual_observation",
                 }
             )

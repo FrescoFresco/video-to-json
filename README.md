@@ -51,6 +51,10 @@ También puedes usar webhook (Make/n8n) si prefieres otro destino.
 - Sin tope de cantidad: todo entra en cola y se procesa por lotes (`VX_MAX_CONCURRENT`).
 - La API acepta listas grandes de archivos o links; el cliente parte las subidas HTTP en tandas si hace falta.
 - Pipeline por **módulos** registrados (mismo contrato para todos).
+- **Caras y encuadre** (OpenCV): rostros, escala de plano y pistas simples de boca.
+- **Pose y acciones** (YOLOv8n-pose): postura corporal y gestos aproximados.
+- Observación visual con preguntas extra de recreación (lugar, acciones, caras/emoción, ambiente).
+- Muestreo temporal más denso en objetos/caras/pose.
 - Diarización con `diarize` (Silero + WeSpeaker): gratis, local, **sin token ni API de pago**.
 - **Música y ambiente** local (`librosa`): energía, ritmo/BPM si es claro, brillo del audio por pasajes. No identifica canciones.
 - **Movimiento de cámara** local (OpenCV): estática, paneo, zoom, trepidación por tramos.

@@ -1,6 +1,6 @@
 import path from "node:path";
 import type { ExtractionModule } from "@/lib/types";
-import { extractSceneFrames, readObjectDetections } from "../media";
+import { extractDenseFrames, readObjectDetections } from "../media";
 import type { ExtractionModuleDefinition, ModuleContext } from "./types";
 
 export const objectsPeopleModule: ExtractionModuleDefinition = {
@@ -13,13 +13,14 @@ export const objectsPeopleModule: ExtractionModuleDefinition = {
     const outJson = path.join(ctx.workDir, "objects.json");
 
     try {
-      const frames = await extractSceneFrames(
+      const maxFrames = Number(process.env.OBJECTS_MAX_FRAMES || 12);
+      const frames = await extractDenseFrames(
         ctx.videoPath,
-        ctx.probe.scenes,
         ctx.probe.durationMs,
-        framesDir
+        framesDir,
+        { maxFrames }
       );
-      const limited = frames.slice(0, Number(process.env.OBJECTS_MAX_FRAMES || 8));
+      const limited = frames.slice(0, maxFrames);
       const detected = await readObjectDetections(limited, manifestPath, outJson);
       const items = (detected.items || []).map((item) => ({
         start_ms: item.start_ms,

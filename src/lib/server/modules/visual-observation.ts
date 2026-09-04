@@ -20,7 +20,7 @@ export const visualObservationModule: ExtractionModuleDefinition = {
         framesDir
       );
       // CPU: pocas observaciones; el script también limita.
-      const limited = frames.slice(0, Number(process.env.VISION_MAX_FRAMES || 6));
+      const limited = frames.slice(0, Number(process.env.VISION_MAX_FRAMES || 8));
       const visual = await readVisualObservations(limited, manifestPath, outJson);
       const items = (visual.items || []).map((item) => ({
         start_ms: item.start_ms,

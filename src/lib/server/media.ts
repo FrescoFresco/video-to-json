@@ -165,11 +165,11 @@ function resolvePythonBin() {
 }
 
 function framePlan(scenes: { startMs: number; endMs: number }[], durationMs: number) {
-  const maxFrames = 12;
+  const maxFrames = 16;
   if (scenes.length >= 2) {
     return scenes.slice(0, maxFrames);
   }
-  const step = Math.max(800, Math.round(durationMs / maxFrames) || 800);
+  const step = Math.max(700, Math.round(durationMs / maxFrames) || 700);
   const out: { startMs: number; endMs: number }[] = [];
   for (let t = 0; t < Math.max(durationMs, 1) && out.length < maxFrames; t += step) {
     out.push({ startMs: t, endMs: Math.min(durationMs, t + step) });
@@ -177,14 +177,12 @@ function framePlan(scenes: { startMs: number; endMs: number }[], durationMs: num
   return out.length ? out : [{ startMs: 0, endMs: durationMs }];
 }
 
-export async function extractSceneFrames(
+async function grabFrames(
   videoPath: string,
-  scenes: { startMs: number; endMs: number }[],
-  durationMs: number,
+  plan: { startMs: number; endMs: number }[],
   outDir: string
 ) {
   await mkdir(outDir, { recursive: true });
-  const plan = framePlan(scenes, durationMs);
   const frames: { path: string; start_ms: number; end_ms: number }[] = [];
   for (const [i, scene] of plan.entries()) {
     const mid = (scene.startMs + scene.endMs) / 2 / 1000;
@@ -199,6 +197,45 @@ export async function extractSceneFrames(
     }
   }
   return frames;
+}
+
+export async function extractSceneFrames(
+  videoPath: string,
+  scenes: { startMs: number; endMs: number }[],
+  durationMs: number,
+  outDir: string
+) {
+  return grabFrames(videoPath, framePlan(scenes, durationMs), outDir);
+}
+
+/**
+ * Muestreo temporal denso (cada `intervalMs`) para caras/pose/recreación.
+ * Independiente de los cortes de escena.
+ */
+export async function extractDenseFrames(
+  videoPath: string,
+  durationMs: number,
+  outDir: string,
+  opts?: { intervalMs?: number; maxFrames?: number }
+) {
+  const maxFrames = Math.max(
+    2,
+    opts?.maxFrames ?? Number(process.env.DENSE_MAX_FRAMES || 16)
+  );
+  const intervalMs = Math.max(
+    400,
+    opts?.intervalMs ?? Number(process.env.DENSE_INTERVAL_MS || 1200)
+  );
+  const step =
+    durationMs > 0
+      ? Math.max(intervalMs, Math.round(durationMs / maxFrames) || intervalMs)
+      : intervalMs;
+  const plan: { startMs: number; endMs: number }[] = [];
+  for (let t = 0; t < Math.max(durationMs, 1) && plan.length < maxFrames; t += step) {
+    plan.push({ startMs: t, endMs: Math.min(durationMs, t + step) });
+  }
+  if (!plan.length) plan.push({ startMs: 0, endMs: durationMs });
+  return grabFrames(videoPath, plan, outDir);
 }
 
 export async function readOnScreenText(
@@ -262,7 +299,7 @@ export async function readVisualObservations(
     env: {
       ...process.env,
       HF_HUB_DISABLE_TELEMETRY: "1",
-      VISION_MAX_FRAMES: process.env.VISION_MAX_FRAMES || "6",
+      VISION_MAX_FRAMES: process.env.VISION_MAX_FRAMES || "8",
     },
   });
   return JSON.parse(await readFile(outJson, "utf8")) as VisualObservation;
@@ -306,11 +343,107 @@ export async function readObjectDetections(
     maxBuffer: 16 * 1024 * 1024,
     env: {
       ...process.env,
-      OBJECTS_MAX_FRAMES: process.env.OBJECTS_MAX_FRAMES || "8",
+      OBJECTS_MAX_FRAMES: process.env.OBJECTS_MAX_FRAMES || "12",
       YOLO_CONF: process.env.YOLO_CONF || "0.35",
     },
   });
   return JSON.parse(await readFile(outJson, "utf8")) as ObjectDetectionResult;
+}
+
+export type FacesFramingResult = {
+  engine: string;
+  frame_count?: number;
+  profile?: {
+    face_detections?: number;
+    frames_with_faces?: number;
+    shot_scale_counts?: Record<string, number>;
+    dominant_shot?: string | null;
+  };
+  detections?: unknown[];
+  items: Array<{
+    text: string;
+    start_ms: number;
+    end_ms: number;
+    role?: string;
+    label?: string;
+  }>;
+  error?: string;
+};
+
+export async function readFacesFraming(
+  frames: { path: string; start_ms: number; end_ms: number }[],
+  manifestPath: string,
+  outJson: string
+): Promise<FacesFramingResult> {
+  const python = resolvePythonBin();
+  const script = path.join(process.cwd(), "scripts", "from_video_faces.py");
+  if (!existsSync(/*turbopackIgnore: true*/ python)) {
+    throw new Error(
+      "Falta el entorno Python del pipeline. Ejecuta ./install.sh en la raiz del proyecto."
+    );
+  }
+  if (!existsSync(/*turbopackIgnore: true*/ script)) {
+    throw new Error("Falta scripts/from_video_faces.py");
+  }
+  await writeFile(manifestPath, JSON.stringify({ frames }), "utf8");
+  await execFileAsync(python, [script, manifestPath, outJson], {
+    timeout: 180000,
+    maxBuffer: 16 * 1024 * 1024,
+    env: {
+      ...process.env,
+      FACES_MAX_FRAMES: process.env.FACES_MAX_FRAMES || "16",
+    },
+  });
+  return JSON.parse(await readFile(outJson, "utf8")) as FacesFramingResult;
+}
+
+export type PoseActionsResult = {
+  engine: string;
+  model?: string;
+  frame_count?: number;
+  profile?: {
+    person_detections?: number;
+    tracks?: number;
+    posture_counts?: Record<string, number>;
+  };
+  tracks?: unknown[];
+  detections?: unknown[];
+  items: Array<{
+    text: string;
+    start_ms: number;
+    end_ms: number;
+    role?: string;
+    label?: string;
+  }>;
+  error?: string;
+};
+
+export async function readPoseActions(
+  frames: { path: string; start_ms: number; end_ms: number }[],
+  manifestPath: string,
+  outJson: string
+): Promise<PoseActionsResult> {
+  const python = resolvePythonBin();
+  const script = path.join(process.cwd(), "scripts", "from_video_pose.py");
+  if (!existsSync(/*turbopackIgnore: true*/ python)) {
+    throw new Error(
+      "Falta el entorno Python del pipeline. Ejecuta ./install.sh en la raiz del proyecto."
+    );
+  }
+  if (!existsSync(/*turbopackIgnore: true*/ script)) {
+    throw new Error("Falta scripts/from_video_pose.py");
+  }
+  await writeFile(manifestPath, JSON.stringify({ frames }), "utf8");
+  await execFileAsync(python, [script, manifestPath, outJson], {
+    timeout: 300000,
+    maxBuffer: 32 * 1024 * 1024,
+    env: {
+      ...process.env,
+      POSE_MAX_FRAMES: process.env.POSE_MAX_FRAMES || "16",
+      POSE_CONF: process.env.POSE_CONF || "0.35",
+    },
+  });
+  return JSON.parse(await readFile(outJson, "utf8")) as PoseActionsResult;
 }
 
 export type AmbianceResult = {

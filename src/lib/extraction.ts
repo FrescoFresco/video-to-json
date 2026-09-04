@@ -17,6 +17,8 @@ export const COMPLETE_MODULE_IDS = [
   "speakers",
   "on_screen_text",
   "objects_people",
+  "faces_framing",
+  "pose_actions",
   "visual_observation",
   "music_ambiance",
   "audio_events",

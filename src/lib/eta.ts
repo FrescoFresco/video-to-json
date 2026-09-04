@@ -4,7 +4,7 @@ import { formatElapsed } from "./format-time";
 export { formatElapsed, formatModuleDuration } from "./format-time";
 
 /** Nº de módulos por defecto si aún no hay catálogo. */
-const DEFAULT_MODULES = 10;
+const DEFAULT_MODULES = 12;
 
 /**
  * Estimación bruta en CPU local para un vídeo completo.

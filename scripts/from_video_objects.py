@@ -11,7 +11,7 @@ from pathlib import Path
 from ultralytics import YOLO
 
 MODEL_NAME = os.environ.get("YOLO_MODEL", "yolov8n.pt")
-MAX_FRAMES = int(os.environ.get("OBJECTS_MAX_FRAMES", "8"))
+MAX_FRAMES = int(os.environ.get("OBJECTS_MAX_FRAMES", "12"))
 CONF = float(os.environ.get("YOLO_CONF", "0.35"))
 
 # Clases COCO más útiles para vídeo / personas

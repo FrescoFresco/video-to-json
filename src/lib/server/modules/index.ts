@@ -1,9 +1,11 @@
 import type { ExtractionModuleDefinition } from "./types";
 import { audioEventsModule } from "./audio-events";
 import { cameraMotionModule } from "./camera-motion";
+import { facesFramingModule } from "./faces-framing";
 import { musicAmbianceModule } from "./music-ambiance";
 import { objectsPeopleModule } from "./objects-people";
 import { onScreenTextModule } from "./on-screen-text";
+import { poseActionsModule } from "./pose-actions";
 import { sceneCutsModule } from "./scene-cuts";
 import { speakersModule } from "./speakers";
 import { speechModule } from "./speech";
@@ -21,6 +23,8 @@ export const EXTRACTION_MODULES: ExtractionModuleDefinition[] = [
   speakersModule,
   onScreenTextModule,
   objectsPeopleModule,
+  facesFramingModule,
+  poseActionsModule,
   visualObservationModule,
   musicAmbianceModule,
   audioEventsModule,

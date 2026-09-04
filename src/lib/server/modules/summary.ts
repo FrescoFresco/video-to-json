@@ -56,6 +56,18 @@ export const summaryModule: ExtractionModuleDefinition = {
       for (const line of takeLines(objects, 3)) parts.push(`- ${line}`);
     }
 
+    const faces = byId.get("faces_framing");
+    if (faces?.status === "ok") {
+      parts.push(`Caras y encuadre: ${faces.summary}.`);
+      for (const line of takeLines(faces, 2)) parts.push(`- ${line}`);
+    }
+
+    const pose = byId.get("pose_actions");
+    if (pose?.status === "ok") {
+      parts.push(`Pose y acciones: ${pose.summary}.`);
+      for (const line of takeLines(pose, 2)) parts.push(`- ${line}`);
+    }
+
     const visual = byId.get("visual_observation");
     if (visual?.status === "ok" && visual.items.length) {
       parts.push(`Observación visual: ${visual.summary}.`);

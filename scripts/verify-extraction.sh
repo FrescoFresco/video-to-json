@@ -17,6 +17,8 @@ EXPECT_MODULES=(
   speakers
   on_screen_text
   objects_people
+  faces_framing
+  pose_actions
   visual_observation
   music_ambiance
   audio_events
@@ -95,6 +97,8 @@ expected = [
   "speakers",
   "on_screen_text",
   "objects_people",
+  "faces_framing",
+  "pose_actions",
   "visual_observation",
   "music_ambiance",
   "audio_events",
@@ -114,7 +118,7 @@ for mid in expected:
     items = len(m.get("items") or [])
     ok = status == "ok" and items > 0
     # speech/speakers: ok si hay segmentos o interlocutores
-    if mid in ("speech", "speakers", "on_screen_text", "objects_people", "visual_observation", "scene_cuts", "music_ambiance", "camera_motion", "audio_events", "summary"):
+    if mid in ("speech", "speakers", "on_screen_text", "objects_people", "faces_framing", "pose_actions", "visual_observation", "scene_cuts", "music_ambiance", "camera_motion", "audio_events", "summary"):
         if not ok:
             print(f"FAIL  {mid}: status={status} summary={summary!r} items={items} error={m.get('error')}")
             failed.append(mid)
@@ -130,6 +134,8 @@ speech = modules.get("speech") or {}
 speakers = modules.get("speakers") or {}
 ocr = modules.get("on_screen_text") or {}
 objs = modules.get("objects_people") or {}
+faces = modules.get("faces_framing") or {}
+pose = modules.get("pose_actions") or {}
 
 texts = " ".join(i.get("text", "") for i in (ocr.get("items") or [])).upper()
 if "SMOKE" not in texts and "TEST" not in texts:
@@ -140,6 +146,14 @@ obj_text = " ".join(i.get("text", "") for i in (objs.get("items") or [])).lower(
 if "person" not in obj_text:
     print("FAIL  objects_people: no detectó person")
     failed.append("objects_people-content")
+
+if (faces.get("status") == "ok") and not (faces.get("items") or []):
+    print("FAIL  faces_framing: status ok sin items")
+    failed.append("faces_framing-content")
+
+pose_text = " ".join(i.get("text", "") for i in (pose.get("items") or [])).lower()
+if pose.get("status") == "ok" and "de pie" not in pose_text and "persona" not in pose_text and "sentado" not in pose_text:
+    print("WARN  pose_actions: ok pero sin postura reconocible en texto")
 
 spk_count = len((speakers.get("data") or {}).get("speakers") or speakers.get("items") or [])
 if spk_count < 1:
