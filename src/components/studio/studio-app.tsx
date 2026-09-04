@@ -885,6 +885,28 @@ function SettingsView() {
     }
   }
 
+  async function clearSecret() {
+    setSaving(true);
+    setMessage(null);
+    setError(null);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clearWebhookSecret: true }),
+      });
+      const data = (await res.json()) as { webhookSecretSet?: boolean; error?: string };
+      if (!res.ok) throw new Error(data.error || "No se pudo quitar el secreto");
+      setSecretSet(Boolean(data.webhookSecretSet));
+      setWebhookSecret("");
+      setMessage("Secreto del webhook eliminado.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo quitar el secreto");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function testWebhook() {
     setTesting(true);
     setMessage(null);
@@ -951,6 +973,11 @@ function SettingsView() {
                 className="h-10 w-full min-w-0 rounded-xl border border-[#d7d7dc] bg-[#fbfbfc] px-3 outline-none focus:border-[#9e9ea5]"
               />
             </label>
+            <div className="pt-1">
+              <Button className="rounded-xl" disabled={saving} onClick={() => void save()}>
+                {saving ? "Guardando…" : "Guardar carpeta"}
+              </Button>
+            </div>
           </div>
         )}
       </section>
@@ -996,6 +1023,16 @@ function SettingsView() {
               >
                 {testing ? "Probando…" : "Probar webhook"}
               </Button>
+              {secretSet ? (
+                <Button
+                  variant="outline"
+                  className="rounded-xl"
+                  disabled={saving}
+                  onClick={() => void clearSecret()}
+                >
+                  Quitar secreto
+                </Button>
+              ) : null}
             </div>
             {message ? <p className="text-sm text-[#177245]">{message}</p> : null}
             {error ? <p className="text-sm text-[#b42318]">{error}</p> : null}
@@ -1005,19 +1042,7 @@ function SettingsView() {
 
       <EmptyCard
         title="Cómo usar Drive"
-        body="Instala Google Drive para escritorio, elige una carpeta local de entrada y otra de salida en Ajustes, activa la vigilancia y deja el Studio encendido. Subes el vídeo a Drive → aparece en la carpeta local → sale el JSON en la de salida."
-      />
-      <EmptyCard
-        title="Qué recibe la otra app"
-        body='Un POST JSON con event ("job.ready" o "job.error"), datos del trabajo y el bloque extraction con todos los módulos. Si subes varios vídeos, cada uno avisa cuando termina.'
-      />
-      <EmptyCard
-        title="Varios vídeos desde fuera"
-        body="Tu otra app puede mandar muchos de golpe con POST /api/jobs y el campo files (varios archivos). Se encolan y se procesan sin saturar la máquina."
-      />
-      <EmptyCard
-        title="Módulos"
-        body="La interfaz no hardcodea extractores. Cada módulo registrado escribe su bloque y aparece solo si se ejecutó."
+        body="Instala Google Drive para escritorio, elige una carpeta local de entrada y otra de salida en Ajustes, activa la vigilancia y deja el Studio encendido. Subes el vídeo a Drive → aparece en la carpeta local → sale el JSON en la de salida. Más detalle en Docs."
       />
     </div>
   );

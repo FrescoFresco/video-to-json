@@ -164,10 +164,6 @@ function resolvePythonBin() {
   return path.join(/*turbopackIgnore: true*/ process.cwd(), "video-py", "bin", "python");
 }
 
-function pythonBin() {
-  return resolvePythonBin();
-}
-
 function framePlan(scenes: { startMs: number; endMs: number }[], durationMs: number) {
   const maxFrames = 12;
   if (scenes.length >= 2) {
@@ -210,7 +206,7 @@ export async function readOnScreenText(
   manifestPath: string,
   outJson: string
 ): Promise<OnScreenText> {
-  const python = pythonBin();
+  const python = resolvePythonBin();
   const script = path.join(process.cwd(), "scripts", "from_video_ocr.py");
   if (!existsSync(/*turbopackIgnore: true*/ python)) {
     throw new Error(
@@ -248,7 +244,7 @@ export async function readVisualObservations(
   manifestPath: string,
   outJson: string
 ): Promise<VisualObservation> {
-  const python = pythonBin();
+  const python = resolvePythonBin();
   const script = path.join(process.cwd(), "scripts", "from_video_visual.py");
   if (!existsSync(/*turbopackIgnore: true*/ python)) {
     throw new Error(
@@ -294,7 +290,7 @@ export async function readObjectDetections(
   manifestPath: string,
   outJson: string
 ): Promise<ObjectDetectionResult> {
-  const python = pythonBin();
+  const python = resolvePythonBin();
   const script = path.join(process.cwd(), "scripts", "from_video_objects.py");
   if (!existsSync(/*turbopackIgnore: true*/ python)) {
     throw new Error(
@@ -375,7 +371,7 @@ export async function analyzeVideoAmbiance(
     throw error;
   }
 
-  const python = pythonBin();
+  const python = resolvePythonBin();
   const script = path.join(process.cwd(), "scripts", "from_video_ambiance.py");
   if (!existsSync(/*turbopackIgnore: true*/ python)) {
     throw new Error(
@@ -425,7 +421,7 @@ export async function analyzeCameraMotion(
   videoPath: string,
   outJson: string
 ): Promise<CameraMotionResult> {
-  const python = pythonBin();
+  const python = resolvePythonBin();
   const script = path.join(process.cwd(), "scripts", "from_video_camera.py");
   if (!existsSync(/*turbopackIgnore: true*/ python)) {
     throw new Error(
@@ -486,7 +482,7 @@ export async function analyzeAudioEvents(
     throw error;
   }
 
-  const python = pythonBin();
+  const python = resolvePythonBin();
   const script = path.join(process.cwd(), "scripts", "from_video_audio_events.py");
   if (!existsSync(/*turbopackIgnore: true*/ python)) {
     throw new Error(

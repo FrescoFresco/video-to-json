@@ -42,8 +42,7 @@ COPY requirements-video.txt ./
 RUN python3 -m venv video-py \
   && video-py/bin/pip install --upgrade pip \
   && video-py/bin/pip install --no-cache-dir torch==2.8.0 torchvision==0.23.0 torchaudio==2.8.0 --index-url https://download.pytorch.org/whl/cpu \
-  && video-py/bin/pip install --no-cache-dir -r requirements-video.txt \
-  && video-py/bin/pip install --no-cache-dir 'transformers==4.49.0'
+  && video-py/bin/pip install --no-cache-dir -r requirements-video.txt
 
 ENV VIDEO_VENV_DIR=video-py
 ENV VX_DATA_DIR=/data/jobs

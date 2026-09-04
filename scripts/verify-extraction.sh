@@ -54,7 +54,7 @@ echo "→ Comprobando servidor en $BASE_URL"
 code="$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/" || true)"
 if [[ "$code" != "200" ]]; then
   echo "El servidor no responde en $BASE_URL (HTTP $code)." >&2
-  echo "Arranca antes: VIDEO_PYTHON=$ROOT/.venv/bin/python npm run dev" >&2
+  echo "Arranca antes: ./install.sh   (o VIDEO_PYTHON=$ROOT/video-py/bin/python npm run dev)" >&2
   exit 1
 fi
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Instala y arranca Video Extraction Studio de un golpe.
-# Preferencia: Docker. Si no hay Docker, instala dependencias locales y levanta el servidor.
+# Por defecto: Docker si está disponible. Forzar local: ./install.sh local|prod
+# Evitar Docker: FORCE_LOCAL=1 ./install.sh
 
 set -euo pipefail
 
@@ -9,6 +10,7 @@ cd "$ROOT"
 
 PORT="${PORT:-43141}"
 HOST="${HOST:-0.0.0.0}"
+MODE="${1:-}"
 
 need_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -25,11 +27,12 @@ start_docker() {
     docker-compose up --build -d
   fi
   echo
-  echo "Listo. Abre http://localhost:${PORT}"
+  echo "Listo. Abre http://localhost:43141"
   echo "Parar: docker compose down"
 }
 
 start_local() {
+  local run_mode="${1:-dev}"
   echo "→ Instalación local (sin Docker)"
 
   need_cmd node
@@ -52,8 +55,7 @@ start_local() {
     video-py/bin/pip install -r requirements-video.txt
   fi
 
-  MODE="${1:-dev}"
-  if [[ "$MODE" == "prod" ]]; then
+  if [[ "$run_mode" == "prod" ]]; then
     echo "→ build de producción"
     npm run build
     echo
@@ -70,6 +72,18 @@ main() {
   echo "Video Extraction Studio — instalación de un golpe"
   echo
 
+  # Modo explícito local/prod: no usar Docker.
+  if [[ "${FORCE_LOCAL:-}" == "1" || "$MODE" == "local" || "$MODE" == "prod" || "$MODE" == "dev" ]]; then
+    local_mode="dev"
+    if [[ "$MODE" == "prod" ]]; then
+      local_mode="prod"
+    elif [[ "$MODE" == "local" || "$MODE" == "dev" ]]; then
+      local_mode="dev"
+    fi
+    start_local "$local_mode"
+    exit 0
+  fi
+
   if command -v docker >/dev/null 2>&1; then
     if docker info >/dev/null 2>&1; then
       start_docker
@@ -80,7 +94,7 @@ main() {
     echo "No hay Docker; paso a instalación local."
   fi
 
-  start_local "${1:-dev}"
+  start_local "dev"
 }
 
 main "$@"

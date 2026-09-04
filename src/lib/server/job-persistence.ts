@@ -73,10 +73,6 @@ export async function persistJob(job: JobRecord) {
   }
 }
 
-export async function deleteJobFromDisk(id: string) {
-  await rm(/*turbopackIgnore: true*/ jobDir(id), { recursive: true, force: true });
-}
-
 export async function clearJobsFromDisk() {
   await rm(/*turbopackIgnore: true*/ dataRoot(), { recursive: true, force: true });
   await ensureDataRoot();

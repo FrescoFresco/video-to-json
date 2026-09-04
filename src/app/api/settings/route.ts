@@ -20,6 +20,7 @@ export async function PUT(request: Request) {
   const body = (await request.json().catch(() => null)) as {
     webhookUrl?: string;
     webhookSecret?: string;
+    clearWebhookSecret?: boolean;
     inboxPath?: string;
     outboxPath?: string;
     inboxEnabled?: boolean;
@@ -31,7 +32,12 @@ export async function PUT(request: Request) {
 
   const next = await writeAppConfig({
     webhookUrl: typeof body.webhookUrl === "string" ? body.webhookUrl : undefined,
-    webhookSecret: typeof body.webhookSecret === "string" ? body.webhookSecret : undefined,
+    webhookSecret:
+      body.clearWebhookSecret === true
+        ? ""
+        : typeof body.webhookSecret === "string"
+          ? body.webhookSecret
+          : undefined,
     inboxPath: typeof body.inboxPath === "string" ? body.inboxPath : undefined,
     outboxPath: typeof body.outboxPath === "string" ? body.outboxPath : undefined,
     inboxEnabled: typeof body.inboxEnabled === "boolean" ? body.inboxEnabled : undefined,

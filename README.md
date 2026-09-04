@@ -29,17 +29,12 @@ Abre [http://localhost:43141](http://localhost:43141).
 Hace falta Node 20+, Python 3.12, ffmpeg y ffprobe.
 
 ```bash
-./install.sh
+./install.sh local          # desarrollo
+FORCE_LOCAL=1 ./install.sh  # igual, fuerza local aunque haya Docker
+./install.sh prod           # build + start de producción
 ```
 
-Si no detecta Docker, instala dependencias npm/Python y arranca el servidor.
-
-Producción local:
-
-```bash
-./install.sh prod
-```
-
+Si no pasas modo (`./install.sh` a secas) y Docker está disponible, usa Docker.
 ## Google Drive (vídeo in → JSON out)
 
 Con **Google Drive para escritorio** (carpetas locales sincronizadas):

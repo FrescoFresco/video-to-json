@@ -16,18 +16,9 @@ function getQueue() {
   return globalQueue.__vxProcessQueue;
 }
 
-export function maxConcurrent() {
+function maxConcurrent() {
   const n = Number(process.env.VX_MAX_CONCURRENT || 1);
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1;
-}
-
-export function getQueueSnapshot() {
-  const q = getQueue();
-  return {
-    running: q.running,
-    waiting: q.waiters.length,
-    maxConcurrent: maxConcurrent(),
-  };
 }
 
 export async function withProcessSlot<T>(options: {

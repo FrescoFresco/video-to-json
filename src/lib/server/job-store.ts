@@ -49,8 +49,25 @@ async function ensureLoaded() {
   if (store.loaded) return;
   if (!store.loadPromise) {
     store.loadPromise = loadAllJobsFromDisk().then((jobs) => {
+      // Tras reinicio no se puede retomar un vídeo temporal ya borrado.
+      for (const [id, job] of jobs) {
+        if (job.status === "queued" || job.status === "processing") {
+          jobs.set(id, {
+            ...job,
+            status: "error",
+            progress: 100,
+            stage: "Error",
+            error: "Interrumpido al reiniciar el servidor. Vuelve a subir el vídeo.",
+          });
+        }
+      }
       store.jobs = jobs;
       store.loaded = true;
+      for (const job of jobs.values()) {
+        if (job.status === "error" && job.error?.includes("Interrumpido")) {
+          schedulePersist(job, true);
+        }
+      }
     });
   }
   await store.loadPromise;

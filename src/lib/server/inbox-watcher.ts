@@ -35,13 +35,27 @@ function seenPath() {
   return path.join(/*turbopackIgnore: true*/ root, "inbox-seen.json");
 }
 
-async function loadSeen(seen: Set<string>) {
+async function loadSeen(seen: Set<string>, inboxPath?: string) {
   try {
     const raw = await readFile(/*turbopackIgnore: true*/ seenPath(), "utf8");
     const list = JSON.parse(raw) as string[];
     if (Array.isArray(list)) for (const id of list) seen.add(id);
   } catch {
     // primera vez
+  }
+  // Si el vídeo sigue en la entrada, no lo damos por procesado (reinicio a medias).
+  if (inboxPath) {
+    for (const key of [...seen]) {
+      try {
+        await stat(/*turbopackIgnore: true*/ key);
+        // archivo aún existe en la ruta vista → reintentar
+        if (key.startsWith(path.resolve(inboxPath) + path.sep)) {
+          seen.delete(key);
+        }
+      } catch {
+        // ya no está: ok
+      }
+    }
   }
 }
 
@@ -127,9 +141,11 @@ async function tick() {
             } catch {
               // si Drive bloquea el move, dejamos el original
             }
+            s.seen.add(key);
+            await saveSeen(s.seen);
           },
           onError: async (message) => {
-            const errFile = path.join(outbox, `${safeBase(name)}.error.json`);
+            const errFile = path.join(errorDir, `${safeBase(name)}.error.json`);
             await writeFile(
               /*turbopackIgnore: true*/ errFile,
               JSON.stringify({ error: message, file: name, at: new Date().toISOString() }, null, 2),
@@ -143,10 +159,10 @@ async function tick() {
             } catch {
               // ignore
             }
+            s.seen.add(key);
+            await saveSeen(s.seen);
           },
         });
-        s.seen.add(key);
-        await saveSeen(s.seen);
       } catch (err) {
         console.error("[inbox]", name, err);
       } finally {
@@ -161,13 +177,14 @@ export function startInboxWatcher() {
   const s = state();
   if (s.started) return;
   s.started = true;
-  void loadSeen(s.seen).then(() => {
+  void (async () => {
+    const config = await readAppConfig();
+    await loadSeen(s.seen, config.inboxPath || undefined);
     void tick();
     const ms = Number(process.env.VX_INBOX_POLL_MS || 5000);
     s.timer = setInterval(() => {
       void tick();
     }, Number.isFinite(ms) && ms >= 2000 ? ms : 5000);
-    // Evitar que el timer impida apagar el proceso en algunos entornos.
     if (typeof s.timer.unref === "function") s.timer.unref();
-  });
+  })();
 }
