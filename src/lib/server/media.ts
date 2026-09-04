@@ -316,3 +316,79 @@ export async function readObjectDetections(
   });
   return JSON.parse(await readFile(outJson, "utf8")) as ObjectDetectionResult;
 }
+
+export type AmbianceResult = {
+  engine: string;
+  sample_rate?: number;
+  duration_ms?: number;
+  tempo_bpm?: number | null;
+  tempo_confidence?: number;
+  mean_rms?: number;
+  peak_rms?: number;
+  mean_centroid_hz?: number;
+  segments?: Array<{
+    start_ms: number;
+    end_ms: number;
+    label: string;
+    energy?: string;
+    brightness?: string;
+    text?: string;
+  }>;
+  items: Array<{
+    start_ms: number;
+    end_ms: number;
+    label: string;
+    text: string;
+  }>;
+  profile?: {
+    overall?: string;
+    energy?: string;
+    brightness?: string;
+    rhythm?: string;
+    notes?: string;
+  };
+  error?: string;
+};
+
+/** Extrae WAV a 22.05 kHz y analiza música/ambiente con librosa (local). */
+export async function analyzeVideoAmbiance(
+  videoPath: string,
+  wavPath: string,
+  outJson: string
+): Promise<AmbianceResult> {
+  try {
+    await execFileAsync(
+      "ffmpeg",
+      ["-y", "-i", videoPath, "-vn", "-ac", "1", "-ar", "22050", "-c:a", "pcm_s16le", wavPath],
+      { timeout: 60000 }
+    );
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    if (/does not contain any stream/i.test(msg)) {
+      return {
+        engine: "librosa",
+        items: [],
+        segments: [],
+        profile: { overall: "Sin pista de audio" },
+      };
+    }
+    throw error;
+  }
+
+  const python = pythonBin();
+  const script = path.join(process.cwd(), "scripts", "from_video_ambiance.py");
+  if (!existsSync(/*turbopackIgnore: true*/ python)) {
+    throw new Error(
+      "Falta el entorno Python del pipeline. Ejecuta ./install.sh en la raiz del proyecto."
+    );
+  }
+  if (!existsSync(/*turbopackIgnore: true*/ script)) {
+    throw new Error("Falta scripts/from_video_ambiance.py");
+  }
+
+  await execFileAsync(python, [script, wavPath, outJson], {
+    timeout: 180000,
+    maxBuffer: 8 * 1024 * 1024,
+  });
+  return JSON.parse(await readFile(outJson, "utf8")) as AmbianceResult;
+}

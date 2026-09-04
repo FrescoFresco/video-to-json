@@ -43,6 +43,7 @@ Producción local:
 - Acepta vídeos (`MP4`, `MOV`, `MKV`, `WebM`).
 - Pipeline por **módulos** registrados (mismo contrato para todos).
 - Diarización con `diarize` (Silero + WeSpeaker): gratis, local, **sin token ni API de pago**.
+- **Música y ambiente** local (`librosa`): energía, ritmo/BPM si es claro, brillo del audio por pasajes. No identifica canciones.
 - La UI y el JSON solo muestran lo que cada módulo devuelve (`summary`, `items`, `data`).
 - Trabajos y JSON guardados en disco (`data/jobs/`); el vídeo temporal se borra al terminar.
 - API: `POST/GET /api/jobs`, `GET /api/jobs/:id/result`, `GET /api/modules`, `GET/PUT/POST /api/settings` (webhook).
@@ -50,7 +51,7 @@ Producción local:
 
 ## Qué aún no hace
 
-- Análisis de música / ambiente.
+- Identificación de canción (tipo Shazam): requiere API/catálogo externo.
 - Instalador nativo `.exe` / `.dmg` (ahora: Docker o `./install.sh`).
 - API key de acceso (el secreto del webhook es opcional).
 

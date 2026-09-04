@@ -56,6 +56,12 @@ export const summaryModule: ExtractionModuleDefinition = {
       for (const line of takeLines(visual, 2)) parts.push(`- ${line}`);
     }
 
+    const ambiance = byId.get("music_ambiance");
+    if (ambiance?.status === "ok") {
+      parts.push(`Música y ambiente: ${ambiance.summary}.`);
+      for (const line of takeLines(ambiance, 2)) parts.push(`- ${line}`);
+    }
+
     const failed = ctx.previousModules.filter((m) => m.status === "error");
     if (failed.length) {
       parts.push(
