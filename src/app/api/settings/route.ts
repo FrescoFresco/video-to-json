@@ -66,6 +66,7 @@ export async function POST(request: Request) {
       stage: "Listo",
       activity: [],
       extraction: {
+        schema_version: "1.0",
         source: { filename: "prueba-webhook.mp4", processed_at: new Date().toISOString() },
         media: {
           duration_ms: 1000,

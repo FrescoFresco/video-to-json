@@ -85,6 +85,8 @@ export type ExtractionModule = {
 };
 
 export type VideoExtraction = {
+  /** Versión del contrato JSON. Si cambia la forma, sube este número. */
+  schema_version: string;
   source: {
     filename: string;
     processed_at: string;

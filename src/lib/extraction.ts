@@ -1,5 +1,8 @@
 import type { ExtractionModule, ProbeResult, VideoExtraction } from "./types";
 
+/** Versión del contrato `extraction`. Subir al romper compatibilidad. */
+export const EXTRACTION_SCHEMA_VERSION = "1.0";
+
 export function msToClock(ms: number) {
   const s = Math.max(0, ms) / 1000;
   const m = Math.floor(s / 60);
@@ -14,6 +17,7 @@ export function buildVideoExtraction(input: {
   modules: ExtractionModule[];
 }): VideoExtraction {
   return {
+    schema_version: EXTRACTION_SCHEMA_VERSION,
     source: {
       filename: input.filename,
       processed_at: input.processedAt,
