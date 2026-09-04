@@ -630,6 +630,25 @@ function DocsView({ onOpenSettings }: { onOpenSettings: () => void }) {
       </section>
 
       <section className="min-w-0 overflow-hidden rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
+        <div className="text-sm font-semibold">Google Drive (carpeta → JSON)</div>
+        <p className="mt-2 text-sm leading-relaxed text-[#75757d]">
+          Con Google Drive para escritorio, el Studio vigila una carpeta local de entrada y
+          escribe el JSON en otra de salida. Configúralo en Ajustes y deja el programa
+          encendido en ese ordenador.
+        </p>
+        <ol className="mt-4 grid gap-2 text-sm text-[#171719]">
+          <li>1. Sincroniza dos carpetas con Drive Desktop (entrada y salida).</li>
+          <li>2. En Ajustes, activa la vigilancia y pega las rutas locales.</li>
+          <li>3. Sube un vídeo a la carpeta de entrada; el JSON aparece en la de salida.</li>
+        </ol>
+        <div className="mt-4">
+          <Button className="rounded-xl" onClick={onOpenSettings}>
+            Ir a Ajustes
+          </Button>
+        </div>
+      </section>
+
+      <section className="min-w-0 overflow-hidden rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
         <div className="text-sm font-semibold">Webhook</div>
         <p className="mt-2 text-sm leading-relaxed text-[#75757d]">
           Configura la URL en Ajustes. Sirve para Make, n8n, Zapier o tu backend.
