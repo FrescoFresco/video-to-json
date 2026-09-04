@@ -41,6 +41,7 @@ export async function processVideoFile(
       const progress = Math.round(start + (span * index) / total);
       cb.onProgress?.(progress, definition.stage);
 
+      const t0 = Date.now();
       const result = await definition.run({
         videoPath,
         filename,
@@ -48,8 +49,12 @@ export async function processVideoFile(
         workDir,
         previousModules: [...modules],
       });
-      modules.push(result);
-      cb.onModule?.({ module: result, modules: [...modules], probe });
+      const timed: ExtractionModule = {
+        ...result,
+        duration_ms: Math.max(1, Date.now() - t0),
+      };
+      modules.push(timed);
+      cb.onModule?.({ module: timed, modules: [...modules], probe });
     }
 
     cb.onProgress?.(95, "Componiendo JSON");

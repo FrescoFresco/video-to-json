@@ -15,7 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { etaLabel } from "@/lib/eta";
+import { etaLabel, formatElapsed, formatModuleDuration } from "@/lib/eta";
 import { msToClock } from "@/lib/extraction";
 import { isLinkListFilename, readLinksFromFile } from "@/lib/ingest-links";
 import { useStudio } from "@/lib/store";
@@ -862,7 +862,13 @@ function VideoDetail({ video }: { video: StoredVideo }) {
           tabBtn(
             row.id,
             row.title,
-            row.phase === "done" ? "✓" : row.phase === "running" ? "…" : undefined
+            row.phase === "done"
+              ? row.module?.duration_ms
+                ? formatModuleDuration(row.module.duration_ms)
+                : "✓"
+              : row.phase === "running"
+                ? "…"
+                : undefined
           )
         )}
         {tabBtn("json", "JSON")}
@@ -899,7 +905,17 @@ function VideoDetail({ video }: { video: StoredVideo }) {
               <section className="rounded-xl border border-[#e7e7eb] bg-white p-4">
                 <div className="text-sm font-semibold">Progreso de módulos</div>
                 <p className="mt-1 text-[12.5px] text-[#75757d]">
-                  Pulsa la pestaña de cada módulo arriba para ver su resultado a pantalla completa.
+                  Pulsa la pestaña de cada módulo arriba para ver su resultado. A la derecha
+                  ves cuánto tarda (o lleva) cada uno.
+                  {(() => {
+                    const totalMs = liveRows.reduce(
+                      (sum, row) => sum + (row.module?.duration_ms || 0),
+                      0
+                    );
+                    return totalMs > 0
+                      ? ` Suma de módulos listos: ${formatModuleDuration(totalMs)}.`
+                      : "";
+                  })()}
                 </p>
                 <div className="mt-3 grid gap-1.5">
                   {liveRows.length === 0 ? (
@@ -916,7 +932,11 @@ function VideoDetail({ video }: { video: StoredVideo }) {
                         className="w-full text-left"
                         onClick={() => setDetailTab(row.id)}
                       >
-                        <ModuleLiveRow row={row} />
+                        <ModuleLiveRow
+                          row={row}
+                          stageStartedAt={video.stageStartedAt}
+                          nowMs={now}
+                        />
                       </button>
                     ))
                   )}
@@ -983,6 +1003,8 @@ function VideoDetail({ video }: { video: StoredVideo }) {
 
 function ModuleLiveRow({
   row,
+  stageStartedAt,
+  nowMs,
 }: {
   row: {
     id: string;
@@ -990,6 +1012,8 @@ function ModuleLiveRow({
     phase: "done" | "running" | "waiting";
     module?: ExtractionModule;
   };
+  stageStartedAt?: string;
+  nowMs: number;
 }) {
   const mark =
     row.phase === "done" ? (
@@ -1013,6 +1037,16 @@ function ModuleLiveRow({
         ? "Extrayendo…"
         : "En espera";
 
+  let timeLabel: string | null = null;
+  if (row.phase === "done" && row.module?.duration_ms) {
+    timeLabel = formatModuleDuration(row.module.duration_ms);
+  } else if (row.phase === "running" && stageStartedAt) {
+    const started = Date.parse(stageStartedAt);
+    if (Number.isFinite(started)) {
+      timeLabel = formatElapsed(Math.max(1, (nowMs - started) / 1000));
+    }
+  }
+
   return (
     <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2.5 rounded-lg border border-[#ececf0] bg-[#fbfbfc] px-3 py-2">
       {mark}
@@ -1033,9 +1067,12 @@ function ModuleLiveRow({
           {row.module?.error ? ` · ${row.module.error}` : ""}
         </div>
       </div>
-      {row.module?.engine ? (
-        <div className="hidden text-[11px] text-[#9a9aa3] sm:block">{row.module.engine}</div>
-      ) : null}
+      <div className="shrink-0 text-right text-[11px] text-[#9a9aa3]">
+        {timeLabel ? <div className="tabular-nums text-[#75757d]">{timeLabel}</div> : null}
+        {row.module?.engine ? (
+          <div className="mt-0.5 hidden max-w-[9rem] truncate sm:block">{row.module.engine}</div>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -1050,10 +1087,24 @@ function Metric({ label, value }: { label: string; value: string }) {
 }
 
 function ModuleItemsList({ module }: { module: ExtractionModule }) {
+  const took =
+    typeof module.duration_ms === "number"
+      ? formatModuleDuration(module.duration_ms)
+      : null;
+
   return (
     <section className="min-w-0 w-full">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-[#e7e7eb] pb-3">
-        <h2 className="text-base font-semibold leading-tight tracking-[-0.02em]">{module.title}</h2>
+        <div className="min-w-0">
+          <h2 className="text-base font-semibold leading-tight tracking-[-0.02em]">
+            {module.title}
+          </h2>
+          {took ? (
+            <p className="mt-1 text-[12.5px] text-[#75757d]">
+              Este módulo tardó <span className="font-medium text-[#171719]">{took}</span>
+            </p>
+          ) : null}
+        </div>
         <p className="text-[12.5px] text-[#75757d]">{module.summary}</p>
       </div>
       {module.error ? (

@@ -80,6 +80,8 @@ export type ExtractionModule = {
   summary: string;
   error?: string;
   items: ModuleItem[];
+  /** Tiempo real de ejecución del módulo (ms). */
+  duration_ms?: number;
   /** Payload crudo del motor, para APIs / otros sistemas. */
   data?: unknown;
 };
@@ -117,6 +119,8 @@ export type StoredVideo = {
   processingStartedAt?: string;
   /** ISO: cuando terminó (listo o error tras procesar). */
   completedAt?: string;
+  /** ISO: cuando cambió el stage actual (módulo en curso). */
+  stageStartedAt?: string;
   probe?: ProbeResult;
   extraction?: VideoExtraction;
   activity: ActivityEvent[];

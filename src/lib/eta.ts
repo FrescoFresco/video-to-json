@@ -98,6 +98,12 @@ export function formatElapsed(seconds: number): string {
   return `${h} h ${mins % 60} min`;
 }
 
+/** Duración de un módulo (ms → texto corto). */
+export function formatModuleDuration(ms: number): string {
+  if (ms < 1000) return `${Math.max(1, Math.round(ms))} ms`;
+  return formatElapsed(ms / 1000);
+}
+
 export function etaLabel(
   video: StoredVideo,
   all: StoredVideo[],

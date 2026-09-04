@@ -355,10 +355,12 @@ async function runQueuedProcessing(
           onProgress: (progress, stage) => {
             const current = getStore().jobs.get(id);
             if (!current) return;
+            const stageChanged = stage !== current.stage;
             updateJob(id, {
               status: "processing",
               progress,
               stage,
+              ...(stageChanged ? { stageStartedAt: new Date().toISOString() } : {}),
             });
           },
           onProbe: (probe) => {
@@ -403,7 +405,9 @@ async function runQueuedProcessing(
                     title: module.title,
                     detail: module.error
                       ? `${module.summary}: ${module.error}`
-                      : module.summary,
+                      : typeof module.duration_ms === "number"
+                        ? `${module.summary} · ${Math.round(module.duration_ms / 1000) || "<1"} s`
+                        : module.summary,
                     status: (module.status === "error" ? "error" : "ready") as StoredVideo["status"],
                   },
                 ],
