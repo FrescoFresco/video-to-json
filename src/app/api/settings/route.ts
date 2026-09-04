@@ -61,20 +61,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Configura una URL de webhook primero" }, { status: 400 });
   }
 
+  const processedAt = new Date().toISOString();
   const delivery = await deliverWebhook({
     event: "job.ready",
     webhookUrl: url,
     job: {
       id: "job_test_webhook",
       name: "prueba-webhook.mp4",
-      createdAt: new Date().toISOString(),
+      createdAt: processedAt,
       status: "ready",
       progress: 100,
       stage: "Listo",
       activity: [],
       extraction: {
         schema_version: EXTRACTION_SCHEMA_VERSION,
-        source: { filename: "prueba-webhook.mp4", processed_at: new Date().toISOString() },
+        kind: "video_complete",
+        source: { filename: "prueba-webhook.mp4", processed_at: processedAt },
         media: {
           duration_ms: 1000,
           duration: "00:01.000",
@@ -83,6 +85,40 @@ export async function POST(request: Request) {
           fps: 25,
           orientation: "horizontal",
         },
+        run: {
+          module_count: 1,
+          ok: 1,
+          empty: 0,
+          error: 0,
+          total_module_ms: 12,
+          modules: [
+            {
+              id: "summary",
+              title: "Resumen",
+              status: "ok",
+              summary: "Prueba de webhook",
+              item_count: 1,
+            },
+          ],
+        },
+        content: {
+          summary: {
+            id: "summary",
+            title: "Resumen",
+            status: "ok",
+            summary: "Prueba de webhook",
+            items: [{ label: "resumen", text: "Esto es un evento de prueba." }],
+            data: { text: "Esto es un evento de prueba." },
+          },
+        },
+        timeline: [
+          {
+            module_id: "summary",
+            module_title: "Resumen",
+            label: "resumen",
+            text: "Esto es un evento de prueba.",
+          },
+        ],
         modules: [
           {
             id: "summary",

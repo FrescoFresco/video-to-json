@@ -1,5 +1,6 @@
 import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { ensureCompleteExtraction } from "@/lib/extraction";
 import type { StoredVideo, VideoJobResult } from "@/lib/types";
 
 export type JobRecord = StoredVideo & {
@@ -17,6 +18,21 @@ function jobDir(id: string) {
 
 export async function ensureDataRoot() {
   await mkdir(/*turbopackIgnore: true*/ dataRoot(), { recursive: true });
+}
+
+function upgradeJobRecord(meta: StoredVideo, result?: VideoJobResult): JobRecord {
+  const extraction = ensureCompleteExtraction(meta.extraction) ?? meta.extraction;
+  const upgradedResult = result
+    ? {
+        ...result,
+        extraction: ensureCompleteExtraction(result.extraction) ?? result.extraction,
+      }
+    : undefined;
+  return {
+    ...meta,
+    extraction,
+    result: upgradedResult,
+  };
 }
 
 export async function loadAllJobsFromDisk(): Promise<Map<string, JobRecord>> {
@@ -43,7 +59,7 @@ export async function loadAllJobsFromDisk(): Promise<Map<string, JobRecord>> {
         } catch {
           result = undefined;
         }
-        map.set(id, { ...meta, result });
+        map.set(id, upgradeJobRecord(meta, result));
       } catch {
         // carpeta incompleta: se ignora
       }

@@ -89,6 +89,8 @@ export type ExtractionModule = {
 export type VideoExtraction = {
   /** Versión del contrato JSON. Si cambia la forma, sube este número. */
   schema_version: string;
+  /** Pack unificado: todos los módulos en un solo documento. */
+  kind: "video_complete";
   source: {
     filename: string;
     processed_at: string;
@@ -103,8 +105,42 @@ export type VideoExtraction = {
     soundtrack_codec?: string;
     orientation: "vertical" | "horizontal" | "square";
   };
-  /** Solo módulos que se ejecutaron. Si no está instalado, no aparece. */
+  /** Resumen de la corrida (conteos y tiempos por módulo). */
+  run: {
+    module_count: number;
+    ok: number;
+    empty: number;
+    error: number;
+    total_module_ms: number;
+    modules: Array<{
+      id: string;
+      title: string;
+      status: ExtractionModule["status"];
+      summary: string;
+      error?: string;
+      engine?: string | null;
+      duration_ms?: number;
+      item_count: number;
+    }>;
+  };
+  /**
+   * Todos los JSON de módulos juntos, por id.
+   * Cada entrada lleva meta + `items` + `data` (payload crudo del motor).
+   */
+  content: Record<string, unknown>;
+  /** Todas las filas temporales de todos los módulos, ordenadas por tiempo. */
+  timeline: TimelineEvent[];
+  /** Lista de módulos (UI / pestañas). Misma info que en `content`, en array. */
   modules: ExtractionModule[];
+};
+
+export type TimelineEvent = {
+  module_id: string;
+  module_title: string;
+  start_ms?: number;
+  end_ms?: number;
+  label?: string;
+  text: string;
 };
 
 export type StoredVideo = {

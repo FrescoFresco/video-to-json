@@ -45,13 +45,15 @@ function downloadSelectedExtractions(videos: StoredVideo[]) {
     const v = withJson[0];
     const partial = v.status !== "ready";
     downloadJson(
-      `${safeDownloadName(v.name)}${partial ? "-parcial" : ""}-extraction.json`,
+      `${safeDownloadName(v.name)}${partial ? "-parcial" : ""}-complete.json`,
       v.extraction
     );
     return { ok: 1, skipped: videos.length - 1 };
   }
 
-  downloadJson(`extractions-${withJson.length}.json`, {
+  downloadJson(`videos-complete-${withJson.length}.json`, {
+    schema_version: "2.0",
+    kind: "video_complete_pack",
     exported_at: new Date().toISOString(),
     count: withJson.length,
     items: withJson.map((v) => ({
@@ -829,7 +831,7 @@ function VideosView() {
                 onClick={handleDownloadSelected}
               >
                 <Download className="mr-1.5 size-3.5 shrink-0" />
-                <span className="truncate">Descargar JSON</span>
+                <span className="truncate">Descargar JSON completo</span>
               </Button>
               <Button
                 type="button"
@@ -1061,13 +1063,15 @@ function VideoDetail({ video }: { video: StoredVideo }) {
             className="w-full rounded-xl sm:w-auto"
             onClick={() =>
               downloadJson(
-                video.status === "ready" ? "video-extraction.json" : "video-extraction-parcial.json",
+                video.status === "ready"
+                  ? `${safeDownloadName(video.name)}-complete.json`
+                  : `${safeDownloadName(video.name)}-parcial-complete.json`,
                 extraction
               )
             }
           >
             <Download className="mr-2 size-4" />
-            {video.status === "ready" ? "Descargar JSON" : "Descargar JSON parcial"}
+            {video.status === "ready" ? "Descargar JSON completo" : "Descargar JSON parcial"}
           </Button>
         )}
       </div>
@@ -1091,7 +1095,7 @@ function VideoDetail({ video }: { video: StoredVideo }) {
                 : undefined
           )
         )}
-        {tabBtn("json", "JSON")}
+        {tabBtn("json", "JSON completo")}
         {tabBtn("activity", "Actividad")}
       </div>
 
@@ -1184,18 +1188,25 @@ function VideoDetail({ video }: { video: StoredVideo }) {
         ) : null}
 
         {detailTab === "json" ? (
-          <div className="rounded-xl bg-[#151517] p-4 text-[12.5px] leading-[1.55] text-[#e9e9ed]">
-            <pre className="overflow-auto whitespace-pre-wrap break-words">
-              {JSON.stringify(
-                extraction ?? {
-                  status: video.status,
-                  stage: video.stage,
-                  note: video.error || "Aún no hay JSON. Los módulos irán apareciendo aquí.",
-                },
-                null,
-                2
-              )}
-            </pre>
+          <div className="grid gap-3">
+            <p className="m-0 text-[12.5px] leading-relaxed text-[#75757d]">
+              Pack <code className="text-[12px]">video_complete</code> (schema 2.0):{" "}
+              <code className="text-[12px]">content</code> tiene todos los módulos juntos;{" "}
+              <code className="text-[12px]">timeline</code> ordena todo por tiempo.
+            </p>
+            <div className="rounded-xl bg-[#151517] p-4 text-[12.5px] leading-[1.55] text-[#e9e9ed]">
+              <pre className="overflow-auto whitespace-pre-wrap break-words">
+                {JSON.stringify(
+                  extraction ?? {
+                    status: video.status,
+                    stage: video.stage,
+                    note: video.error || "Aún no hay JSON. Los módulos irán apareciendo aquí.",
+                  },
+                  null,
+                  2
+                )}
+              </pre>
+            </div>
           </div>
         ) : null}
 
@@ -1425,37 +1436,35 @@ function DocsView({ onOpenSettings }: { onOpenSettings: () => void }) {
       </section>
 
       <section className="min-w-0 overflow-hidden rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
-        <div className="text-sm font-semibold">JSON de salida (extraction)</div>
+        <div className="text-sm font-semibold">JSON de salida completo (schema 2.0)</div>
         <p className="mt-2 text-sm leading-relaxed text-[#75757d]">
-          Cada vídeo genera un JSON unificado llamado <code className="text-[12.5px]">extraction</code>.
-          Dentro lleva <code className="text-[12.5px]">schema_version</code> (ahora{" "}
-          <code className="text-[12.5px]">&quot;1.0&quot;</code>): una etiqueta que dice qué
-          formato es. Si un día cambiamos la forma del JSON, subimos esa versión (1.1, 2.0…)
-          para que tu IA u otra app sepa cuál está leyendo.
+          Cada vídeo genera un único JSON denso (<code className="text-[12.5px]">kind: video_complete</code>).
+          Dentro van <strong className="font-medium">todos los módulos juntos</strong> en{" "}
+          <code className="text-[12.5px]">content</code>, una{" "}
+          <code className="text-[12.5px]">timeline</code> ordenada y el resumen de la corrida en{" "}
+          <code className="text-[12.5px]">run</code>. La versión es{" "}
+          <code className="text-[12.5px]">&quot;2.0&quot;</code>.
         </p>
-        <DocsCode>{`extraction
-├── schema_version: "1.0"
-├── source
-│   ├── filename
-│   └── processed_at
-├── media
-│   ├── duration_ms, duration
-│   ├── width, height, fps
-│   └── orientation
-└── modules[]
-    ├── scene_cuts
-    ├── camera_motion
-    ├── speech
-    ├── speakers
-    ├── on_screen_text
-    ├── objects_people
-    ├── visual_observation
-    ├── music_ambiance
-    ├── audio_events
-    └── summary`}</DocsCode>
+        <DocsCode>{`extraction  (schema_version: "2.0", kind: "video_complete")
+├── source / media
+├── run                  ← conteos y tiempos de cada módulo
+├── content              ← TODOS los JSON juntos, por id
+│   ├── scene_cuts
+│   ├── camera_motion
+│   ├── speech
+│   ├── speakers
+│   ├── on_screen_text
+│   ├── objects_people
+│   ├── visual_observation
+│   ├── music_ambiance
+│   ├── audio_events
+│   └── summary
+│         └── cada uno: { status, items, data, … }
+├── timeline[]           ← todas las filas ordenadas por tiempo
+└── modules[]            ← misma info en lista (UI / compat)`}</DocsCode>
         <p className="mt-3 text-[12.5px] leading-relaxed text-[#75757d]">
-          No es un archivo que subes a mano: lo crea el programa al terminar. Lo encuentras
-          al descargar el resultado, en el webhook, o en la carpeta de salida de Drive.
+          Descárgalo como <code className="text-[12.5px]">*-complete.json</code>, o recíbelo en el
+          webhook / carpeta de salida de Drive.
         </p>
       </section>
 
@@ -1517,9 +1526,17 @@ function DocsView({ onOpenSettings }: { onOpenSettings: () => void }) {
   "sent_at": "2026-09-04T00:00:00.000Z",
   "job": { "id": "job_123", "name": "clip.mp4", "status": "ready" },
   "extraction": {
-    "schema_version": "1.0",
+    "schema_version": "2.0",
+    "kind": "video_complete",
     "source": { "filename": "clip.mp4", "processed_at": "..." },
     "media": { "duration_ms": 12000, "width": 1080, "height": 1920 },
+    "run": { "module_count": 10, "ok": 9, "empty": 1, "error": 0 },
+    "content": {
+      "speech": { "status": "ok", "data": { "...": "payload Whisper" }, "items": [ ... ] },
+      "on_screen_text": { "status": "ok", "data": { "...": "OCR" }, "items": [ ... ] },
+      "summary": { "status": "ok", "data": { "text": "..." } }
+    },
+    "timeline": [ { "module_id": "speech", "start_ms": 0, "text": "..." } ],
     "modules": [ { "id": "speech", "status": "ok", "items": [ ... ] } ]
   }
 }`}</DocsCode>

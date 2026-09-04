@@ -56,7 +56,8 @@ También puedes usar webhook (Make/n8n) si prefieres otro destino.
 - **Movimiento de cámara** local (OpenCV): estática, paneo, zoom, trepidación por tramos.
 - **Eventos de audio** local (PANNs / AudioSet): habla, música, aplausos, sirenas, etc. con puntuación.
 - La UI y el JSON solo muestran lo que cada módulo devuelve (`summary`, `items`, `data`).
-- El JSON unificado `extraction` incluye `schema_version` (ahora `1.0`) para poder evolucionar el formato.
+- El JSON de salida es un pack **completo** (`schema_version: "2.0"`, `kind: "video_complete"`):
+  `content` junta todos los módulos, `timeline` ordena todas las filas, y `run` resume la corrida.
 - Trabajos y JSON guardados en disco (`data/jobs/`); el vídeo temporal se borra al terminar.
 - API: `POST/GET /api/jobs`, `GET /api/jobs/:id/result`, `GET /api/modules`, `GET/PUT/POST /api/settings` (webhook).
 - Webhook al terminar: POST a tu URL con `job.ready` / `job.error` y el JSON de extracción.
