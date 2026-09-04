@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { EXTRACTION_SCHEMA_VERSION } from "@/lib/extraction";
 import { readAppConfig, writeAppConfig } from "@/lib/server/app-config";
 import { deliverWebhook } from "@/lib/server/webhook";
 
@@ -66,7 +67,7 @@ export async function POST(request: Request) {
       stage: "Listo",
       activity: [],
       extraction: {
-        schema_version: "1.0",
+        schema_version: EXTRACTION_SCHEMA_VERSION,
         source: { filename: "prueba-webhook.mp4", processed_at: new Date().toISOString() },
         media: {
           duration_ms: 1000,

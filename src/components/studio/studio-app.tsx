@@ -643,6 +643,41 @@ function DocsView({ onOpenSettings }: { onOpenSettings: () => void }) {
         </p>
       </section>
 
+      <section className="min-w-0 overflow-hidden rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
+        <div className="text-sm font-semibold">JSON de salida (extraction)</div>
+        <p className="mt-2 text-sm leading-relaxed text-[#75757d]">
+          Cada vídeo genera un JSON unificado llamado <code className="text-[12.5px]">extraction</code>.
+          Dentro lleva <code className="text-[12.5px]">schema_version</code> (ahora{" "}
+          <code className="text-[12.5px]">&quot;1.0&quot;</code>): una etiqueta que dice qué
+          formato es. Si un día cambiamos la forma del JSON, subimos esa versión (1.1, 2.0…)
+          para que tu IA u otra app sepa cuál está leyendo.
+        </p>
+        <DocsCode>{`extraction
+├── schema_version: "1.0"
+├── source
+│   ├── filename
+│   └── processed_at
+├── media
+│   ├── duration_ms, duration
+│   ├── width, height, fps
+│   └── orientation
+└── modules[]
+    ├── scene_cuts
+    ├── camera_motion
+    ├── speech
+    ├── speakers
+    ├── on_screen_text
+    ├── objects_people
+    ├── visual_observation
+    ├── music_ambiance
+    ├── audio_events
+    └── summary`}</DocsCode>
+        <p className="mt-3 text-[12.5px] leading-relaxed text-[#75757d]">
+          No es un archivo que subes a mano: lo crea el programa al terminar. Lo encuentras
+          al descargar el resultado, en el webhook, o en la carpeta de salida de Drive.
+        </p>
+      </section>
+
       <section className="min-w-0 rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
         <div className="text-sm font-semibold">Las dos direcciones</div>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
