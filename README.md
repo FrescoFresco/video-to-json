@@ -54,7 +54,14 @@ Producción local:
 - Instalador nativo `.exe` / `.dmg` (ahora: Docker o `./install.sh`).
 - API key de acceso (el secreto del webhook es opcional).
 
-## Comprobar que todos los módulos funcionan
+## Subir varios vídeos (API)
+
+```bash
+curl -F "files=@video1.mp4" -F "files=@video2.mp4" -F "files=@video3.mp4" \
+  http://localhost:43141/api/jobs
+```
+
+Respuesta: lista de trabajos. Se procesan en cola (`VX_MAX_CONCURRENT`, por defecto 1). Cada uno, al terminar, puede disparar el webhook.
 
 Con el servidor en marcha:
 
@@ -76,7 +83,7 @@ Crea un vídeo de prueba (persona + texto + 2 voces), lo procesa y exige que cad
 | `VIDEO_PYTHON` | `video-py/bin/python` | Interprete Python del pipeline |
 | `VISION_MAX_FRAMES` | `6` | Máx. fotogramas a observar (CPU) |
 | `WEBHOOK_URL` | _(vacío)_ | URL por defecto si no hay config en disco |
-| `WEBHOOK_SECRET` | _(vacío)_ | Bearer opcional para el webhook |
+| `VX_MAX_CONCURRENT` | `1` | Vídeos procesándose a la vez |
 | `PORT` | `43141` | Puerto HTTP |
 
 ## Notas

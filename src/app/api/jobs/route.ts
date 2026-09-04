@@ -5,28 +5,96 @@ import { isVideoFile } from "@/lib/video-file";
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
+const MAX_BATCH = 20;
+const MAX_BYTES = 80 * 1024 * 1024;
+
+function collectVideoFiles(form: FormData): File[] {
+  const out: File[] = [];
+  const seen = new Set<File>();
+
+  for (const key of ["file", "files", "videos"]) {
+    for (const value of form.getAll(key)) {
+      if (value instanceof File && !seen.has(value)) {
+        seen.add(value);
+        out.push(value);
+      }
+    }
+  }
+
+  // Cualquier otro campo File por si el cliente manda file[0], etc.
+  for (const [, value] of form.entries()) {
+    if (value instanceof File && !seen.has(value)) {
+      seen.add(value);
+      out.push(value);
+    }
+  }
+
+  return out;
+}
+
 export async function GET() {
   return NextResponse.json({ jobs: await listJobs() });
 }
 
 export async function POST(request: Request) {
   const form = await request.formData();
-  const file = form.get("file");
+  const files = collectVideoFiles(form);
+  const webhookUrl =
+    typeof form.get("webhook_url") === "string" ? String(form.get("webhook_url")) : null;
 
-  if (!(file instanceof File)) {
-    return NextResponse.json({ error: "Falta el vídeo" }, { status: 400 });
+  if (!files.length) {
+    return NextResponse.json(
+      { error: "Falta el vídeo. Envía file / files (uno o varios)." },
+      { status: 400 }
+    );
   }
-  if (!isVideoFile(file)) {
-    return NextResponse.json({ error: "Solo se aceptan vídeos." }, { status: 415 });
-  }
-  if (file.size > 80 * 1024 * 1024) {
-    return NextResponse.json({ error: "Máximo 80 MB en este entorno" }, { status: 413 });
+  if (files.length > MAX_BATCH) {
+    return NextResponse.json(
+      { error: `Máximo ${MAX_BATCH} vídeos por petición` },
+      { status: 413 }
+    );
   }
 
-  const job = await createJobFromUpload(file, {
-    webhookUrl: typeof form.get("webhook_url") === "string" ? String(form.get("webhook_url")) : null,
-  });
-  return NextResponse.json(job, { status: 202 });
+  const rejected: Array<{ name: string; error: string }> = [];
+  const accepted: File[] = [];
+
+  for (const file of files) {
+    if (!isVideoFile(file)) {
+      rejected.push({ name: file.name, error: "Solo se aceptan vídeos" });
+      continue;
+    }
+    if (file.size > MAX_BYTES) {
+      rejected.push({ name: file.name, error: "Máximo 80 MB por archivo" });
+      continue;
+    }
+    accepted.push(file);
+  }
+
+  if (!accepted.length) {
+    return NextResponse.json(
+      { error: "Ningún vídeo válido", rejected },
+      { status: 415 }
+    );
+  }
+
+  const jobs = [];
+  for (const file of accepted) {
+    jobs.push(await createJobFromUpload(file, { webhookUrl }));
+  }
+
+  // Un solo archivo: respuesta compacta (compatible). Varios: lista.
+  if (jobs.length === 1 && rejected.length === 0) {
+    return NextResponse.json(jobs[0], { status: 202 });
+  }
+
+  return NextResponse.json(
+    {
+      jobs,
+      rejected,
+      count: jobs.length,
+    },
+    { status: 202 }
+  );
 }
 
 export async function DELETE() {

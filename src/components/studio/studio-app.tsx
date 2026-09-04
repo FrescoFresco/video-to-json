@@ -203,7 +203,7 @@ function HomeView() {
                 <Upload className="size-[24px]" />
               </div>
               <div className="text-lg font-semibold">Añade uno o varios vídeos</div>
-              <div className="text-[13px] text-[#75757d]">MP4 · MOV · MKV · WebM</div>
+              <div className="text-[13px] text-[#75757d]">MP4 · MOV · MKV · WebM · varios a la vez</div>
               <input
                 ref={inputRef}
                 type="file"
@@ -624,7 +624,11 @@ function SettingsView() {
 
       <EmptyCard
         title="Qué recibe la otra app"
-        body='Un POST JSON con event ("job.ready" o "job.error"), datos del trabajo y el bloque extraction con todos los módulos.'
+        body='Un POST JSON con event ("job.ready" o "job.error"), datos del trabajo y el bloque extraction con todos los módulos. Si subes varios vídeos, cada uno avisa cuando termina.'
+      />
+      <EmptyCard
+        title="Varios vídeos desde fuera"
+        body="Tu otra app puede mandar muchos de golpe con POST /api/jobs y el campo files (varios archivos). Se encolan y se procesan sin saturar la máquina."
       />
       <EmptyCard
         title="Módulos"

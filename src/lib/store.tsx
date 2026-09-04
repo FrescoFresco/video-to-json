@@ -61,42 +61,65 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
 
   const ingestFiles = useCallback(async (files: File[]) => {
     const validFiles = files.filter((file) => isVideoFile(file));
-    for (const file of validFiles) {
-      try {
-        const fd = new FormData();
-        fd.append("file", file);
-        const res = await fetch("/api/jobs", { method: "POST", body: fd });
-        const data = (await res.json()) as StoredVideo & { error?: string };
-        if (!res.ok) {
-          throw new Error(data.error || "No se pudo crear el trabajo");
-        }
-        setVideos((prev) => [data, ...prev.filter((item) => item.id !== data.id)]);
-        setActiveVideoId(data.id);
-        setView("video-detail");
-        void refreshJobs();
-      } catch (error) {
-        const fallbackId = `local_${Date.now()}`;
-        setVideos((prev) => [
-          {
-            id: fallbackId,
-            name: file.name,
-            createdAt: new Date().toISOString(),
-            status: "error",
-            progress: 100,
-            stage: "Error",
-            error: error instanceof Error ? error.message : "No se pudo crear el trabajo",
-            activity: [
-              {
-                time: clock(),
-                title: "Creación del trabajo",
-                detail: error instanceof Error ? error.message : "No se pudo crear el trabajo",
-                status: "error",
-              },
-            ],
-          },
-          ...prev,
-        ]);
+    if (!validFiles.length) return;
+
+    try {
+      const fd = new FormData();
+      for (const file of validFiles) {
+        fd.append("files", file);
       }
+      const res = await fetch("/api/jobs", { method: "POST", body: fd });
+      const data = (await res.json()) as
+        | (StoredVideo & { error?: string })
+        | { jobs?: StoredVideo[]; rejected?: Array<{ name: string; error: string }>; error?: string };
+
+      if (!res.ok) {
+        throw new Error(
+          ("error" in data && data.error) || "No se pudieron crear los trabajos"
+        );
+      }
+
+      const jobs: StoredVideo[] =
+        "jobs" in data && Array.isArray(data.jobs) ?
+          data.jobs
+        : "id" in data && data.id ?
+          [data as StoredVideo]
+        : [];
+
+      if (!jobs.length) {
+        throw new Error("No se creó ningún trabajo");
+      }
+
+      setVideos((prev) => {
+        const ids = new Set(jobs.map((j) => j.id));
+        return [...jobs, ...prev.filter((item) => !ids.has(item.id))];
+      });
+      setActiveVideoId(jobs[0].id);
+      setView(jobs.length === 1 ? "video-detail" : "videos");
+      void refreshJobs();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "No se pudieron crear los trabajos";
+      const fallbackId = `local_${Date.now()}`;
+      setVideos((prev) => [
+        {
+          id: fallbackId,
+          name: validFiles.length === 1 ? validFiles[0].name : `${validFiles.length} vídeos`,
+          createdAt: new Date().toISOString(),
+          status: "error",
+          progress: 100,
+          stage: "Error",
+          error: message,
+          activity: [
+            {
+              time: clock(),
+              title: "Creación del trabajo",
+              detail: message,
+              status: "error",
+            },
+          ],
+        },
+        ...prev,
+      ]);
     }
   }, [refreshJobs]);
 

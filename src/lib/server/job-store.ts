@@ -9,6 +9,7 @@ import {
   type JobRecord,
 } from "./job-persistence";
 import { processVideoFile } from "./process-video";
+import { withProcessSlot } from "./process-queue";
 import { deliverWebhook } from "./webhook";
 
 type JobStore = {
@@ -131,16 +132,18 @@ export async function createJobFromUpload(
   getStore().jobs.set(id, job);
   schedulePersist(job, true);
 
-  void processVideoFile(tempPath, file.name, (progress, stage) => {
-    const current = getStore().jobs.get(id);
-    if (!current) return;
-    updateJob(id, {
-      status: "processing",
-      progress,
-      stage,
-    });
-  })
-    .then(async (result) => {
+  void withProcessSlot(async () => {
+    try {
+      const result = await processVideoFile(tempPath, file.name, (progress, stage) => {
+        const current = getStore().jobs.get(id);
+        if (!current) return;
+        updateJob(id, {
+          status: "processing",
+          progress,
+          stage,
+        });
+      });
+
       updateJob(
         id,
         {
@@ -196,8 +199,7 @@ export async function createJobFromUpload(
           true
         );
       }
-    })
-    .catch(async (error) => {
+    } catch (error) {
       updateJob(
         id,
         {
@@ -244,7 +246,8 @@ export async function createJobFromUpload(
           true
         );
       }
-    });
+    }
+  });
 
   return (await getJob(id)) as StoredVideo;
 }
