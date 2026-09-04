@@ -8,6 +8,7 @@ import {
   Download,
   Home,
   RotateCcw,
+  Search,
   Settings,
   Upload,
   Video,
@@ -396,6 +397,9 @@ function statusLabel(status: JobStatus) {
   return "Error";
 }
 
+type StatusFilter = "all" | JobStatus;
+type SortMode = "newest" | "oldest" | "name-asc" | "name-desc" | "status";
+
 function queueRank(status: JobStatus) {
   if (status === "processing") return 0;
   if (status === "queued") return 1;
@@ -403,7 +407,15 @@ function queueRank(status: JobStatus) {
   return 3;
 }
 
-function QueueSummary({ videos }: { videos: StoredVideo[] }) {
+function QueueSummary({
+  videos,
+  active,
+  onSelect,
+}: {
+  videos: StoredVideo[];
+  active: StatusFilter;
+  onSelect: (filter: StatusFilter) => void;
+}) {
   const waiting = videos.filter((v) => v.status === "queued").length;
   const processing = videos.filter((v) => v.status === "processing").length;
   const ready = videos.filter((v) => v.status === "ready").length;
@@ -413,23 +425,39 @@ function QueueSummary({ videos }: { videos: StoredVideo[] }) {
     label,
     value,
     tone,
+    filter,
   }: {
     label: string;
     value: number;
     tone: string;
-  }) => (
-    <div className={`rounded-xl px-3 py-2 ${tone}`}>
-      <div className="text-[11px] uppercase tracking-wide opacity-80">{label}</div>
-      <div className="mt-0.5 text-lg font-semibold">{value}</div>
-    </div>
-  );
+    filter: StatusFilter;
+  }) => {
+    const selected = active === filter;
+    return (
+      <button
+        type="button"
+        onClick={() => onSelect(selected ? "all" : filter)}
+        className={`rounded-xl px-3 py-2 text-left transition ${tone} ${
+          selected ? "ring-2 ring-[#171719] ring-offset-2 ring-offset-[#fbfbfc]" : "opacity-90 hover:opacity-100"
+        }`}
+      >
+        <div className="text-[11px] uppercase tracking-wide opacity-80">{label}</div>
+        <div className="mt-0.5 text-lg font-semibold">{value}</div>
+      </button>
+    );
+  };
 
   return (
-    <div className="mb-5 grid grid-cols-2 gap-2 md:grid-cols-4">
-      <Chip label="En espera" value={waiting} tone="bg-[#fff6df] text-[#9a6700]" />
-      <Chip label="Procesando" value={processing} tone="bg-[#eef3f8] text-[#2f4d6a]" />
-      <Chip label="Listos" value={ready} tone="bg-[#edf6f1] text-[#177245]" />
-      <Chip label="Errores" value={errored} tone="bg-[#fff0ef] text-[#b42318]" />
+    <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
+      <Chip label="En espera" value={waiting} tone="bg-[#fff6df] text-[#9a6700]" filter="queued" />
+      <Chip
+        label="Procesando"
+        value={processing}
+        tone="bg-[#eef3f8] text-[#2f4d6a]"
+        filter="processing"
+      />
+      <Chip label="Listos" value={ready} tone="bg-[#edf6f1] text-[#177245]" filter="ready" />
+      <Chip label="Errores" value={errored} tone="bg-[#fff0ef] text-[#b42318]" filter="error" />
     </div>
   );
 }
@@ -470,15 +498,39 @@ function VideoQueueRow({ video, onOpen }: { video: StoredVideo; onOpen: () => vo
 
 function VideosView() {
   const s = useStudio();
-  const ordered = useMemo(
-    () =>
-      [...s.videos].sort((a, b) => {
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [sortMode, setSortMode] = useState<SortMode>("newest");
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    let list = [...s.videos];
+
+    if (statusFilter !== "all") {
+      list = list.filter((video) => video.status === statusFilter);
+    }
+    if (q) {
+      list = list.filter((video) => {
+        const hay = `${video.name} ${video.stage || ""} ${video.error || ""}`.toLowerCase();
+        return hay.includes(q);
+      });
+    }
+
+    list.sort((a, b) => {
+      if (sortMode === "oldest") return a.createdAt.localeCompare(b.createdAt);
+      if (sortMode === "name-asc") return a.name.localeCompare(b.name, "es");
+      if (sortMode === "name-desc") return b.name.localeCompare(a.name, "es");
+      if (sortMode === "status") {
         const rank = queueRank(a.status) - queueRank(b.status);
         if (rank !== 0) return rank;
         return b.createdAt.localeCompare(a.createdAt);
-      }),
-    [s.videos]
-  );
+      }
+      // newest (default)
+      return b.createdAt.localeCompare(a.createdAt);
+    });
+
+    return list;
+  }, [s.videos, query, statusFilter, sortMode]);
 
   return (
     <div>
@@ -486,7 +538,7 @@ function VideosView() {
         <div>
           <h1 className="text-[clamp(24px,2.4vw,32px)] font-semibold tracking-[-0.035em]">Vídeos</h1>
           <p className="text-sm text-[#75757d]">
-            Cola visible: en espera, procesando, listos y errores.
+            Cola visible: busca, filtra y ordena como quieras.
           </p>
         </div>
         {s.videos.length > 0 && (
@@ -504,16 +556,86 @@ function VideosView() {
         />
       ) : (
         <>
-          <QueueSummary videos={s.videos} />
-          <div className="rounded-2xl border border-[#e7e7eb] bg-white">
-            {ordered.map((video) => (
-              <VideoQueueRow
-                key={video.id}
-                video={video}
-                onOpen={() => s.openVideo(video.id)}
+          <QueueSummary
+            videos={s.videos}
+            active={statusFilter}
+            onSelect={setStatusFilter}
+          />
+
+          <div className="mb-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center">
+            <label className="relative block min-w-0">
+              <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[#9a9aa3]" />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Buscar por nombre…"
+                className="w-full rounded-xl border border-[#e7e7eb] bg-white py-2.5 pr-3 pl-10 text-sm outline-none placeholder:text-[#9a9aa3] focus:border-[#171719]"
               />
-            ))}
+            </label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+              className="rounded-xl border border-[#e7e7eb] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#171719]"
+              aria-label="Filtrar por estado"
+            >
+              <option value="all">Todos</option>
+              <option value="queued">En espera</option>
+              <option value="processing">Procesando</option>
+              <option value="ready">Listos</option>
+              <option value="error">Errores</option>
+            </select>
+            <select
+              value={sortMode}
+              onChange={(e) => setSortMode(e.target.value as SortMode)}
+              className="rounded-xl border border-[#e7e7eb] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#171719]"
+              aria-label="Ordenar"
+            >
+              <option value="newest">Más recientes</option>
+              <option value="oldest">Más antiguos</option>
+              <option value="name-asc">Nombre A→Z</option>
+              <option value="name-desc">Nombre Z→A</option>
+              <option value="status">Estado (activos primero)</option>
+            </select>
           </div>
+
+          <p className="mb-2 text-[12.5px] text-[#75757d]">
+            {filtered.length === s.videos.length
+              ? `${filtered.length} vídeos`
+              : `${filtered.length} de ${s.videos.length}`}
+            {statusFilter !== "all" || query
+              ? " · "
+              : ""}
+            {(statusFilter !== "all" || query) && (
+              <button
+                type="button"
+                className="underline-offset-2 hover:underline"
+                onClick={() => {
+                  setQuery("");
+                  setStatusFilter("all");
+                }}
+              >
+                Quitar filtros
+              </button>
+            )}
+          </p>
+
+          {filtered.length === 0 ? (
+            <EmptyCard
+              title="Nada coincide"
+              body="Prueba otro texto, otro filtro o quita los filtros."
+            />
+          ) : (
+            <div className="rounded-2xl border border-[#e7e7eb] bg-white">
+              {filtered.map((video) => (
+                <VideoQueueRow
+                  key={video.id}
+                  video={video}
+                  onOpen={() => s.openVideo(video.id)}
+                />
+              ))}
+            </div>
+          )}
         </>
       )}
     </div>
