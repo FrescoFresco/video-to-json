@@ -1,4 +1,7 @@
 import type { JobStatus, StoredVideo } from "./types";
+import { formatElapsed } from "./format-time";
+
+export { formatElapsed, formatModuleDuration } from "./format-time";
 
 /** Nº de módulos por defecto si aún no hay catálogo. */
 const DEFAULT_MODULES = 10;
@@ -87,21 +90,6 @@ export function formatEta(seconds: number): string {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
   return m ? `≈ ${h} h ${m} min` : `≈ ${h} h`;
-}
-
-export function formatElapsed(seconds: number): string {
-  if (seconds < 60) return `${Math.max(1, Math.round(seconds))} s`;
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.round(seconds % 60);
-  if (mins < 60) return secs ? `${mins} min ${secs} s` : `${mins} min`;
-  const h = Math.floor(mins / 60);
-  return `${h} h ${mins % 60} min`;
-}
-
-/** Duración de un módulo (ms → texto corto). */
-export function formatModuleDuration(ms: number): string {
-  if (ms < 1000) return `${Math.max(1, Math.round(ms))} ms`;
-  return formatElapsed(ms / 1000);
 }
 
 export function etaLabel(

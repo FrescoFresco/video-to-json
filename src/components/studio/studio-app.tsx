@@ -15,7 +15,8 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { etaLabel, formatElapsed, formatModuleDuration } from "@/lib/eta";
+import { etaLabel } from "@/lib/eta";
+import { formatElapsed, formatModuleDuration } from "@/lib/format-time";
 import { msToClock } from "@/lib/extraction";
 import { isLinkListFilename, readLinksFromFile } from "@/lib/ingest-links";
 import { useStudio } from "@/lib/store";
