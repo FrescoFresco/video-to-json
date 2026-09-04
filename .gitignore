@@ -56,3 +56,4 @@ yolov8*.pt
 video-py/
 video-py
 .cache/
+video-extraction-studio-home.webp
