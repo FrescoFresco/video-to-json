@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState, useEffect, type ReactNode } from "react";
 import {
   ArrowLeft,
+  BookOpen,
   Check,
   Download,
   Home,
@@ -116,6 +117,7 @@ export function StudioApp() {
         <div className="grid justify-items-center gap-1">
           {nav("home", <Home className="size-[17px]" />)}
           {nav("videos", <Video className="size-[17px]" />)}
+          {nav("docs", <BookOpen className="size-[17px]" />)}
           {nav("settings", <Settings className="size-[17px]" />)}
         </div>
       </aside>
@@ -125,12 +127,13 @@ export function StudioApp() {
           {s.view === "home" && <HomeView />}
           {s.view === "videos" && <VideosView />}
           {s.view === "video-detail" && activeVideo && <VideoDetail video={activeVideo} />}
+          {s.view === "docs" && <DocsView onOpenSettings={() => s.setView("settings")} />}
           {s.view === "settings" && <SettingsView />}
         </div>
       </main>
 
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-[#e7e7eb] bg-[#fbfbfc]/94 px-2.5 pb-[calc(8px+env(safe-area-inset-bottom))] pt-2 backdrop-blur-md md:hidden">
-        <div className="grid grid-cols-3 gap-1">
+        <div className="grid grid-cols-4 gap-1">
           <button
             type="button"
             onClick={() => s.setView("home")}
@@ -144,6 +147,13 @@ export function StudioApp() {
             className={`grid min-h-12 place-items-center rounded-[9px] ${s.view === "videos" || s.view === "video-detail" ? "bg-[#f5f5f7] text-[#171719]" : "text-[#75757d]"}`}
           >
             <Video className="size-[18px]" />
+          </button>
+          <button
+            type="button"
+            onClick={() => s.setView("docs")}
+            className={`grid min-h-12 place-items-center rounded-[9px] ${s.view === "docs" ? "bg-[#f5f5f7] text-[#171719]" : "text-[#75757d]"}`}
+          >
+            <BookOpen className="size-[18px]" />
           </button>
           <button
             type="button"
@@ -475,6 +485,121 @@ function ModuleItemsList({ module }: { module: ExtractionModule }) {
         </div>
       )}
     </section>
+  );
+}
+
+function DocsCode({ children }: { children: string }) {
+  return (
+    <pre className="mt-3 overflow-x-auto rounded-xl bg-[#151517] p-4 text-[12.5px] leading-[1.55] text-[#e9e9ed]">
+      <code>{children}</code>
+    </pre>
+  );
+}
+
+function DocsView({ onOpenSettings }: { onOpenSettings: () => void }) {
+  return (
+    <div className="grid gap-5">
+      <div>
+        <h1 className="text-[clamp(24px,2.4vw,32px)] font-semibold tracking-[-0.035em]">Docs</h1>
+        <p className="mt-1 text-sm text-[#75757d]">
+          Cómo conectar este programa con otras apps: meter vídeos y recibir el JSON.
+        </p>
+      </div>
+
+      <section className="rounded-2xl border border-[#e7e7eb] bg-white p-5">
+        <div className="text-sm font-semibold">Las dos direcciones</div>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <div className="rounded-xl bg-[#f5f5f7] p-4">
+            <div className="text-sm font-medium">1. Meter vídeos (API)</div>
+            <p className="mt-2 text-[12.5px] leading-relaxed text-[#75757d]">
+              Otra app (o tú con curl) envía uno o muchos vídeos a este programa.
+            </p>
+          </div>
+          <div className="rounded-xl bg-[#f5f5f7] p-4">
+            <div className="text-sm font-medium">2. Avisar al terminar (webhook)</div>
+            <p className="mt-2 text-[12.5px] leading-relaxed text-[#75757d]">
+              Cuando un vídeo acaba, este programa hace POST a tu URL con el JSON.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-[#e7e7eb] bg-white p-5">
+        <div className="text-sm font-semibold">Webhook</div>
+        <p className="mt-2 text-sm leading-relaxed text-[#75757d]">
+          Configura la URL en Ajustes. Sirve para Make, n8n, Zapier o tu backend.
+        </p>
+        <ol className="mt-4 grid gap-2 text-sm text-[#171719]">
+          <li>1. Abre Ajustes y pega tu URL de webhook.</li>
+          <li>2. Guarda y pulsa «Probar webhook».</li>
+          <li>3. Procesa un vídeo: al terminar recibirás un POST automático.</li>
+        </ol>
+        <div className="mt-4">
+          <Button className="rounded-xl" onClick={onOpenSettings}>
+            Ir a Ajustes
+          </Button>
+        </div>
+        <p className="mt-4 text-[12.5px] text-[#75757d]">Ejemplo de lo que recibe la otra app:</p>
+        <DocsCode>{`{
+  "event": "job.ready",
+  "sent_at": "2026-09-04T00:00:00.000Z",
+  "job": { "id": "job_123", "name": "clip.mp4", "status": "ready" },
+  "extraction": { "media": { ... }, "modules": [ ... ] }
+}`}</DocsCode>
+      </section>
+
+      <section className="rounded-2xl border border-[#e7e7eb] bg-white p-5">
+        <div className="text-sm font-semibold">Subir un vídeo desde fuera</div>
+        <p className="mt-2 text-sm leading-relaxed text-[#75757d]">
+          La otra app manda el archivo a la API. Luego puede consultar el estado o esperar el webhook.
+        </p>
+        <DocsCode>{`curl -F "file=@clip.mp4" http://localhost:43141/api/jobs
+
+# Estado
+curl http://localhost:43141/api/jobs/JOB_ID
+
+# Resultado
+curl http://localhost:43141/api/jobs/JOB_ID/result`}</DocsCode>
+      </section>
+
+      <section className="rounded-2xl border border-[#e7e7eb] bg-white p-5">
+        <div className="text-sm font-semibold">Varios vídeos de golpe</div>
+        <p className="mt-2 text-sm leading-relaxed text-[#75757d]">
+          Puedes mandar muchos archivos en la misma petición. Se encolan y, si hay webhook,
+          cada uno avisa cuando termina.
+        </p>
+        <DocsCode>{`curl -F "files=@video1.mp4" \\
+     -F "files=@video2.mp4" \\
+     -F "files=@video3.mp4" \\
+     http://localhost:43141/api/jobs`}</DocsCode>
+      </section>
+
+      <section className="rounded-2xl border border-[#e7e7eb] bg-white p-5">
+        <div className="text-sm font-semibold">Endpoints útiles</div>
+        <div className="mt-3 grid gap-2 text-sm">
+          <div className="grid gap-1 border-t border-[#e7e7eb] py-3 first:border-t-0 md:grid-cols-[160px_minmax(0,1fr)]">
+            <code className="text-[12.5px]">POST /api/jobs</code>
+            <span className="text-[#75757d]">Crear uno o varios trabajos</span>
+          </div>
+          <div className="grid gap-1 border-t border-[#e7e7eb] py-3 md:grid-cols-[160px_minmax(0,1fr)]">
+            <code className="text-[12.5px]">GET /api/jobs/:id</code>
+            <span className="text-[#75757d]">Estado del trabajo</span>
+          </div>
+          <div className="grid gap-1 border-t border-[#e7e7eb] py-3 md:grid-cols-[160px_minmax(0,1fr)]">
+            <code className="text-[12.5px]">GET /api/jobs/:id/result</code>
+            <span className="text-[#75757d]">JSON completo</span>
+          </div>
+          <div className="grid gap-1 border-t border-[#e7e7eb] py-3 md:grid-cols-[160px_minmax(0,1fr)]">
+            <code className="text-[12.5px]">GET /api/modules</code>
+            <span className="text-[#75757d]">Cajitas registradas</span>
+          </div>
+          <div className="grid gap-1 border-t border-[#e7e7eb] py-3 md:grid-cols-[160px_minmax(0,1fr)]">
+            <code className="text-[12.5px]">PUT /api/settings</code>
+            <span className="text-[#75757d]">Guardar URL del webhook</span>
+          </div>
+        </div>
+      </section>
+    </div>
   );
 }
 
