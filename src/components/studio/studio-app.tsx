@@ -22,6 +22,7 @@ import { isLinkListFilename, readLinksFromFile } from "@/lib/ingest-links";
 import { useStudio } from "@/lib/store";
 import type { ExtractionModule, JobStatus, StoredVideo, ViewName } from "@/lib/types";
 import { isVideoFile } from "@/lib/video-file";
+import { RecreationDiagram } from "@/components/studio/recreation-diagram";
 
 function downloadJson(name: string, obj: unknown) {
   const blob = new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" });
@@ -243,7 +244,7 @@ function HomeView() {
 
   return (
     <div className="vx-home-hero -mx-4 px-4 py-2 md:-mx-[clamp(22px,3vw,42px)] md:px-[clamp(22px,3vw,42px)] md:py-4">
-      <div className="mx-auto grid max-w-[720px] gap-10 py-10 md:gap-12 md:py-16">
+      <div className="mx-auto grid max-w-[820px] gap-10 py-10 md:gap-12 md:py-16">
         <div className="vx-home-fade max-w-[34rem]">
           <p className="vx-home-brand m-0 text-[clamp(34px,9vw,64px)] leading-[0.92] text-[#171719]">
             Video Extraction
@@ -251,11 +252,11 @@ function HomeView() {
             Studio
           </p>
           <p className="mt-5 m-0 text-[16px] leading-snug tracking-[-0.02em] text-[#2f363e] sm:text-[17px]">
-            Subes un vídeo. Sales con un JSON claro.
+            De vídeo a texto tan rico que se pueda volver a generar.
           </p>
           <p className="mt-3 m-0 max-w-[28rem] text-[14px] leading-relaxed text-[#6a7380] sm:text-[14.5px]">
-            Cortes, cámara, habla, texto, objetos, ambiente, eventos de sonido y un resumen.
-            Cada módulo escribe solo lo que encuentra.
+            Cortes, cámara, habla, pantalla, objetos, ambiente y más. Un JSON denso pensado
+            para recrear el clip, no solo etiquetarlo.
           </p>
         </div>
 
@@ -421,6 +422,8 @@ function HomeView() {
             </div>
           </div>
         )}
+
+        <RecreationDiagram />
       </div>
     </div>
   );
