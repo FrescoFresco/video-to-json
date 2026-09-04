@@ -84,7 +84,7 @@ export function IdeaView() {
  *   [2 VX Studio]                 [4 Generador IA]
  *              [3 Texto extracción]
  *
- * Móvil: flujo 1→2→3→4→5 + cercanía al final.
+ * Móvil: nodos 1–5 + cercanía al final. Sin líneas conectoras.
  */
 export function RecreationDiagram() {
   return (
@@ -150,7 +150,6 @@ export function RecreationDiagram() {
           layout="row"
           illu={<VideoFrameIllustration variant="origin" size="sm" />}
         />
-        <FlowArrow label="entra en" />
         <Node
           step="2"
           title="Video Extraction Studio"
@@ -158,7 +157,6 @@ export function RecreationDiagram() {
           layout="row"
           illu={<StudioAppIllustration size="sm" />}
         />
-        <FlowArrow label="produce" />
         <Node
           step="3"
           title="Texto de extracción"
@@ -166,7 +164,6 @@ export function RecreationDiagram() {
           layout="row"
           illu={<TextDossierIllustration size="sm" />}
         />
-        <FlowArrow label="si se inyecta en" sub="fuera de este Studio" />
         <Node
           step="4"
           title="Generador de vídeo IA"
@@ -175,7 +172,6 @@ export function RecreationDiagram() {
           layout="row"
           illu={<AiGeneratorIllustration size="sm" />}
         />
-        <FlowArrow label="puede dar" />
         <Node
           step="5"
           title="Vídeo generado"
@@ -232,19 +228,6 @@ function Node({
         <span className="vx-loop-node-copy">{copy}</span>
       </figcaption>
     </figure>
-  );
-}
-
-function FlowArrow({ label, sub }: { label: string; sub?: string }) {
-  return (
-    <div className="vx-flow-arrow" aria-hidden="true">
-      <div className="vx-flow-arrow-line" />
-      <div className="vx-flow-arrow-text">
-        <span className="vx-loop-rail-tag">{label}</span>
-        {sub ? <span className="vx-loop-rail-sub">{sub}</span> : null}
-      </div>
-      <div className="vx-flow-arrow-line" />
-    </div>
   );
 }
 
