@@ -157,7 +157,7 @@ export function StudioApp() {
         </div>
       </aside>
 
-      <main className="min-w-0 overflow-x-hidden px-4 py-5 pb-24 md:px-[clamp(22px,3vw,42px)] md:py-[clamp(22px,3vw,42px)]">
+      <main className="min-w-0 overflow-x-hidden px-4 py-5 pb-[calc(5.75rem+env(safe-area-inset-bottom))] md:px-[clamp(22px,3vw,42px)] md:py-[clamp(22px,3vw,42px)] md:pb-[clamp(22px,3vw,42px)]">
         <div className="mx-auto w-full min-w-0 max-w-[1080px]">
           {s.view === "home" && <HomeView />}
           {s.view === "videos" && <VideosView />}
@@ -409,11 +409,7 @@ function HomeView() {
                   <div className="min-w-0">
                     <div className="truncate text-sm font-medium">{video.name}</div>
                     <div className="mt-1 text-[12px] leading-snug break-words text-[#75757d] sm:text-[12.5px]">
-                      {video.status === "queued" ? "En espera" :
-                       video.status === "processing" ? "Procesando" :
-                       video.status === "ready" ? "Listo" : "Error"}
-                      {video.stage ? ` · ${video.stage}` : ""}
-                      {eta ? ` · ${eta}` : ""}
+                      {videoMetaParts(video, { eta }).join(" · ") || "—"}
                     </div>
                   </div>
                   <div className="shrink-0 text-[12px] text-[#75757d]">{video.progress}%</div>
@@ -433,6 +429,29 @@ function statusLabel(status: JobStatus) {
   if (status === "processing") return "Procesando";
   if (status === "ready") return "Listo";
   return "Error";
+}
+
+/** Stage often mirrors the status label ("Listo", "Error"); skip duplicates. */
+function stageHint(video: StoredVideo) {
+  const stage = (video.stage || "").trim();
+  if (!stage) return null;
+  if (stage === statusLabel(video.status)) return null;
+  return stage;
+}
+
+function videoMetaParts(
+  video: StoredVideo,
+  opts?: { eta?: string | null; includeStatus?: boolean; includeProbe?: boolean }
+) {
+  const parts: string[] = [];
+  if (opts?.includeStatus !== false) parts.push(statusLabel(video.status));
+  const stage = stageHint(video);
+  if (stage) parts.push(stage);
+  if (opts?.includeProbe !== false && video.probe) {
+    parts.push(`${Math.round(video.probe.durationMs / 1000)} s`);
+  }
+  if (opts?.eta) parts.push(opts.eta);
+  return parts;
 }
 
 type StatusFilter = "all" | JobStatus;
@@ -529,7 +548,12 @@ function VideoQueueRow({
       <button type="button" onClick={onOpen} className="mt-0.5 shrink-0 sm:mt-0" title="Abrir">
         <StatusDot status={video.status} />
       </button>
-      <button type="button" onClick={onOpen} className="min-w-0 text-left">
+      <button
+        type="button"
+        onClick={onOpen}
+        className="min-w-0 text-left"
+        data-video-open={video.id}
+      >
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 truncate text-sm font-medium">{video.name}</div>
           <div className="shrink-0 text-right text-[11px] text-[#75757d] sm:hidden">
@@ -539,15 +563,10 @@ function VideoQueueRow({
         </div>
         <div className="mt-1 text-[12px] leading-snug break-words text-[#75757d] sm:text-[12.5px]">
           <span className="sm:hidden">
-            {[video.stage, video.probe ? `${Math.round(video.probe.durationMs / 1000)} s` : null, eta]
-              .filter(Boolean)
-              .join(" · ") || "—"}
+            {videoMetaParts(video, { eta, includeStatus: false }).join(" · ") || "—"}
           </span>
           <span className="hidden sm:inline">
-            {statusLabel(video.status)}
-            {video.stage ? ` · ${video.stage}` : ""}
-            {video.probe ? ` · ${Math.round(video.probe.durationMs / 1000)} s` : ""}
-            {eta ? ` · ${eta}` : ""}
+            {videoMetaParts(video, { eta }).join(" · ")}
           </span>
         </div>
         {(video.status === "processing" || video.status === "queued") && (
@@ -711,7 +730,7 @@ function VideosView() {
 
   return (
     <div className="min-w-0">
-      <div className="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+      <div className="mb-5 flex items-start justify-between gap-3 sm:mb-6 sm:items-end">
         <div className="min-w-0">
           <h1 className="text-[clamp(22px,5vw,32px)] font-semibold tracking-[-0.035em]">Vídeos</h1>
           <p className="mt-1 text-[13px] leading-relaxed text-[#75757d] sm:text-sm">
@@ -721,11 +740,11 @@ function VideosView() {
         {s.videos.length > 0 && (
           <Button
             variant="outline"
-            className="w-full shrink-0 rounded-xl sm:w-auto"
+            className="shrink-0 rounded-xl px-3 sm:px-4"
             onClick={s.clearAll}
           >
-            <RotateCcw className="mr-2 size-4" />
-            Limpiar
+            <RotateCcw className="size-4 sm:mr-2" />
+            <span className="hidden sm:inline">Limpiar</span>
           </Button>
         )}
       </div>
@@ -801,11 +820,11 @@ function VideosView() {
                 {selectedIds.size > 0 ? ` · ${selectedWithJson} con JSON` : ""}
               </span>
             </div>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               <Button
                 type="button"
                 variant="outline"
-                className="rounded-lg"
+                className="col-span-2 rounded-lg sm:col-span-1"
                 disabled={selectedWithJson === 0}
                 onClick={handleDownloadSelected}
               >
@@ -1015,10 +1034,12 @@ function VideoDetail({ video }: { video: StoredVideo }) {
           <div className="mt-2 flex items-start gap-2 text-[12px] text-[#75757d] sm:text-[12.5px]">
             <StatusDot status={video.status} />
             <span className="min-w-0 leading-snug break-words">
-              {statusLabel(video.status)}
-              {video.stage ? ` · ${video.stage}` : ""}
-              {liveRows.length > 0 ? ` · ${doneCount}/${liveRows.length} módulos` : ""}
-              {eta ? ` · ${eta}` : ""}
+              {[
+                ...videoMetaParts(video, { eta, includeProbe: false }),
+                liveRows.length > 0 ? `${doneCount}/${liveRows.length} módulos` : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
             </span>
           </div>
           {(video.status === "processing" || video.status === "queued") && (
