@@ -569,6 +569,17 @@ body {
     align-items: start;
   }
 
+  .vx-grid--extract {
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1rem 1.25rem;
+    align-items: start;
+  }
+
+  .vx-grid--extract .vx-col--mid {
+    padding-top: 0;
+  }
+
+
   .vx-col {
     display: grid;
     justify-items: center;

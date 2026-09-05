@@ -1,8 +1,10 @@
 # Video Extraction Studio
 
-Software web para convertir un vídeo en un JSON denso (metadatos, cortes, habla, texto en pantalla) **sin pasos técnicos sueltos**.
+**Extractor de vídeo → JSON denso.**
 
-La idea: cualquiera lo instala de un golpe, abre el navegador, sube un vídeo y obtiene el resultado.
+Software web que convierte un clip en un dossier estructurado (cortes, cámara, habla, caras, texto en pantalla, objetos, pose, audio…) **sin pasos técnicos sueltos**. No genera vídeo: extrae.
+
+La idea: cualquiera lo instala de un golpe, abre el navegador, mete un vídeo y obtiene el JSON.
 
 ## Instalación de un golpe
 
@@ -54,7 +56,7 @@ También puedes usar webhook (Make/n8n) si prefieres otro destino.
 - **Caras y encuadre** (OpenCV YuNet + Moondream): rostros, escala de plano y descripción del crop (expresión, mirada, pelo/gafas).
 - **Objetos y personas** (YOLOv8n + Moondream): detección y descripción del crop (color, ropa, estado) dentro del mismo módulo.
 - **Pose y acciones** (YOLOv8n-pose + Moondream): postura geométrica y descripción de la acción en el crop.
-- Observación visual con preguntas de recreación (lugar, acciones, caras, cámara).
+- Observación visual densa (lugar, acciones, caras, cámara, ambiente).
 - Diarización con el paquete `diarize` (Silero VAD + WeSpeaker) + Whisper `large-v3` (texto denso; override con `WHISPER_MODEL`).
 - **Texto en pantalla** (RapidOCR + Moondream): lee letras, clasifica rol (título, CTA, watermark…) y añade contexto del crop.
 - **Cara ↔ voz** en `speakers`: enlaza interlocutores diarizados con pistas de `faces_framing` por solape temporal (prioriza boca abierta y tamaño de cara).

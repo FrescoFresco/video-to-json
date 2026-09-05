@@ -327,8 +327,8 @@ function HomeView() {
             <br />
             Studio
           </p>
-          <p className="mt-4 m-0 max-w-[22rem] text-[14px] leading-snug tracking-[-0.015em] text-[#6a7380] sm:text-[15px]">
-            De vídeo a JSON para recrearlo.
+          <p className="mt-4 m-0 max-w-[24rem] text-[14px] leading-snug tracking-[-0.015em] text-[#6a7380] sm:text-[15px]">
+            Extractor de vídeo → JSON denso.
           </p>
         </div>
 

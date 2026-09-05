@@ -1,57 +1,53 @@
 import type { ReactNode } from "react";
 
-/** Página «La idea»: objetivo del software + diagrama de recreación. */
+/** Página «La idea»: qué es este software (extractor de vídeo → JSON). */
 export function IdeaView() {
   return (
     <div className="vx-idea min-w-0">
       <header className="vx-idea-hero">
         <p className="vx-idea-kicker">La idea</p>
         <h1 className="vx-idea-title">
-          Extraer tan bien
+          Un extractor de vídeo.
           <br />
-          que se pueda volver a generar
+          Nada más.
         </h1>
         <p className="vx-idea-lead">
-          Este Studio no genera vídeo. Produce un texto/JSON tan denso que, si se lo inyectas
-          a un generador externo de texto→vídeo, ese generador tenga todo lo necesario para
-          recrear un clip lo más cercano posible al original.
+          Entras un clip. Sale un JSON denso: cortes, cámara, habla, caras, texto en pantalla,
+          objetos, pose, audio… Empaquetado, ordenado y listo para usarlo donde haga falta.
+          Este Studio no genera vídeo.
         </p>
       </header>
 
-      <RecreationDiagram />
+      <ExtractionDiagram />
 
       <section className="vx-idea-block">
         <h2 className="vx-idea-h2">Por qué existe</h2>
         <p className="vx-idea-p">
-          Entre el vídeo real y un generador de IA hace falta un puente. Ese puente es la
-          extracción: planos, habla, texto en pantalla, escena, audio, personas, cámara… Todo
-          lo que haría falta para reconstruir la pieza, no solo etiquetarla.
+          Un vídeo es opaco: imagen, sonido y tiempo mezclados. Hace falta un puente hacia datos
+          estructurados —no un resumen vago— para buscar, automatizar, analizar o alimentar otras
+          herramientas. Ese puente es la extracción.
         </p>
       </section>
 
       <section className="vx-idea-block">
-        <h2 className="vx-idea-h2">El recorrido</h2>
+        <h2 className="vx-idea-h2">Cómo funciona</h2>
         <ol className="vx-idea-steps">
           <li>
-            <strong>1 · Vídeo original</strong>
-            El clip real (archivo o link).
+            <strong>1 · Vídeo de entrada</strong>
+            Archivo, carpeta o link.
           </li>
           <li>
-            <strong>2 · Video Extraction Studio</strong>
-            Este software: convierte el vídeo en un texto de extracción denso.
+            <strong>2 · Pipeline de módulos</strong>
+            Cada extractor hace un trabajo concreto (habla, caras, OCR, objetos…).
           </li>
           <li>
-            <strong>3 · Texto de extracción</strong>
-            El dossier JSON. Es lo único que produce el Studio. Puente entre ambos lados.
+            <strong>3 · JSON denso</strong>
+            Un solo pack con todo junto: <code className="text-[12.5px]">content</code>,{" "}
+            <code className="text-[12.5px]">timeline</code> y metadatos de la corrida.
           </li>
           <li>
-            <strong>4 · Generador de vídeo IA (externo)</strong>
-            Otra herramienta: lee ese texto y puede regenerar un vídeo.
-          </li>
-          <li>
-            <strong>5 · Vídeo generado</strong>
-            El resultado fuera de aquí. Cuanto más rico el texto, más cerca puede quedar del
-            original.
+            <strong>4 · Tú decides el uso</strong>
+            Archivo, API, webhook, búsqueda, automatización… o lo que venga después.
           </li>
         </ol>
       </section>
@@ -59,143 +55,88 @@ export function IdeaView() {
       <section className="vx-idea-block">
         <h2 className="vx-idea-h2">Qué hace Video Extraction Studio</h2>
         <p className="vx-idea-p">
-          Convierte vídeo en texto/JSON reconstruible, en local, con módulos de extracción.
-          Guarda el link de origen si viene de una URL, empaqueta todo junto y puede avisar
-          por API o webhook. El listón no es “resumir el vídeo”: es densificarlo hasta que
-          sirva para recrearlo.
+          Convierte vídeo en JSON estructurado, en local, con módulos registrados bajo el mismo
+          contrato. Guarda el origen si llegó por URL, borra el vídeo temporal al terminar y puede
+          avisar por webhook. El listón no es “etiquetar un poco”: es densificar el clip hasta
+          que el JSON sea útil de verdad.
         </p>
       </section>
 
       <section className="vx-idea-block vx-idea-block--last">
-        <h2 className="vx-idea-h2">La cercanía al original</h2>
+        <h2 className="vx-idea-h2">Qué no es</h2>
         <p className="vx-idea-p">
-          Arriba, el original (1) y el generado (5) se miran de frente. La barra del medio no
-          es una nota automática: es el objetivo. El trabajo de este software es hacer el
-          texto (3) tan rico que esa cercanía sea posible.
+          No es un editor ni un generador de vídeo. Su trabajo termina cuando el JSON está listo.
+          Lo que hagas después con ese dossier —archivo, automatización, otra IA— queda fuera.
         </p>
       </section>
     </div>
   );
 }
 
-/**
- * Desktop:
- *   [1 Original]  —— cercanía ——  [5 Generado]
- *   [2 VX Studio]                 [4 Generador IA]
- *              [3 Texto extracción]
- *
- * Móvil: nodos 1–5 + cercanía al final. Sin líneas conectoras.
- */
-export function RecreationDiagram() {
+/** Flujo real del producto: vídeo → módulos → JSON. */
+export function ExtractionDiagram() {
   return (
-    <section aria-label="De vídeo a texto a vídeo generado" className="vx-loop vx-loop--embedded">
-      {/* —— Desktop —— */}
+    <section aria-label="De vídeo a JSON denso" className="vx-loop vx-loop--embedded">
       <div className="vx-loop-desk">
-        <div className="vx-grid">
-          {/* Columna izquierda */}
+        <div className="vx-grid vx-grid--extract">
           <div className="vx-col vx-col--left">
             <Node
               step="1"
-              title="Vídeo original"
-              copy="El clip que subes o importas"
+              title="Vídeo de entrada"
+              copy="Archivo, carpeta o link"
               illu={<VideoFrameIllustration variant="origin" />}
             />
+          </div>
+
+          <div className="vx-col vx-col--mid">
             <Node
               step="2"
               title="Video Extraction Studio"
-              copy="Este software · vídeo → texto"
+              copy="Pipeline modular · vídeo → datos"
               illu={<StudioAppIllustration />}
             />
           </div>
 
-          {/* Centro: cercanía (arriba) */}
-          <div className="vx-col vx-col--mid">
-            <FidelityBridge />
-          </div>
-
-          {/* Columna derecha */}
           <div className="vx-col vx-col--right">
             <Node
-              step="5"
-              title="Vídeo generado"
-              copy="Recreado fuera de este Studio"
-              badge="Externo"
-              illu={<VideoFrameIllustration variant="generated" />}
-            />
-            <Node
-              step="4"
-              title="Generador de vídeo IA"
-              copy="Herramienta externa · texto → vídeo"
-              badge="Externo"
-              illu={<AiGeneratorIllustration />}
+              step="3"
+              title="JSON denso"
+              copy="Cortes, habla, caras, texto, objetos, audio…"
+              illu={<TextDossierIllustration />}
             />
           </div>
         </div>
-
-        <Node
-          step="3"
-          title="Texto de extracción"
-          copy="JSON denso: planos, habla, pantalla, escena, audio… el puente"
-          className="vx-loop-node--text"
-          illu={<TextDossierIllustration />}
-        />
       </div>
 
-      {/* —— Móvil —— */}
       <div className="vx-loop-mob">
         <Node
           step="1"
-          title="Vídeo original"
-          copy="El clip que subes o importas"
+          title="Vídeo de entrada"
+          copy="Archivo, carpeta o link"
           layout="row"
           illu={<VideoFrameIllustration variant="origin" size="sm" />}
         />
         <Node
           step="2"
           title="Video Extraction Studio"
-          copy="Este software · vídeo → texto"
+          copy="Pipeline modular · vídeo → datos"
           layout="row"
           illu={<StudioAppIllustration size="sm" />}
         />
         <Node
           step="3"
-          title="Texto de extracción"
-          copy="JSON denso para recrear el clip"
+          title="JSON denso"
+          copy="Todo el dossier en un solo pack"
           layout="row"
           illu={<TextDossierIllustration size="sm" />}
         />
-        <Node
-          step="4"
-          title="Generador de vídeo IA"
-          copy="Herramienta externa · texto → vídeo"
-          badge="Externo"
-          layout="row"
-          illu={<AiGeneratorIllustration size="sm" />}
-        />
-        <Node
-          step="5"
-          title="Vídeo generado"
-          copy="Recreado a partir del texto"
-          badge="Externo"
-          layout="row"
-          illu={<VideoFrameIllustration variant="generated" size="sm" />}
-        />
-
-        <div className="vx-loop-mob-compare">
-          <p className="vx-loop-mob-compare-title">Cercanía al original</p>
-          <div className="vx-loop-mob-compare-frames" aria-hidden="true">
-            <VideoFrameIllustration variant="origin" size="xs" />
-            <FidelityBridge compact />
-            <VideoFrameIllustration variant="generated" size="xs" />
-          </div>
-          <p className="vx-loop-fidelity-hint">
-            Cuanto más rico el texto (3), más cerca puede quedar el 5 del 1
-          </p>
-        </div>
       </div>
     </section>
   );
 }
+
+/** @deprecated Usar ExtractionDiagram. */
+export const RecreationDiagram = ExtractionDiagram;
 
 function Node({
   step,
@@ -228,24 +169,6 @@ function Node({
         <span className="vx-loop-node-copy">{copy}</span>
       </figcaption>
     </figure>
-  );
-}
-
-function FidelityBridge({ compact = false }: { compact?: boolean }) {
-  return (
-    <div className={`vx-loop-fidelity ${compact ? "vx-loop-fidelity--compact" : ""}`}>
-      {!compact ? <p className="vx-loop-fidelity-label">Cercanía al original</p> : null}
-      <div
-        className="vx-loop-fidelity-track"
-        role="img"
-        aria-label="Objetivo: máxima similitud entre el vídeo generado y el original"
-      >
-        <div className="vx-loop-fidelity-fill" />
-      </div>
-      {!compact ? (
-        <p className="vx-loop-fidelity-hint">Cuanto más rico el texto, más cerca</p>
-      ) : null}
-    </div>
   );
 }
 
@@ -296,38 +219,15 @@ function VideoFrameIllustration({
           fill="currentColor"
           opacity={isGen ? 0.05 : 0.08}
         />
-        {isGen ? (
-          <>
-            <rect
-              x="14"
-              y="26"
-              width="68"
-              height="108"
-              rx="5"
-              stroke="currentColor"
-              strokeWidth="1"
-              strokeDasharray="3 3"
-              opacity="0.35"
-            />
-            <path
-              d="M22 88 H74"
-              stroke="currentColor"
-              strokeWidth="1"
-              strokeDasharray="2 3"
-              opacity="0.3"
-            />
-          </>
-        ) : (
-          <g opacity="0.7">
-            <circle cx="48" cy="78" r="11" fill="currentColor" opacity="0.12" />
-            <polygon points="44,72 56,78 44,84" fill="currentColor" opacity="0.75" />
-          </g>
-        )}
+        <g opacity="0.7">
+          <circle cx="48" cy="78" r="11" fill="currentColor" opacity="0.12" />
+          <polygon points="44,72 56,78 44,84" fill="currentColor" opacity="0.75" />
+        </g>
         <rect x="40" y="142" width="16" height="4" rx="2" fill="currentColor" opacity="0.22" />
         <defs>
           <linearGradient id={`screen-${uid}`} x1="14" y1="26" x2="82" y2="134">
-            <stop stopColor={isGen ? "#3d6f99" : "#2a3340"} stopOpacity="0.07" />
-            <stop offset="1" stopColor={isGen ? "#3d6f99" : "#2a3340"} stopOpacity="0.2" />
+            <stop stopColor="#2a3340" stopOpacity="0.07" />
+            <stop offset="1" stopColor="#2a3340" stopOpacity="0.2" />
           </linearGradient>
         </defs>
       </svg>
@@ -386,66 +286,6 @@ function StudioAppIllustration({ size = "md" }: { size?: "sm" | "md" }) {
         <rect x="38" y="80" width="100" height="18" rx="4" fill="currentColor" opacity="0.06" />
         <rect x="46" y="86" width="28" height="6" rx="2" fill="currentColor" opacity="0.28" />
         <rect x="80" y="86" width="48" height="6" rx="2" fill="currentColor" opacity="0.14" />
-      </svg>
-    </div>
-  );
-}
-
-function AiGeneratorIllustration({ size = "md" }: { size?: "sm" | "md" }) {
-  return (
-    <div className={`vx-illu-genai vx-illu-genai--${size}`} aria-hidden="true">
-      <svg viewBox="0 0 148 112" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect
-          x="2"
-          y="2"
-          width="144"
-          height="108"
-          rx="12"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeDasharray="4 3"
-          className="vx-illu-stroke"
-        />
-        <rect x="14" y="14" width="70" height="10" rx="3" fill="currentColor" opacity="0.12" />
-        <rect
-          x="14"
-          y="14"
-          width="70"
-          height="10"
-          rx="3"
-          stroke="currentColor"
-          strokeWidth="1"
-          opacity="0.25"
-        />
-        <rect x="18" y="17" width="40" height="4" rx="1.5" fill="currentColor" opacity="0.28" />
-        <rect x="14" y="32" width="70" height="4" rx="1.5" fill="currentColor" opacity="0.16" />
-        <rect x="14" y="40" width="58" height="4" rx="1.5" fill="currentColor" opacity="0.14" />
-        <rect x="14" y="48" width="64" height="4" rx="1.5" fill="currentColor" opacity="0.14" />
-        <circle cx="112" cy="42" r="22" fill="currentColor" opacity="0.07" />
-        <path
-          d="M112 24 L115 36 L127 39 L115 42 L112 54 L109 42 L97 39 L109 36 Z"
-          fill="currentColor"
-          opacity="0.45"
-        />
-        <path
-          d="M84 42 H90"
-          stroke="currentColor"
-          strokeWidth="1.2"
-          strokeDasharray="2 2"
-          opacity="0.4"
-        />
-        <rect
-          x="98"
-          y="70"
-          width="36"
-          height="28"
-          rx="5"
-          stroke="currentColor"
-          strokeWidth="1.2"
-          opacity="0.55"
-        />
-        <circle cx="116" cy="82" r="5" fill="currentColor" opacity="0.18" />
-        <polygon points="114,79 120,82 114,85" fill="currentColor" opacity="0.5" />
       </svg>
     </div>
   );
