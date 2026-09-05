@@ -6,7 +6,7 @@ import {
   readAppConfig,
   writeAppConfig,
 } from "@/lib/server/app-config";
-import { uploadJsonToDrive } from "@/lib/server/google-drive";
+import { deleteDriveFile, uploadJsonToDrive } from "@/lib/server/google-drive";
 import { deliverWebhook } from "@/lib/server/webhook";
 
 export const runtime = "nodejs";
@@ -105,6 +105,7 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+    // Sube un JSON de prueba → si llega, la conexión es correcta → lo borra solo.
     const upload = await uploadJsonToDrive({
       fileName: `prueba-studio-${Date.now()}.json`,
       json: {
@@ -116,14 +117,18 @@ export async function POST(request: Request) {
     if (!upload) {
       return NextResponse.json({ error: "Drive no está activo" }, { status: 400 });
     }
-    if (!upload.ok) {
+    if (!upload.ok || !upload.fileId) {
       return NextResponse.json({ ok: false, error: upload.error }, { status: 502 });
     }
+
+    const deleted = await deleteDriveFile({ fileId: upload.fileId });
     return NextResponse.json({
       ok: true,
       fileId: upload.fileId,
       name: upload.name,
       webViewLink: upload.webViewLink,
+      cleanedUp: deleted.ok,
+      cleanupError: deleted.ok ? undefined : deleted.error,
     });
   }
 

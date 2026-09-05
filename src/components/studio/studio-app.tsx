@@ -2603,7 +2603,7 @@ function DocsView({ onOpenConnections }: { onOpenConnections: () => void }) {
               <li>1. Conexiones → Google Drive</li>
               <li>2. Pega ID de carpeta + JSON de cuenta de servicio</li>
               <li>3. Comparte la carpeta con ese email (editor)</li>
-              <li>4. Activa, guarda y pulsa «Probar Drive»</li>
+              <li>4. Activa, guarda y pulsa «Probar» (sube un archivo de prueba y lo borra)</li>
             </ol>
             <div className="mt-4">
               <Button className="rounded-xl" onClick={onOpenConnections}>

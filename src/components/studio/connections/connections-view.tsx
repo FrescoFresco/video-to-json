@@ -39,6 +39,7 @@ export function ConnectionsView() {
   const [testingDrive, setTestingDrive] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [driveTestLink, setDriveTestLink] = useState<string | null>(null);
   const [openPanel, setOpenPanel] = useState<PanelId | null>(null);
 
   const closePanel = useCallback(() => setOpenPanel(null), []);
@@ -180,6 +181,7 @@ export function ConnectionsView() {
     setTestingDrive(true);
     setMessage(null);
     setError(null);
+    setDriveTestLink(null);
     try {
       const res = await fetch("/api/settings", {
         method: "POST",
@@ -191,13 +193,19 @@ export function ConnectionsView() {
         error?: string;
         webViewLink?: string;
         name?: string;
+        cleanedUp?: boolean;
       };
       if (!res.ok || !data.ok) throw new Error(data.error || "No se pudo subir a Drive");
-      setMessage(
-        data.webViewLink
-          ? `Drive OK. Archivo de prueba: ${data.webViewLink}`
-          : `Drive OK. Subido: ${data.name || "prueba"}`
-      );
+      if (data.cleanedUp) {
+        setMessage(
+          "Conexión correcta: subí un archivo de prueba a tu carpeta de Drive y lo borré. Todo OK."
+        );
+      } else {
+        setMessage(
+          "Conexión correcta: el archivo de prueba llegó a tu carpeta. Puedes abrirlo y borrarlo tú."
+        );
+        if (data.webViewLink) setDriveTestLink(data.webViewLink);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo probar Drive");
     } finally {
@@ -307,9 +315,19 @@ export function ConnectionsView() {
         </div>
       )}
 
-      {(message || error) && !openPanel && (
+      {(message || error || driveTestLink) && !openPanel && (
         <div className="min-w-0 rounded-xl border border-[#e7e7eb] bg-white px-4 py-3">
           {message ? <p className="text-sm text-[#177245]">{message}</p> : null}
+          {driveTestLink ? (
+            <a
+              href={driveTestLink}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-1 inline-block text-sm font-medium text-[#171719] underline underline-offset-2"
+            >
+              Abrir archivo de prueba en Drive
+            </a>
+          ) : null}
           {error ? <p className="text-sm text-[#b42318]">{error}</p> : null}
         </div>
       )}
@@ -323,6 +341,11 @@ export function ConnectionsView() {
           icon={modalMeta.icon}
           message={message}
           error={error}
+          messageLink={
+            driveTestLink
+              ? { href: driveTestLink, label: "Abrir archivo de prueba en Drive" }
+              : null
+          }
           onClose={closePanel}
           footer={
             openPanel === "drive" ? (
@@ -389,6 +412,10 @@ export function ConnectionsView() {
                 <li>
                   En Drive, carpeta → copia el ID de <code>…/folders/ID</code> y compártela con
                   el email <code>@…gserviceaccount.com</code> (editor).
+                </li>
+                <li>
+                  Guarda y pulsa <strong>Probar</strong>: el Studio sube un archivo a esa carpeta
+                  y lo borra solo. Si sale OK, la conexión está bien.
                 </li>
               </ol>
               <div className="grid min-w-0 gap-3">

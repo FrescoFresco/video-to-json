@@ -174,3 +174,48 @@ export async function uploadJsonToDrive(input: {
     };
   }
 }
+
+/** Borra un archivo de Drive creado por la cuenta de servicio (p. ej. prueba). */
+export async function deleteDriveFile(input: {
+  fileId: string;
+  serviceAccountJson?: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const config = await readAppConfig();
+  const saRaw = (input.serviceAccountJson || config.driveServiceAccountJson || "").trim();
+  const fileId = input.fileId.trim();
+  if (!fileId || !saRaw) {
+    return { ok: false, error: "Falta el archivo o la clave de Google" };
+  }
+
+  const account = parseServiceAccount(saRaw);
+  if (!account) {
+    return { ok: false, error: "La clave JSON de Google no es válida" };
+  }
+
+  try {
+    const token = await getAccessToken(account);
+    const res = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}`,
+      {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    // 204 = borrado; 404 = ya no está (también vale como “no queda basura”)
+    if (res.status === 204 || res.status === 404 || res.ok) {
+      return { ok: true };
+    }
+    const json = (await res.json().catch(() => ({}))) as {
+      error?: { message?: string };
+    };
+    return {
+      ok: false,
+      error: json.error?.message || `Drive respondió HTTP ${res.status} al borrar`,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "No se pudo borrar en Drive",
+    };
+  }
+}

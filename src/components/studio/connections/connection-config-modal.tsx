@@ -19,6 +19,7 @@ export function ConnectionConfigModal({
   footer,
   message,
   error,
+  messageLink,
 }: {
   open: boolean;
   title: string;
@@ -30,6 +31,7 @@ export function ConnectionConfigModal({
   footer?: ReactNode;
   message?: string | null;
   error?: string | null;
+  messageLink?: { href: string; label: string } | null;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -89,9 +91,19 @@ export function ConnectionConfigModal({
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">{children}</div>
         {footer ? (
           <footer className="shrink-0 border-t border-[#ececf0] px-4 py-3 sm:px-5">
-            {(message || error) && (
+            {(message || error || messageLink) && (
               <div className="mb-3 min-w-0 rounded-xl border border-[#e7e7eb] bg-[#fbfbfc] px-3 py-2.5">
                 {message ? <p className="text-sm text-[#177245]">{message}</p> : null}
+                {messageLink ? (
+                  <a
+                    href={messageLink.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-1 inline-block text-sm font-medium text-[#171719] underline underline-offset-2"
+                  >
+                    {messageLink.label}
+                  </a>
+                ) : null}
                 {error ? <p className="text-sm text-[#b42318]">{error}</p> : null}
               </div>
             )}
