@@ -1,22 +1,27 @@
-# Windows one-click installer:
-#   1) install Docker Desktop if missing (winget)
-#   2) start it and wait for the engine
-#   3) build/start the Studio
-#   4) open the browser
-#
-# Usage (double-click Launch.bat, or):
+﻿# Windows one-click installer (ASCII-only for PowerShell 5.1).
+# Usage:
 #   powershell -ExecutionPolicy Bypass -File .\desktop\windows\install.ps1
-#
-# IMPORTANT: ASCII-only file so Windows PowerShell 5.1 does not break on encoding.
 
 $ErrorActionPreference = "Stop"
 $Root = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 Set-Location $Root
 $Url = "http://127.0.0.1:43141"
 
-function Write-Step($msg) {
+function Write-Step([string]$msg) {
   Write-Host ""
   Write-Host "==> $msg"
+}
+
+function Write-Help-DockerWsl {
+  Write-Host ""
+  Write-Host "Docker necesita WSL2. Haz esto:"
+  Write-Host "  1) Cierra esta ventana"
+  Write-Host "  2) Abre PowerShell como Administrador"
+  Write-Host "  3) Ejecuta:  wsl --install --no-distribution"
+  Write-Host "  4) Reinicia el PC"
+  Write-Host "  5) Abre Docker Desktop y espera a 'Engine running'"
+  Write-Host "  6) Vuelve a Launch.bat o al comando de instalacion"
+  Write-Host ""
 }
 
 function Test-DockerCli {
@@ -55,34 +60,29 @@ function Get-DockerDesktopExe {
 }
 
 function Install-DockerDesktop {
-  Write-Step "Docker no esta instalado. Intentando instalarlo solo..."
+  Write-Step "Docker no esta. Intentando instalarlo..."
 
   if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
-    Write-Host "No hay winget en este Windows."
-    Write-Host "Descarga Docker Desktop a mano:"
+    Write-Host "No hay winget. Instala Docker a mano:"
     Write-Host "  https://www.docker.com/products/docker-desktop/"
-    Write-Host "Luego vuelve a hacer doble clic en Launch.bat."
     exit 1
   }
 
-  Write-Host "Esto puede pedir permiso de administrador y tardar varios minutos."
+  Write-Host "Puede pedir Administrador. Espera unos minutos..."
   winget install -e --id Docker.DockerDesktop --accept-package-agreements --accept-source-agreements
   if ($LASTEXITCODE -ne 0) {
-    Write-Host "winget no pudo instalar Docker Desktop (codigo $LASTEXITCODE)."
-    Write-Host "Instalalo a mano y vuelve a lanzar: https://www.docker.com/products/docker-desktop/"
+    Write-Host "No se pudo instalar Docker (codigo $LASTEXITCODE)."
+    Write-Host "Instalalo a mano: https://www.docker.com/products/docker-desktop/"
     exit 1
   }
 
-  # After winget, PATH in this session may not see docker yet.
   $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
   $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
   $env:Path = "$machinePath;$userPath"
 
-  $exe = Get-DockerDesktopExe
-  if (-not $exe) {
-    Write-Host ""
-    Write-Host "Docker se instalo, pero hace falta cerrar esta ventana y, si Windows lo pide, reiniciar."
-    Write-Host "Luego abre Docker Desktop una vez (acepta el aviso) y vuelve a Launch.bat."
+  if (-not (Get-DockerDesktopExe)) {
+    Write-Host "Docker instalado. Cierra esta ventana, reinicia si Windows lo pide,"
+    Write-Host "abre Docker Desktop una vez y vuelve a lanzar el instalador."
     exit 1
   }
 
@@ -94,14 +94,14 @@ function Start-DockerDesktopAndWait {
 
   $exe = Get-DockerDesktopExe
   if (-not $exe) {
-    Write-Host "No encuentro Docker Desktop.exe. Abrelo a mano y vuelve a Launch.bat."
+    Write-Host "No encuentro Docker Desktop. Abrelo a mano y vuelve a intentar."
     exit 1
   }
 
   Write-Step "Arrancando Docker Desktop..."
   Start-Process $exe | Out-Null
 
-  Write-Host "Esperando a que el motor de Docker este listo (puede tardar 1-2 min)..."
+  Write-Host "Esperando al motor de Docker (1-2 min)..."
   for ($i = 0; $i -lt 90; $i++) {
     if (Test-DockerEngine) {
       Write-Host "Docker listo."
@@ -110,18 +110,16 @@ function Start-DockerDesktopAndWait {
     Start-Sleep -Seconds 2
   }
 
-  Write-Host ""
-  Write-Host "Docker Desktop no respondio a tiempo."
-  Write-Host "Si es la primera instalacion: abre Docker Desktop, completa el asistente"
-  Write-Host "(WSL2 / reinicio si lo pide) y vuelve a hacer doble clic en Launch.bat."
+  Write-Host "Docker no arranco a tiempo."
+  Write-Help-DockerWsl
   exit 1
 }
 
-Write-Host "Video Extraction Studio - un solo paso"
+Write-Host "Video Extraction Studio"
 Write-Host "Carpeta: $Root"
 
 if (Test-Server) {
-  Write-Step "Ya esta en marcha. Abriendo el navegador..."
+  Write-Step "Ya esta en marcha. Abriendo navegador..."
   Start-Process $Url
   exit 0
 }
@@ -135,23 +133,21 @@ Start-DockerDesktopAndWait
 Write-Step "Construyendo y arrancando el Studio (la primera vez tarda)..."
 docker compose up --build -d
 if ($LASTEXITCODE -ne 0) {
-  Write-Host "Fallo docker compose. Revisa el mensaje de arriba."
+  Write-Host "Fallo docker compose."
+  Write-Help-DockerWsl
   exit 1
 }
 
 Write-Step "Esperando $Url ..."
 for ($i = 0; $i -lt 120; $i++) {
   if (Test-Server) {
-    Write-Host "Listo. Abriendo el navegador..."
+    Write-Host "Listo. Abriendo navegador..."
     Start-Process $Url
-    Write-Host ""
-    Write-Host "Para parar mas adelante: docker compose down"
+    Write-Host "Para parar: docker compose down"
     exit 0
   }
   Start-Sleep -Seconds 2
 }
 
-Write-Host "Arranco, pero la web aun no responde. Prueba en unos minutos: $Url"
+Write-Host "Arranco, pero la web aun no responde. Prueba: $Url"
 Start-Process $Url
-
-# rev: update-path-main

@@ -2414,7 +2414,12 @@ function InstallDocsSection() {
           </ol>
           <CopyCommand command={WIN_INSTALL_CMD} />
           <p className="mt-2 text-[12px] leading-relaxed text-[#75757d]">
-            Si pide permiso → Sí. Si pide reiniciar → reinicia y repite.
+            Si pide permiso → Sí. Si pide reiniciar → reinicia y repite el mismo comando.
+          </p>
+          <p className="mt-2 text-[12px] leading-relaxed text-[#75757d]">
+            Si Docker no arranca: PowerShell como Administrador →{" "}
+            <code className="text-[11.5px]">wsl --install --no-distribution</code> → reinicia →
+            abre Docker → vuelve a pegar el comando.
           </p>
         </div>
 

@@ -1,4 +1,4 @@
-# Single-command Windows install.
+﻿# Single-command Windows install.
 # Paste in PowerShell:
 #
 #   powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/FrescoFresco/video-to-json/main/desktop/windows/bootstrap-from-web.ps1 | iex"
