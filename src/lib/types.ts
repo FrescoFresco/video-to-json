@@ -62,6 +62,20 @@ export type ActivityEvent = {
   status: JobStatus;
 };
 
+/** Estado de un destino al terminar la extracción (Drive, webhook…). */
+export type DeliveryTargetState = {
+  status: "pending" | "uploading" | "ok" | "error" | "skipped";
+  label: string;
+  detail?: string;
+  /** Enlace al archivo en Drive, etc. */
+  url?: string;
+};
+
+export type JobDeliveries = {
+  drive?: DeliveryTargetState;
+  webhook?: DeliveryTargetState;
+};
+
 export type ProbeResult = {
   filename: string;
   durationMs: number;
@@ -185,6 +199,8 @@ export type StoredVideo = {
   probe?: ProbeResult;
   extraction?: VideoExtraction;
   activity: ActivityEvent[];
+  /** Resultado de enviar el JSON a Drive / webhook tras la extracción. */
+  deliveries?: JobDeliveries;
 };
 
 export type VideoJobResult = {

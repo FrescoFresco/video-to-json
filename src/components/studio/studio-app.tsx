@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Cloud,
   Download,
+  ExternalLink,
   FolderOpen,
   Home,
   Lightbulb,
@@ -27,7 +28,14 @@ import { DEFAULT_COST, estimatePipelineSeconds, type CostConfig } from "@/lib/pi
 import { msToClock } from "@/lib/extraction";
 import { isLinkListFilename, readLinksFromFile } from "@/lib/ingest-links";
 import { useStudio } from "@/lib/store";
-import type { ExtractionModule, JobStatus, StoredVideo, TimelineEvent, ViewName } from "@/lib/types";
+import type {
+  DeliveryTargetState,
+  ExtractionModule,
+  JobStatus,
+  StoredVideo,
+  TimelineEvent,
+  ViewName,
+} from "@/lib/types";
 import { isVideoFile } from "@/lib/video-file";
 import { IdeaView } from "@/components/studio/recreation-diagram";
 import { ConnectionsView } from "@/components/studio/connections-view";
@@ -1256,6 +1264,8 @@ function VideoDetail({ video }: { video: StoredVideo }) {
                 </div>
               ) : null}
 
+              <DeliveriesPanel video={video} />
+
               <section className="rounded-xl border border-[#e7e7eb] bg-white p-4">
                 <div className="text-sm font-semibold">Progreso de módulos</div>
                 <p className="mt-1 text-[12.5px] text-[#75757d]">
@@ -1359,7 +1369,7 @@ function VideoDetail({ video }: { video: StoredVideo }) {
                 <StatusDot status={item.status} />
                 <div>
                   <div className="text-sm font-medium">{item.title}</div>
-                  <div className="text-[12.5px] text-[#75757d]">{item.detail}</div>
+                  <ActivityDetail detail={item.detail} />
                 </div>
               </div>
             ))}
@@ -1486,6 +1496,134 @@ function Metric({ label, value }: { label: string; value: string }) {
     <div className="rounded-2xl border border-[#e7e7eb] bg-white p-4">
       <div className="text-[12px] uppercase tracking-wide text-[#75757d]">{label}</div>
       <div className="mt-2 text-lg font-semibold">{value}</div>
+    </div>
+  );
+}
+
+
+function deliveryTone(status: DeliveryTargetState["status"]) {
+  if (status === "ok") return "border-[#cfe8d8] bg-[#edf6f1] text-[#177245]";
+  if (status === "error") return "border-[#f0d0cc] bg-[#fff0ef] text-[#b42318]";
+  if (status === "uploading" || status === "pending")
+    return "border-[#f0e2b8] bg-[#fff8e8] text-[#9a6700]";
+  return "border-[#e7e7eb] bg-[#f7f7f9] text-[#75757d]";
+}
+
+function deliveryStatusLabel(status: DeliveryTargetState["status"]) {
+  switch (status) {
+    case "ok":
+      return "Listo";
+    case "error":
+      return "Error";
+    case "uploading":
+      return "Subiendo…";
+    case "pending":
+      return "En cola…";
+    default:
+      return "No usado";
+  }
+}
+
+function DeliveriesPanel({ video }: { video: StoredVideo }) {
+  const deliveries = video.deliveries;
+  const uploading =
+    Boolean(video.stage?.includes("Drive")) ||
+    Boolean(video.stage?.includes("webhook")) ||
+    Boolean(video.stage?.includes("Enviando")) ||
+    Boolean(video.stage?.includes("Subiendo"));
+  const rows = [deliveries?.drive, deliveries?.webhook].filter(
+    Boolean
+  ) as DeliveryTargetState[];
+
+  if (!rows.length && !uploading) return null;
+
+  return (
+    <section className="rounded-xl border border-[#e7e7eb] bg-white p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <div className="text-sm font-semibold">Destinos del JSON</div>
+          <p className="mt-1 text-[12.5px] text-[#75757d]">
+            {uploading && video.status === "processing"
+              ? "La extracción terminó; ahora se envía el JSON."
+              : "Dónde se ha guardado o enviado el resultado."}
+          </p>
+        </div>
+        {uploading && video.status === "processing" ? (
+          <span className="text-[12px] font-medium text-[#9a6700]">{video.stage}</span>
+        ) : null}
+      </div>
+
+      {uploading && video.status === "processing" ? (
+        <div className="mt-3">
+          <ThinProgressBar value={video.progress} tone="active" className="max-w-full" />
+        </div>
+      ) : null}
+
+      <div className="mt-3 grid gap-2">
+        {rows.map((row) => (
+          <div
+            key={row.label}
+            className={`flex min-w-0 items-start gap-3 rounded-xl border px-3 py-2.5 ${deliveryTone(row.status)}`}
+          >
+            <div className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg bg-white/70">
+              {row.label.includes("Drive") ? (
+                <Cloud className="size-4" />
+              ) : (
+                <Link2 className="size-4" />
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-medium">{row.label}</span>
+                <span className="text-[11.5px] font-medium uppercase tracking-[0.03em]">
+                  {deliveryStatusLabel(row.status)}
+                </span>
+              </div>
+              {row.detail ? (
+                <p className="mt-0.5 break-words text-[12.5px] opacity-90">{row.detail}</p>
+              ) : null}
+              {row.url ? (
+                <a
+                  href={row.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-1 inline-flex items-center gap-1 text-[12.5px] font-medium underline-offset-2 hover:underline"
+                >
+                  Abrir destino
+                  <ExternalLink className="size-3.5" />
+                </a>
+              ) : null}
+            </div>
+            {row.status === "uploading" || row.status === "pending" ? (
+              <span className="mt-2 size-2 shrink-0 animate-pulse rounded-full bg-current" />
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ActivityDetail({ detail }: { detail: string }) {
+  const match = detail.match(/https?:\/\/[^\s]+/);
+  if (!match) {
+    return <div className="text-[12.5px] text-[#75757d]">{detail}</div>;
+  }
+  const url = match[0];
+  const before = detail.slice(0, match.index);
+  const after = detail.slice((match.index || 0) + url.length);
+  return (
+    <div className="text-[12.5px] text-[#75757d]">
+      {before}
+      <a
+        href={url}
+        target="_blank"
+        rel="noreferrer"
+        className="break-all font-medium text-[#171719] underline-offset-2 hover:underline"
+      >
+        {url}
+      </a>
+      {after}
     </div>
   );
 }

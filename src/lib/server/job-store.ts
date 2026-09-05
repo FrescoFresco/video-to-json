@@ -1,7 +1,7 @@
 import { writeFile, mkdir, copyFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import type { StoredVideo, VideoJobResult } from "@/lib/types";
+import type { JobDeliveries, StoredVideo, VideoJobResult } from "@/lib/types";
 import {
   clearJobsFromDisk,
   loadAllJobsFromDisk,
@@ -11,6 +11,7 @@ import {
 import { processVideoFile } from "./process-video";
 import { withProcessSlot } from "./process-queue";
 import { uploadJsonToDrive } from "./google-drive";
+import { readAppConfig } from "./app-config";
 import { deliverWebhook } from "./webhook";
 import { buildVideoExtraction } from "@/lib/extraction";
 import {
@@ -434,18 +435,57 @@ async function runQueuedProcessing(
           },
         });
 
+        const config = await readAppConfig();
+        const willWebhook = Boolean(
+          (options?.webhookUrl || config.webhookUrl || "").trim()
+        );
+        const willDrive =
+          config.driveEnabled &&
+          Boolean(config.driveFolderId?.trim()) &&
+          Boolean(config.driveServiceAccountJson?.trim());
+        const needsDelivery = willWebhook || willDrive;
+
+        const initialDeliveries: JobDeliveries = {
+          drive: willDrive
+            ? { status: "pending", label: "Google Drive" }
+            : {
+                status: "skipped",
+                label: "Google Drive",
+                detail: "No configurado en Conexiones",
+              },
+          webhook: willWebhook
+            ? { status: "pending", label: "Webhook" }
+            : {
+                status: "skipped",
+                label: "Webhook",
+                detail: "No configurado en Conexiones",
+              },
+        };
+
         updateJob(
           id,
           {
-            status: "ready",
-            progress: 100,
-            stage: "Listo",
+            status: needsDelivery ? "processing" : "ready",
+            progress: needsDelivery ? 94 : 100,
+            stage: needsDelivery ? "Enviando resultados…" : "Listo",
             probe: result.probe,
             extraction: result.extraction,
             result,
-            completedAt: new Date().toISOString(),
+            completedAt: needsDelivery ? undefined : new Date().toISOString(),
             ...(sourceUrl ? { sourceUrl } : {}),
             sourceKind,
+            deliveries: initialDeliveries,
+            activity: [
+              ...(getStore().jobs.get(id)?.activity ?? []),
+              {
+                time: clock(),
+                title: "Extracción",
+                detail: needsDelivery
+                  ? "Módulos listos. Enviando JSON a los destinos…"
+                  : "Módulos listos.",
+                status: "ready",
+              },
+            ],
           },
           true
         );
@@ -457,25 +497,64 @@ async function runQueuedProcessing(
         } catch {
           // El callback de carpeta no debe tumbar el job.
         }
-        const delivery = await deliverWebhook({
-          event: "job.ready",
-          job: readyJob,
-          result,
-          webhookUrl: options?.webhookUrl,
-        });
-        if (delivery) {
+
+        let deliveries: JobDeliveries = {
+          ...initialDeliveries,
+        };
+
+        if (willWebhook) {
           updateJob(
             id,
             {
+              stage: "Enviando webhook…",
+              progress: 96,
+              deliveries: {
+                ...deliveries,
+                webhook: {
+                  status: "uploading",
+                  label: "Webhook",
+                  detail: "Enviando…",
+                },
+              },
+            },
+            true
+          );
+          const delivery = await deliverWebhook({
+            event: "job.ready",
+            job: getStore().jobs.get(id) ?? readyJob,
+            result,
+            webhookUrl: options?.webhookUrl,
+          });
+          deliveries = {
+            ...deliveries,
+            webhook: delivery
+              ? {
+                  status: delivery.ok ? "ok" : "error",
+                  label: "Webhook",
+                  detail: delivery.ok
+                    ? `Enviado (HTTP ${delivery.status})`
+                    : delivery.error || "Error",
+                  url: delivery.ok ? delivery.url : undefined,
+                }
+              : {
+                  status: "skipped",
+                  label: "Webhook",
+                  detail: "Sin URL",
+                },
+          };
+          updateJob(
+            id,
+            {
+              deliveries,
               activity: [
                 ...(getStore().jobs.get(id)?.activity ?? []),
                 {
                   time: clock(),
                   title: "Webhook",
-                  detail: delivery.ok
-                    ? `Enviado a ${delivery.url} (HTTP ${delivery.status})`
-                    : `Falló: ${delivery.error || "error"}`,
-                  status: delivery.ok ? "ready" : "error",
+                  detail:
+                    deliveries.webhook?.detail ||
+                    (delivery?.ok ? "Enviado" : "Falló"),
+                  status: delivery?.ok ? "ready" : "error",
                 },
               ],
             },
@@ -483,31 +562,77 @@ async function runQueuedProcessing(
           );
         }
 
-        const driveUpload = await uploadJsonToDrive({
-          fileName: `${readyJob.id}-${readyJob.name.replace(/\.[^.]+$/, "")}.json`,
-          json: result.extraction ?? readyJob.extraction ?? result,
-        });
-        if (driveUpload) {
+        if (willDrive) {
           updateJob(
             id,
             {
+              stage: "Subiendo a Google Drive…",
+              progress: 98,
+              deliveries: {
+                ...deliveries,
+                drive: {
+                  status: "uploading",
+                  label: "Google Drive",
+                  detail: "Subiendo JSON…",
+                },
+              },
+            },
+            true
+          );
+          const driveUpload = await uploadJsonToDrive({
+            fileName: `${readyJob.id}-${readyJob.name.replace(/\.[^.]+$/, "")}.json`,
+            json: result.extraction ?? readyJob.extraction ?? result,
+          });
+          deliveries = {
+            ...deliveries,
+            drive: driveUpload
+              ? {
+                  status: driveUpload.ok ? "ok" : "error",
+                  label: "Google Drive",
+                  detail: driveUpload.ok
+                    ? driveUpload.name || "JSON subido"
+                    : driveUpload.error || "Error",
+                  url: driveUpload.ok ? driveUpload.webViewLink : undefined,
+                }
+              : {
+                  status: "skipped",
+                  label: "Google Drive",
+                  detail: "No activo",
+                },
+          };
+          updateJob(
+            id,
+            {
+              deliveries,
               activity: [
                 ...(getStore().jobs.get(id)?.activity ?? []),
                 {
                   time: clock(),
                   title: "Google Drive",
-                  detail: driveUpload.ok
+                  detail: driveUpload?.ok
                     ? driveUpload.webViewLink
                       ? `Subido: ${driveUpload.webViewLink}`
                       : `Subido (${driveUpload.name || driveUpload.fileId})`
-                    : `Falló: ${driveUpload.error || "error"}`,
-                  status: driveUpload.ok ? "ready" : "error",
+                    : `Falló: ${driveUpload?.error || "error"}`,
+                  status: driveUpload?.ok ? "ready" : "error",
                 },
               ],
             },
             true
           );
         }
+
+        updateJob(
+          id,
+          {
+            status: "ready",
+            progress: 100,
+            stage: "Listo",
+            completedAt: new Date().toISOString(),
+            deliveries,
+          },
+          true
+        );
       } catch (error) {
         const message = error instanceof Error ? error.message : "No se pudo procesar el vídeo";
         updateJob(
