@@ -1,19 +1,19 @@
-# Instalacion de un solo comando (Windows).
-# Pegalo en PowerShell:
+# Single-command Windows install.
+# Paste in PowerShell:
 #
-#   irm https://cdn.jsdelivr.net/gh/FrescoFresco/video-to-json@main/desktop/windows/bootstrap-from-web.ps1 | iex
+#   powershell -ExecutionPolicy Bypass -Command "irm https://cdn.jsdelivr.net/gh/FrescoFresco/video-to-json@main/desktop/windows/bootstrap-from-web.ps1 | iex"
 #
-# O, si ya tienes la carpeta del proyecto:
+# Or if you already have the project folder:
 #   powershell -ExecutionPolicy Bypass -File .\desktop\windows\install.ps1
+#
+# ASCII-only so Windows PowerShell 5.1 does not break on encoding.
 
 $ErrorActionPreference = "Stop"
 
-# Evita el bloqueo "ejecucion de scripts deshabilitada" en esta sesion
 try {
   Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force -ErrorAction SilentlyContinue
 } catch {}
 
-# codeload es mas fiable que el zip de github.com para PCs sin sesion
 $RepoZip = "https://codeload.github.com/FrescoFresco/video-to-json/zip/refs/heads/main"
 $InstallDir = Join-Path $env:USERPROFILE "VideoExtractionStudio"
 
@@ -53,18 +53,17 @@ Write-Host ""
 
 $InstallScript = Join-Path $InstallDir "desktop\windows\install.ps1"
 if (-not (Test-Path $InstallScript)) {
-  throw "No encuentro $InstallScript. El repo tiene esa ruta?"
+  throw "No encuentro $InstallScript"
 }
 
 Set-Location $InstallDir
 
-# Importante: Bypass - en muchos Windows no se pueden ejecutar .ps1 locales
 $psi = Start-Process -FilePath "powershell.exe" -ArgumentList @(
   "-NoProfile",
   "-ExecutionPolicy", "Bypass",
   "-File", $InstallScript
 ) -WorkingDirectory $InstallDir -Wait -PassThru -NoNewWindow
 
-if ($psi.ExitCode -ne 0) {
+if ($null -ne $psi.ExitCode -and $psi.ExitCode -ne 0) {
   exit $psi.ExitCode
 }
