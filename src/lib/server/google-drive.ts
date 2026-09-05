@@ -1,5 +1,8 @@
 import { createSign } from "node:crypto";
 import { readAppConfig } from "./app-config";
+import { normalizeDriveFolderId } from "@/lib/drive-folder-id";
+
+export { normalizeDriveFolderId } from "@/lib/drive-folder-id";
 
 export type DriveUploadResult = {
   ok: boolean;
@@ -17,18 +20,19 @@ type ServiceAccount = {
 
 function parseServiceAccount(raw: string): ServiceAccount | null {
   try {
-    const parsed = JSON.parse(raw) as Partial<ServiceAccount>;
-    if (
-      typeof parsed.client_email !== "string" ||
-      !parsed.client_email.includes("@") ||
-      typeof parsed.private_key !== "string" ||
-      !parsed.private_key.includes("PRIVATE KEY")
-    ) {
+    const parsed = JSON.parse(raw) as Partial<ServiceAccount> & {
+      client_email?: string;
+      private_key?: string;
+    };
+    const email =
+      typeof parsed.client_email === "string" ? parsed.client_email.trim() : "";
+    const key = typeof parsed.private_key === "string" ? parsed.private_key : "";
+    if (!email.includes("@") || !key.includes("PRIVATE KEY")) {
       return null;
     }
     return {
-      client_email: parsed.client_email.trim(),
-      private_key: parsed.private_key.replace(/\\n/g, "\n"),
+      client_email: email,
+      private_key: key.replace(/\\n/g, "\n"),
       token_uri:
         typeof parsed.token_uri === "string" ? parsed.token_uri.trim() : undefined,
     };
@@ -49,10 +53,11 @@ function b64url(input: Buffer | string) {
 async function getAccessToken(account: ServiceAccount): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   const header = b64url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
+  // `drive` (no solo drive.file): hace falta para carpetas compartidas con la cuenta de servicio
   const claim = b64url(
     JSON.stringify({
       iss: account.client_email,
-      scope: "https://www.googleapis.com/auth/drive.file",
+      scope: "https://www.googleapis.com/auth/drive",
       aud: account.token_uri || "https://oauth2.googleapis.com/token",
       iat: now,
       exp: now + 3600,
@@ -94,6 +99,77 @@ function safeFileName(name: string) {
   return name.replace(/[^\w.\- ()áéíóúñÁÉÍÓÚÑ]+/gi, "_").slice(0, 120) || "resultado";
 }
 
+function explainDriveError(message: string, folderId: string, clientEmail: string): string {
+  const m = message || "";
+  const lower = m.toLowerCase();
+  if (
+    lower.includes("file not found") ||
+    lower.includes("not found") ||
+    lower.includes("404")
+  ) {
+    return (
+      `No encuentro la carpeta (${folderId.slice(0, 8)}…). ` +
+      `Comprueba el ID y compártela en Drive con «${clientEmail}» como editor.`
+    );
+  }
+  if (lower.includes("insufficient") || lower.includes("permission") || lower.includes("403")) {
+    return (
+      `Sin permiso en esa carpeta. En Drive → Compartir → añade «${clientEmail}» como editor.`
+    );
+  }
+  if (lower.includes("access not configured") || lower.includes("drive api")) {
+    return "La API de Google Drive no está activada en ese proyecto de Google Cloud.";
+  }
+  return m;
+}
+
+/** Comprueba que la cuenta de servicio ve la carpeta y puede escribir. */
+async function assertFolderWritable(input: {
+  token: string;
+  folderId: string;
+  clientEmail: string;
+}): Promise<{ ok: true; name?: string } | { ok: false; error: string }> {
+  const url =
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(input.folderId)}` +
+    `?fields=id,name,mimeType,capabilities` +
+    `&supportsAllDrives=true`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${input.token}` },
+  });
+  const json = (await res.json().catch(() => ({}))) as {
+    id?: string;
+    name?: string;
+    mimeType?: string;
+    capabilities?: { canAddChildren?: boolean };
+    error?: { message?: string };
+  };
+  if (!res.ok || !json.id) {
+    return {
+      ok: false,
+      error: explainDriveError(
+        json.error?.message || `Drive respondió HTTP ${res.status}`,
+        input.folderId,
+        input.clientEmail
+      ),
+    };
+  }
+  if (json.mimeType && json.mimeType !== "application/vnd.google-apps.folder") {
+    return {
+      ok: false,
+      error: "Ese ID no es una carpeta de Drive. Abre la carpeta y copia el ID de la URL.",
+    };
+  }
+  if (json.capabilities && json.capabilities.canAddChildren === false) {
+    return {
+      ok: false,
+      error:
+        `La cuenta «${input.clientEmail}» no puede escribir en esa carpeta. ` +
+        `Compártela de nuevo como editor.`,
+    };
+  }
+  return { ok: true, name: json.name };
+}
+
 /** Sube un JSON a la carpeta de Drive configurada (cuenta de servicio). */
 export async function uploadJsonToDrive(input: {
   fileName: string;
@@ -104,7 +180,9 @@ export async function uploadJsonToDrive(input: {
   const config = await readAppConfig();
   if (!config.driveEnabled) return null;
 
-  const folderId = (input.folderId || config.driveFolderId || "").trim();
+  const folderId = normalizeDriveFolderId(
+    input.folderId || config.driveFolderId || ""
+  );
   const saRaw = (input.serviceAccountJson || config.driveServiceAccountJson || "").trim();
   if (!folderId || !saRaw) {
     return {
@@ -115,11 +193,24 @@ export async function uploadJsonToDrive(input: {
 
   const account = parseServiceAccount(saRaw);
   if (!account) {
-    return { ok: false, error: "La clave JSON de Google no es válida" };
+    return {
+      ok: false,
+      error:
+        "La clave JSON de Google no es válida (debe incluir client_email y private_key)",
+    };
   }
 
   try {
     const token = await getAccessToken(account);
+    const folder = await assertFolderWritable({
+      token,
+      folderId,
+      clientEmail: account.client_email,
+    });
+    if (!folder.ok) {
+      return { ok: false, error: folder.error };
+    }
+
     const name = safeFileName(
       input.fileName.endsWith(".json") ? input.fileName : `${input.fileName}.json`
     );
@@ -136,10 +227,11 @@ export async function uploadJsonToDrive(input: {
       `--${boundary}\r\n` +
       `Content-Type: application/json\r\n\r\n` +
       `${JSON.stringify(input.json, null, 2)}\r\n` +
-      `--${boundary}--`;
+      `--${boundary}--\r\n`;
 
     const res = await fetch(
-      "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink",
+      "https://www.googleapis.com/upload/drive/v3/files" +
+        "?uploadType=multipart&fields=id,name,webViewLink&supportsAllDrives=true",
       {
         method: "POST",
         headers: {
@@ -158,7 +250,11 @@ export async function uploadJsonToDrive(input: {
     if (!res.ok || !json.id) {
       return {
         ok: false,
-        error: json.error?.message || `Drive respondió HTTP ${res.status}`,
+        error: explainDriveError(
+          json.error?.message || `Drive respondió HTTP ${res.status}`,
+          folderId,
+          account.client_email
+        ),
       };
     }
     return {
@@ -195,13 +291,12 @@ export async function deleteDriveFile(input: {
   try {
     const token = await getAccessToken(account);
     const res = await fetch(
-      `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}`,
+      `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?supportsAllDrives=true`,
       {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       }
     );
-    // 204 = borrado; 404 = ya no está (también vale como “no queda basura”)
     if (res.status === 204 || res.status === 404 || res.ok) {
       return { ok: true };
     }

@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { normalizeDriveFolderId } from "@/lib/drive-folder-id";
 
 export type AppConfig = {
   webhookUrl: string;
@@ -49,8 +50,9 @@ export async function readAppConfig(): Promise<AppConfig> {
       outboxPath: typeof parsed.outboxPath === "string" ? parsed.outboxPath.trim() : "",
       inboxEnabled: Boolean(parsed.inboxEnabled),
       driveEnabled: Boolean(parsed.driveEnabled),
-      driveFolderId:
-        typeof parsed.driveFolderId === "string" ? parsed.driveFolderId.trim() : "",
+      driveFolderId: normalizeDriveFolderId(
+        typeof parsed.driveFolderId === "string" ? parsed.driveFolderId : ""
+      ),
       driveServiceAccountJson:
         typeof parsed.driveServiceAccountJson === "string"
           ? parsed.driveServiceAccountJson.trim()
@@ -66,7 +68,7 @@ export async function readAppConfig(): Promise<AppConfig> {
       outboxPath: (process.env.VX_OUTBOX || "").trim(),
       inboxEnabled: process.env.VX_INBOX_ENABLED === "1" || Boolean(process.env.VX_INBOX),
       driveEnabled: process.env.VX_DRIVE_ENABLED === "1",
-      driveFolderId: (process.env.VX_DRIVE_FOLDER_ID || "").trim(),
+      driveFolderId: normalizeDriveFolderId(process.env.VX_DRIVE_FOLDER_ID || ""),
       driveServiceAccountJson: (process.env.VX_DRIVE_SERVICE_ACCOUNT_JSON || "").trim(),
     };
   }
@@ -91,13 +93,26 @@ export async function writeAppConfig(patch: Partial<AppConfig>): Promise<AppConf
       typeof patch.driveEnabled === "boolean" ? patch.driveEnabled : current.driveEnabled,
     driveFolderId:
       typeof patch.driveFolderId === "string"
-        ? patch.driveFolderId.trim()
+        ? normalizeDriveFolderId(patch.driveFolderId)
         : current.driveFolderId,
     driveServiceAccountJson:
       typeof patch.driveServiceAccountJson === "string"
         ? patch.driveServiceAccountJson.trim()
         : current.driveServiceAccountJson,
   };
+  // Si en este guardado hay carpeta + clave, activar Drive
+  // (evita el fallo típico de rellenar todo y olvidar el checkbox).
+  if (
+    next.driveFolderId &&
+    next.driveServiceAccountJson &&
+    (patch.driveFolderId !== undefined ||
+      patch.driveServiceAccountJson !== undefined ||
+      patch.driveEnabled === true)
+  ) {
+    if (patch.driveEnabled !== false) {
+      next.driveEnabled = true;
+    }
+  }
   const file = configPath();
   await mkdir(/*turbopackIgnore: true*/ path.dirname(file), { recursive: true });
   await writeFile(

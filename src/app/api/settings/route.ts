@@ -90,18 +90,32 @@ export async function POST(request: Request) {
     action?: string;
     webhookUrl?: string;
   };
-  const config = await readAppConfig();
+  let config = await readAppConfig();
 
   if (body.action === "test_drive") {
+    // Si hay carpeta + clave pero el switch está apagado, activarlo para la prueba
+    if (
+      !config.driveEnabled &&
+      config.driveFolderId &&
+      config.driveServiceAccountJson
+    ) {
+      config = await writeAppConfig({ driveEnabled: true });
+    }
     if (!config.driveEnabled) {
       return NextResponse.json(
-        { error: "Activa Google Drive y guarda los ajustes primero" },
+        {
+          error:
+            "Activa «Subir automáticamente cada JSON», pega el ID de carpeta y la clave, y pulsa Guardar",
+        },
         { status: 400 }
       );
     }
     if (!config.driveFolderId || !config.driveServiceAccountJson) {
       return NextResponse.json(
-        { error: "Falta el ID de carpeta o la clave JSON de Google" },
+        {
+          error:
+            "Falta el ID de carpeta o la clave JSON. Guarda ambos y vuelve a probar.",
+        },
         { status: 400 }
       );
     }
@@ -129,6 +143,17 @@ export async function POST(request: Request) {
       webViewLink: upload.webViewLink,
       cleanedUp: deleted.ok,
       cleanupError: deleted.ok ? undefined : deleted.error,
+      folderId: config.driveFolderId,
+      clientEmail: (() => {
+        try {
+          return (
+            (JSON.parse(config.driveServiceAccountJson) as { client_email?: string })
+              .client_email || null
+          );
+        } catch {
+          return null;
+        }
+      })(),
     });
   }
 

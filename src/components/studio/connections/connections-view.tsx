@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Cloud, FolderOpen, Link2, Plug } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { normalizeDriveFolderId } from "@/lib/drive-folder-id";
 import { ConnectionCard } from "./connection-card";
 import { ConnectionConfigModal } from "./connection-config-modal";
 
@@ -82,7 +83,15 @@ export function ConnectionsView() {
     setSaving(true);
     setMessage(null);
     setError(null);
+    setDriveTestLink(null);
     try {
+      const folderId = driveFolderId.trim();
+      const hasCreds =
+        driveCredentialsSet || Boolean(driveServiceAccountJson.trim());
+      // Si rellenó carpeta + clave, activar Drive aunque se le olvidara el checkbox
+      const enableDrive =
+        driveEnabled || (Boolean(folderId) && hasCreds);
+
       const res = await fetch("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -92,8 +101,8 @@ export function ConnectionsView() {
           inboxEnabled,
           inboxPath,
           outboxPath,
-          driveEnabled,
-          driveFolderId,
+          driveEnabled: enableDrive,
+          driveFolderId: folderId,
           ...(driveServiceAccountJson.trim()
             ? { driveServiceAccountJson: driveServiceAccountJson.trim() }
             : {}),
@@ -102,9 +111,14 @@ export function ConnectionsView() {
       const data = (await res.json()) as SettingsPayload;
       if (!res.ok) throw new Error(data.error || "No se pudo guardar");
       applySettings(data);
+      setDriveEnabled(Boolean(data.driveEnabled));
       setWebhookSecret("");
       setDriveServiceAccountJson("");
-      setMessage("Conexión guardada.");
+      setMessage(
+        enableDrive && folderId && hasCreds
+          ? "Guardado. Ya puedes pulsar Probar para comprobar Drive."
+          : "Conexión guardada."
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo guardar");
     } finally {
@@ -407,15 +421,32 @@ export function ConnectionsView() {
             <>
               <ol className="mb-4 list-decimal space-y-1.5 pl-5 text-[12.5px] leading-relaxed text-[#5c5c66]">
                 <li>
-                  Google Cloud → activa Drive API → cuenta de servicio → descarga el JSON.
+                  Google Cloud → activa <strong>Drive API</strong> → cuenta de servicio →
+                  descarga el JSON.
                 </li>
                 <li>
-                  En Drive, carpeta → copia el ID de <code>…/folders/ID</code> y compártela con
-                  el email <code>@…gserviceaccount.com</code> (editor).
+                  En Drive abre tu carpeta. Puedes pegar el <strong>ID</strong> o la{" "}
+                  <strong>URL completa</strong> (<code>…/folders/ID</code>).
                 </li>
                 <li>
-                  Guarda y pulsa <strong>Probar</strong>: el Studio sube un archivo a esa carpeta
-                  y lo borra solo. Si sale OK, la conexión está bien.
+                  <strong>Importante:</strong> comparte esa carpeta con el email de la cuenta
+                  de servicio
+                  {driveClientEmail ? (
+                    <>
+                      :{" "}
+                      <code className="break-all text-[11.5px]">{driveClientEmail}</code>
+                    </>
+                  ) : (
+                    <>
+                      {" "}
+                      (<code>…@…iam.gserviceaccount.com</code>, está dentro del JSON)
+                    </>
+                  )}{" "}
+                  como <strong>editor</strong>. Si no la compartes, fallará.
+                </li>
+                <li>
+                  Guarda y pulsa <strong>Probar</strong>. El Studio sube un archivo y lo borra
+                  solo.
                 </li>
               </ol>
               <div className="grid min-w-0 gap-3">
@@ -429,11 +460,14 @@ export function ConnectionsView() {
                   <span>Subir automáticamente cada JSON</span>
                 </label>
                 <label className="grid min-w-0 gap-1.5 text-sm">
-                  <span className="text-[#75757d]">ID de la carpeta</span>
+                  <span className="text-[#75757d]">ID o URL de la carpeta</span>
                   <input
                     value={driveFolderId}
                     onChange={(e) => setDriveFolderId(e.target.value)}
-                    placeholder="1AbCDefGhijKLmnopQRsTUVwxyz"
+                    onBlur={() =>
+                      setDriveFolderId((v) => normalizeDriveFolderId(v))
+                    }
+                    placeholder="https://drive.google.com/drive/folders/… o solo el ID"
                     className="h-10 w-full min-w-0 rounded-xl border border-[#d7d7dc] bg-[#fbfbfc] px-3 font-mono text-[13px] outline-none focus:border-[#9e9ea5]"
                   />
                 </label>
@@ -451,7 +485,7 @@ export function ConnectionsView() {
                     placeholder={
                       driveCredentialsSet
                         ? "Vacío = no cambiar la clave guardada"
-                        : '{ "type": "service_account", ... }'
+                        : '{ "type": "service_account", "client_email": "...", ... }'
                     }
                     className="w-full min-w-0 resize-y rounded-xl border border-[#d7d7dc] bg-[#fbfbfc] px-3 py-2 font-mono text-[12px] outline-none focus:border-[#9e9ea5]"
                   />
