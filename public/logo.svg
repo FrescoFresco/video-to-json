@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" role="img" aria-label="Video Extraction Studio">
+  <rect width="64" height="64" rx="14" fill="#F3F0E8"/>
+  <!-- rounded video window -->
+  <rect x="13" y="17" width="38" height="30" rx="8" stroke="#171719" stroke-width="3.2"/>
+  <!-- play triangle (extraction / action) -->
+  <path d="M27.2 25.2v13.6L39.6 32 27.2 25.2z" fill="#2F6F5E"/>
+</svg>

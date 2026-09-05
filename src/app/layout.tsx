@@ -12,6 +12,10 @@ export const metadata: Metadata = {
   title: "Video Extraction Studio",
   description:
     "Solo vídeos: de vídeo a texto reconstruible. Módulos open source, Composer de JSON, sin APIs de pago.",
+  icons: {
+    icon: [{ url: "/logo.svg", type: "image/svg+xml" }, { url: "/favicon-32.png", sizes: "32x32" }],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+  },
 };
 
 export const viewport = {

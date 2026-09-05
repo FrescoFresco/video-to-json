@@ -246,9 +246,13 @@ export function StudioApp() {
     <div className="min-h-screen bg-[#fbfbfc] text-[#171719] md:grid md:grid-cols-[72px_minmax(0,1fr)]">
       <aside className="sticky top-0 z-20 hidden h-screen flex-col gap-5 border-r border-[#e7e7eb] bg-[#fbfbfc]/92 px-2.5 py-5 backdrop-blur-md md:flex">
         <div className="grid h-10 place-items-center">
-          <div className="grid size-[30px] place-items-center rounded-[9px] bg-[#171719] text-[11px] font-bold text-white">
-            VX
-          </div>
+          <img
+            src="/logo.svg"
+            alt="Video Extraction Studio"
+            width={30}
+            height={30}
+            className="size-[30px] rounded-[9px]"
+          />
         </div>
         <div className="grid justify-items-center gap-1">
           {nav("home", <Home className="size-[17px]" />, "Inicio")}
@@ -363,7 +367,13 @@ function HomeView() {
     <div className="vx-home-hero -mx-4 px-4 py-2 md:-mx-[clamp(22px,3vw,42px)] md:px-[clamp(22px,3vw,42px)] md:py-4">
       <div className="mx-auto grid max-w-[760px] gap-8 py-10 md:gap-10 md:py-14">
         <div className="vx-home-fade max-w-[34rem]">
-          <p className="vx-home-brand m-0 text-[clamp(40px,10vw,72px)] leading-[0.9] text-[#171719]">
+          <img
+            src="/logo.png"
+            alt=""
+            width={56}
+            height={56}
+            className="mb-5 size-14 rounded-[14px]"
+          />          <p className="vx-home-brand m-0 text-[clamp(40px,10vw,72px)] leading-[0.9] text-[#171719]">
             Video Extraction
             <br />
             Studio
