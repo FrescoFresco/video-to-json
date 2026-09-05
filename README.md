@@ -11,7 +11,15 @@ La idea: cualquiera lo instala de un golpe, abre el navegador, mete un vídeo y 
 ### Opción A — Lanzador nativo (recomendado si no quieres terminal)
 
 - **Mac:** `./scripts/build-macos-app.sh` → abre `dist/Video Extraction Studio.app`
-- **Windows:** doble clic en `desktop/windows/Launch.bat` (si no hay Docker, intenta instalarlo solo con winget)
+- **Windows (instalación de un comando):** abre PowerShell y pega:
+
+```powershell
+irm https://raw.githubusercontent.com/FrescoFresco/video-to-json/main/desktop/windows/bootstrap-from-web.ps1 | iex
+```
+
+Eso descarga el programa en `Documents`/`VideoExtractionStudio` (carpeta del usuario), instala Docker si puede, arranca todo y abre el navegador.
+
+Si ya tienes la carpeta del proyecto: doble clic en `desktop/windows/Launch.bat`.
 - **Linux:** `./desktop/launch.sh`
 
 Detalles: [desktop/README.md](desktop/README.md).

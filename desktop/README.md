@@ -12,18 +12,26 @@ Docker es una **caja** donde el programa y todas sus piezas (Node, Python, ffmpe
 
 Se crea `dist/Video Extraction Studio.app`. Doble clic → arranca y abre el navegador.
 
-## Windows (un solo clic)
+## Windows (instalación como “un instalador”)
+
+Abre **PowerShell** (busca “PowerShell” en el menú inicio) y pega **esta línea**:
+
+```powershell
+irm https://raw.githubusercontent.com/FrescoFresco/video-to-json/main/desktop/windows/bootstrap-from-web.ps1 | iex
+```
+
+Pulsa Enter. Eso:
+
+1. Descarga el programa en `%USERPROFILE%\VideoExtractionStudio`
+2. Instala Docker Desktop si no está (con winget)
+3. Arranca el Studio
+4. Abre el navegador
+
+La primera vez puede pedir permiso de administrador o reiniciar por WSL2. Si pasa, acepta y vuelve a pegar el mismo comando.
+
+### Si ya tienes la carpeta del proyecto
 
 Doble clic en `desktop/windows/Launch.bat`.
-
-Ese script intenta, solo:
-
-1. Instalar **Docker Desktop** con `winget` si no está.
-2. Arrancarlo y esperar al motor.
-3. Levantar el Studio (`docker compose up --build -d`).
-4. Abrir el navegador en `http://127.0.0.1:43141`.
-
-**Límite realista:** la *primera* vez Windows/Docker a veces pide permiso de administrador, activar WSL2 o un reinicio. Si pasa, completa ese aviso, vuelve a hacer doble clic en `Launch.bat` y ya sigue solo. Las siguientes veces suele ser un clic.
 
 ## Linux
 
