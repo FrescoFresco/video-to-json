@@ -6,36 +6,38 @@ Al terminar, se abre el navegador en **http://127.0.0.1:43141**
 
 ---
 
-## Windows
+## Windows (recomendado: instalador)
 
-1. Pulsa la tecla **Windows**, escribe **PowerShell** y ábrelo.
-2. Copia **toda** esta línea, pégala y pulsa **Enter**:
+1. Descarga **[VideoExtractionStudio-Setup.exe](https://github.com/FrescoFresco/video-to-json/releases/latest)**  
+2. Instálalo (Siguiente → Listo)  
+3. Abre el icono **Video Extraction Studio** del escritorio  
+
+La primera vez puede tardar (Docker + descarga). Si Docker pide WSL: PowerShell como Administrador → `wsl --install --no-distribution` → reinicia → abre Docker → vuelve a abrir la app.
+
+### Alternativa: un comando en PowerShell
 
 ```powershell
 powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/FrescoFresco/video-to-json/main/desktop/windows/bootstrap-from-web.ps1 | iex"
 ```
 
-3. Espera (la primera vez puede tardar varios minutos).
-4. Si Windows pide permiso de administrador → **Sí**.
-5. Si pide reiniciar (WSL2) → reinicia y **vuelve a pegar el mismo comando**.
+**Actualizar:** vuelve a abrir la app, o pega otra vez el comando, o usa `Update.bat`.
 
-**Instalar y actualizar es el mismo comando.** Si lo vuelves a pegar, descarga la última versión, sustituye archivos y arranca de nuevo.
-
-Listo. El programa queda en:
-
-`C:\Users\TU_USUARIO\VideoExtractionStudio`
-
-**Para abrirlo otra vez (sin actualizar):** doble clic en  
-`VideoExtractionStudio\desktop\windows\Launch.bat`
-
-**Para actualizar:** pega otra vez el comando de arriba (o doble clic en `Update.bat`).
-
-**Para pararlo:**
+**Parar:**
 
 ```powershell
 cd $env:USERPROFILE\VideoExtractionStudio
 docker compose down
 ```
+
+### Crear el instalador (desarrolladores)
+
+En Windows con Go + Inno Setup 6:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\desktop\windows\installer\build.ps1
+```
+
+O en GitHub: Actions → **Windows installer** → Run workflow (o publica un tag `v0.1.0`).
 
 ---
 

@@ -10,16 +10,17 @@ La idea: cualquiera lo instala de un golpe, abre el navegador, mete un vídeo y 
 
 Guía corta y clara → **[INSTALL.md](./INSTALL.md)**
 
-### Windows (un comando)
+### Windows (recomendado: instalador)
 
-1. Abre **PowerShell**
-2. Pega esto y pulsa Enter:
+1. Descarga **[VideoExtractionStudio-Setup.exe](https://github.com/FrescoFresco/video-to-json/releases/latest)**
+2. Instálalo (Siguiente → Listo)
+3. Abre el icono del escritorio
+
+Si aún no hay Release, usa el comando de PowerShell (mismo que actualizar):
 
 ```powershell
 powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/FrescoFresco/video-to-json/main/desktop/windows/bootstrap-from-web.ps1 | iex"
 ```
-
-Ese mismo comando sirve para **instalar** y para **actualizar**.
 
 ### Mac (un comando)
 

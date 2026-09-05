@@ -61,3 +61,6 @@ video-py
 .cache/
 video-extraction-studio-home.webp
 __pycache__/
+
+# Windows launcher build artifacts
+desktop/windows/installer/*.exe

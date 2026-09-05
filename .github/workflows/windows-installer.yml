@@ -1,0 +1,47 @@
+name: Windows installer
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Build launcher + Setup.exe
+        shell: pwsh
+        run: |
+          powershell -ExecutionPolicy Bypass -File .\desktop\windows\installer\build.ps1
+          # If Inno was missing in build.ps1 soft-exit, install it
+          if (-not (Test-Path .\dist\windows\VideoExtractionStudio-Setup.exe)) {
+            choco install innosetup -y
+            $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+            & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" .\desktop\windows\installer\setup.iss
+          }
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VideoExtractionStudio-Setup
+          path: |
+            dist/windows/VideoExtractionStudio-Setup.exe
+            desktop/windows/installer/VideoExtractionStudio.exe
+
+      - name: Attach to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/windows/VideoExtractionStudio-Setup.exe

@@ -2412,16 +2412,32 @@ function InstallDocsSection() {
   return (
     <section className="min-w-0 rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
       <div className="text-sm font-semibold">Instalar o actualizar</div>
-      <p className="mt-1 text-[12.5px] text-[#75757d]">Un comando. Vale para las dos cosas.</p>
+      <p className="mt-1 text-[12.5px] text-[#75757d]">
+        Windows: instalador. Mac: un comando.
+      </p>
 
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         <div className="min-w-0 rounded-xl bg-[#f5f5f7] p-4">
           <div className="text-sm font-medium">Windows</div>
           <ol className="mt-2 list-decimal space-y-1 pl-4 text-[13px] leading-relaxed text-[#171719]">
-            <li>Abre PowerShell</li>
-            <li>Pulsa Copiar</li>
-            <li>Pega y Enter</li>
+            <li>
+              Descarga{" "}
+              <a
+                className="font-medium text-[#171719] underline underline-offset-2"
+                href="https://github.com/FrescoFresco/video-to-json/releases/latest"
+                target="_blank"
+                rel="noreferrer"
+              >
+                VideoExtractionStudio-Setup.exe
+              </a>
+            </li>
+            <li>Instálalo (Siguiente → Listo)</li>
+            <li>Abre el icono del escritorio</li>
           </ol>
+          <p className="mt-3 text-[12px] leading-relaxed text-[#75757d]">
+            Si aun no hay instalador en Releases, usa el comando de abajo.
+          </p>
+          <p className="mt-2 text-[12px] font-medium text-[#171719]">O con un comando:</p>
           <CopyCommand command={WIN_INSTALL_CMD} />
           <p className="mt-2 text-[12px] leading-relaxed text-[#75757d]">
             Si pide permiso → Sí. Si pide reiniciar → reinicia y repite el mismo comando.
@@ -2429,7 +2445,7 @@ function InstallDocsSection() {
           <p className="mt-2 text-[12px] leading-relaxed text-[#75757d]">
             Si Docker no arranca: PowerShell como Administrador →{" "}
             <code className="text-[11.5px]">wsl --install --no-distribution</code> → reinicia →
-            abre Docker → vuelve a pegar el comando.
+            abre Docker → vuelve a abrir la app.
           </p>
         </div>
 
