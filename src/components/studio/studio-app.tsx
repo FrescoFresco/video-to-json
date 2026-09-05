@@ -320,15 +320,15 @@ function HomeView() {
 
   return (
     <div className="vx-home-hero -mx-4 px-4 py-2 md:-mx-[clamp(22px,3vw,42px)] md:px-[clamp(22px,3vw,42px)] md:py-4">
-      <div className="mx-auto grid max-w-[720px] gap-10 py-10 md:gap-12 md:py-16">
+      <div className="mx-auto grid max-w-[760px] gap-8 py-10 md:gap-10 md:py-14">
         <div className="vx-home-fade max-w-[34rem]">
-          <p className="vx-home-brand m-0 text-[clamp(36px,9.5vw,68px)] leading-[0.92] text-[#171719]">
+          <p className="vx-home-brand m-0 text-[clamp(40px,10vw,72px)] leading-[0.9] text-[#171719]">
             Video Extraction
             <br />
             Studio
           </p>
-          <p className="mt-5 m-0 max-w-[26rem] text-[15px] leading-snug tracking-[-0.02em] text-[#5a6370] sm:text-[16px]">
-            Arrastra un vídeo y saca un JSON listo para recrearlo.
+          <p className="mt-4 m-0 max-w-[22rem] text-[14px] leading-snug tracking-[-0.015em] text-[#6a7380] sm:text-[15px]">
+            De vídeo a JSON para recrearlo.
           </p>
         </div>
 
@@ -353,19 +353,19 @@ function HomeView() {
               setFolderBusy(false);
             }
           }}
-          className={`vx-home-fade vx-home-fade-delay flex min-h-[200px] flex-col items-start justify-center gap-3.5 border-2 border-dashed px-5 py-7 transition sm:min-h-[240px] sm:gap-4 sm:px-8 sm:py-9 md:min-h-[260px] md:px-10 ${
-            drag ? "border-[#171719] bg-white" : "border-[#b6bcc6] bg-[#f3f4f6]"
+          className={`vx-home-fade vx-home-fade-delay flex min-h-[240px] flex-col items-start justify-center gap-4 border-2 border-dashed px-6 py-9 transition sm:min-h-[280px] sm:gap-5 sm:px-10 sm:py-11 md:min-h-[320px] md:px-12 md:py-12 ${
+            drag ? "border-[#171719] bg-white shadow-[inset_0_0_0_1px_#171719]" : "border-[#9aa3b0] bg-[#eceef2]"
           }`}
         >
-          <div className="flex items-start gap-3 text-[#171719] sm:items-center">
-            <Upload className="mt-0.5 size-5 shrink-0 opacity-80 sm:mt-0" strokeWidth={1.75} />
-            <span className="text-[15px] leading-snug font-medium tracking-[-0.015em] sm:text-[16px]">
+          <div className="flex items-start gap-3.5 text-[#171719] sm:items-center">
+            <Upload className="mt-0.5 size-6 shrink-0 opacity-85 sm:mt-0" strokeWidth={1.75} />
+            <span className="text-[16px] leading-snug font-medium tracking-[-0.015em] sm:text-[17px]">
               {folderBusy
                 ? "Encolando…"
-                : "Arrastra vídeos, una carpeta o un .txt con links"}
+                : "Suelta aquí tus vídeos, una carpeta o un .txt con links"}
             </span>
           </div>
-          <p className="m-0 text-[12.5px] leading-relaxed text-[#6a7380] sm:text-[13px]">
+          <p className="m-0 text-[13px] leading-relaxed text-[#5a6573] sm:text-[13.5px]">
             MP4, MOV, MKV, WebM · carpeta completa · lista de links (.txt)
           </p>
           <input
