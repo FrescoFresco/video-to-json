@@ -1,14 +1,15 @@
 # Instalación de un solo comando (Windows).
 # Pégalo en PowerShell:
 #
-#   irm https://raw.githubusercontent.com/FrescoFresco/video-to-json/main/desktop/windows/bootstrap-from-web.ps1 | iex
+#   irm https://cdn.jsdelivr.net/gh/FrescoFresco/video-to-json@main/desktop/windows/bootstrap-from-web.ps1 | iex
 #
 # O, si ya tienes la carpeta del proyecto:
 #   powershell -ExecutionPolicy Bypass -File .\desktop\windows\install.ps1
 
 $ErrorActionPreference = "Stop"
 
-$RepoZip = "https://github.com/FrescoFresco/video-to-json/archive/refs/heads/main.zip"
+# codeload es más fiable que el zip de github.com para PCs sin sesión
+$RepoZip = "https://codeload.github.com/FrescoFresco/video-to-json/zip/refs/heads/main"
 $InstallDir = Join-Path $env:USERPROFILE "VideoExtractionStudio"
 
 Write-Host ""

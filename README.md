@@ -16,7 +16,7 @@ Guía corta y clara → **[INSTALL.md](./INSTALL.md)**
 2. Pega esto y pulsa Enter:
 
 ```powershell
-irm https://raw.githubusercontent.com/FrescoFresco/video-to-json/main/desktop/windows/bootstrap-from-web.ps1 | iex
+irm https://cdn.jsdelivr.net/gh/FrescoFresco/video-to-json@main/desktop/windows/bootstrap-from-web.ps1 | iex
 ```
 
 ### Mac (un comando)
@@ -25,7 +25,7 @@ irm https://raw.githubusercontent.com/FrescoFresco/video-to-json/main/desktop/wi
 2. Pega esto y pulsa Enter:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/FrescoFresco/video-to-json/main/desktop/macos/bootstrap-from-web.sh | bash
+curl -fsSL https://cdn.jsdelivr.net/gh/FrescoFresco/video-to-json@main/desktop/macos/bootstrap-from-web.sh | bash
 ```
 
 Eso descarga el Studio, instala Docker si puede, lo arranca y abre el navegador.

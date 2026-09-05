@@ -12,7 +12,7 @@ Al terminar, se abre el navegador en **http://127.0.0.1:43141**
 2. Copia **toda** esta línea, pégala y pulsa **Enter**:
 
 ```powershell
-irm https://raw.githubusercontent.com/FrescoFresco/video-to-json/main/desktop/windows/bootstrap-from-web.ps1 | iex
+irm https://cdn.jsdelivr.net/gh/FrescoFresco/video-to-json@main/desktop/windows/bootstrap-from-web.ps1 | iex
 ```
 
 3. Espera (la primera vez puede tardar varios minutos).
@@ -42,7 +42,7 @@ docker compose down
 2. Copia **toda** esta línea, pégala y pulsa **Enter**:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/FrescoFresco/video-to-json/main/desktop/macos/bootstrap-from-web.sh | bash
+curl -fsSL https://cdn.jsdelivr.net/gh/FrescoFresco/video-to-json@main/desktop/macos/bootstrap-from-web.sh | bash
 ```
 
 3. Espera (la primera vez puede tardar).

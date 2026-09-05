@@ -2,11 +2,11 @@
 # Instalación Mac de un solo comando.
 # Pégalo en Terminal:
 #
-#   curl -fsSL https://raw.githubusercontent.com/FrescoFresco/video-to-json/main/desktop/macos/bootstrap-from-web.sh | bash
+#   curl -fsSL https://cdn.jsdelivr.net/gh/FrescoFresco/video-to-json@main/desktop/macos/bootstrap-from-web.sh | bash
 #
 set -euo pipefail
 
-REPO_ZIP="https://github.com/FrescoFresco/video-to-json/archive/refs/heads/main.zip"
+REPO_ZIP="https://codeload.github.com/FrescoFresco/video-to-json/zip/refs/heads/main"
 INSTALL_DIR="${HOME}/VideoExtractionStudio"
 TMP_ZIP="$(mktemp -t vx-studio).zip"
 TMP_DIR="$(mktemp -d -t vx-studio)"
