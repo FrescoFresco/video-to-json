@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   BookOpen,
   Check,
+  ChevronRight,
   Download,
   Home,
   Lightbulb,
@@ -18,7 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { etaLabel } from "@/lib/eta";
 import { formatElapsed, formatModuleDuration } from "@/lib/format-time";
-import { DEFAULT_COST, type CostConfig } from "@/lib/pipeline-cost";
+import { DEFAULT_COST, estimatePipelineSeconds, type CostConfig } from "@/lib/pipeline-cost";
 import { msToClock } from "@/lib/extraction";
 import { isLinkListFilename, readLinksFromFile } from "@/lib/ingest-links";
 import { useStudio } from "@/lib/store";
@@ -46,6 +47,43 @@ function useCostConfig() {
     };
   }, []);
   return cost;
+}
+
+
+/** Barra fina compartida (catálogo de vídeos y progreso de módulos). */
+function ThinProgressBar({
+  value,
+  tone = "active",
+  className = "",
+}: {
+  value: number;
+  tone?: "active" | "queued" | "done" | "idle";
+  className?: string;
+}) {
+  const pct = Math.max(0, Math.min(100, value));
+  const fill =
+    tone === "done"
+      ? "bg-[#3d9a6a]"
+      : tone === "queued"
+        ? "bg-[#e2b340]"
+        : tone === "idle"
+          ? "bg-transparent"
+          : "bg-[#3d6f99]";
+  const width = tone === "idle" ? 0 : tone === "done" ? 100 : Math.max(pct > 0 ? 6 : 0, pct);
+  return (
+    <div
+      className={`h-1.5 overflow-hidden rounded-full bg-[#eef0f3] ${className}`}
+      role="progressbar"
+      aria-valuenow={Math.round(pct)}
+      aria-valuemin={0}
+      aria-valuemax={100}
+    >
+      <div
+        className={`h-full rounded-full transition-all ${fill}`}
+        style={{ width: `${width}%` }}
+      />
+    </div>
+  );
 }
 
 function downloadJson(name: string, obj: unknown) {
@@ -284,17 +322,13 @@ function HomeView() {
     <div className="vx-home-hero -mx-4 px-4 py-2 md:-mx-[clamp(22px,3vw,42px)] md:px-[clamp(22px,3vw,42px)] md:py-4">
       <div className="mx-auto grid max-w-[720px] gap-10 py-10 md:gap-12 md:py-16">
         <div className="vx-home-fade max-w-[34rem]">
-          <p className="vx-home-brand m-0 text-[clamp(34px,9vw,64px)] leading-[0.92] text-[#171719]">
+          <p className="vx-home-brand m-0 text-[clamp(36px,9.5vw,68px)] leading-[0.92] text-[#171719]">
             Video Extraction
             <br />
             Studio
           </p>
-          <p className="mt-5 m-0 text-[16px] leading-snug tracking-[-0.02em] text-[#2f363e] sm:text-[17px]">
-            De vídeo a texto tan rico que se pueda volver a generar.
-          </p>
-          <p className="mt-3 m-0 max-w-[28rem] text-[14px] leading-relaxed text-[#6a7380] sm:text-[14.5px]">
-            Cortes, cámara, habla, pantalla, objetos, ambiente y más. Un JSON denso pensado
-            para recrear el clip, no solo etiquetarlo.
+          <p className="mt-5 m-0 max-w-[26rem] text-[15px] leading-snug tracking-[-0.02em] text-[#5a6370] sm:text-[16px]">
+            Arrastra un vídeo y saca un JSON listo para recrearlo.
           </p>
         </div>
 
@@ -319,13 +353,13 @@ function HomeView() {
               setFolderBusy(false);
             }
           }}
-          className={`vx-home-fade vx-home-fade-delay flex min-h-[148px] flex-col items-start justify-center gap-3 border border-dashed px-4 py-5 transition sm:min-h-[168px] sm:gap-4 sm:px-6 sm:py-7 md:px-8 ${
-            drag ? "border-[#171719] bg-white" : "border-[#c9ced6] bg-transparent"
+          className={`vx-home-fade vx-home-fade-delay flex min-h-[200px] flex-col items-start justify-center gap-3.5 border-2 border-dashed px-5 py-7 transition sm:min-h-[240px] sm:gap-4 sm:px-8 sm:py-9 md:min-h-[260px] md:px-10 ${
+            drag ? "border-[#171719] bg-white" : "border-[#b6bcc6] bg-[#f3f4f6]"
           }`}
         >
           <div className="flex items-start gap-3 text-[#171719] sm:items-center">
-            <Upload className="mt-0.5 size-[18px] shrink-0 opacity-70 sm:mt-0" strokeWidth={1.75} />
-            <span className="text-[14px] leading-snug font-medium tracking-[-0.015em] sm:text-[15px]">
+            <Upload className="mt-0.5 size-5 shrink-0 opacity-80 sm:mt-0" strokeWidth={1.75} />
+            <span className="text-[15px] leading-snug font-medium tracking-[-0.015em] sm:text-[16px]">
               {folderBusy
                 ? "Encolando…"
                 : "Arrastra vídeos, una carpeta o un .txt con links"}
@@ -573,9 +607,12 @@ function VideoQueueRow({
   onToggle: () => void;
   onOpen: () => void;
 }) {
+  const showBar = video.status === "processing" || video.status === "queued";
+  const tone = video.status === "queued" ? "queued" : "active";
+
   return (
     <div
-      className={`grid w-full min-w-0 grid-cols-[auto_auto_minmax(0,1fr)] items-start gap-2.5 border-t border-[#e7e7eb] px-3 py-3 first:border-t-0 sm:grid-cols-[auto_auto_minmax(0,1fr)_auto] sm:items-center sm:gap-3 sm:px-4 sm:py-4 ${
+      className={`grid w-full min-w-0 grid-cols-[auto_auto_minmax(0,1fr)_auto] items-start gap-2.5 border-t border-[#e7e7eb] px-3 py-3 first:border-t-0 sm:items-center sm:gap-3 sm:px-4 sm:py-4 ${
         selected ? "bg-[#f7f7f9]" : "bg-white"
       }`}
     >
@@ -586,7 +623,7 @@ function VideoQueueRow({
         aria-label={`Seleccionar ${video.name}`}
         className="mt-1 size-4 shrink-0 accent-[#171719] sm:mt-0"
       />
-      <button type="button" onClick={onOpen} className="mt-0.5 shrink-0 sm:mt-0" title="Abrir">
+      <button type="button" onClick={onOpen} className="mt-0.5 shrink-0 sm:mt-0" title="Abrir detalle">
         <StatusDot status={video.status} />
       </button>
       <button
@@ -610,24 +647,44 @@ function VideoQueueRow({
             {videoMetaParts(video, { eta }).join(" · ")}
           </span>
         </div>
-        {(video.status === "processing" || video.status === "queued") && (
-          <div className="mt-2 h-1.5 max-w-full overflow-hidden rounded-full bg-[#eef0f3]">
-            <div
-              className={`h-full rounded-full transition-all ${
-                video.status === "queued" ? "bg-[#e2b340]" : "bg-[#3d6f99]"
-              }`}
-              style={{ width: `${Math.max(6, Math.min(100, video.progress))}%` }}
-            />
+        {showBar ? (
+          <div className="mt-2 flex items-center gap-2">
+            <ThinProgressBar value={video.progress} tone={tone} className="min-w-0 flex-1" />
+            <span className="shrink-0 text-[11px] tabular-nums text-[#75757d]">{video.progress}%</span>
+            <span
+              className="grid size-7 shrink-0 place-items-center rounded-full border border-[#e0e0e6] bg-white text-[#171719] shadow-[0_1px_0_rgba(0,0,0,0.03)]"
+              title="Ver detalle"
+              aria-hidden
+            >
+              <ChevronRight className="size-3.5" strokeWidth={2.25} />
+            </span>
+          </div>
+        ) : (
+          <div className="mt-2 flex items-center justify-end sm:hidden">
+            <span
+              className="grid size-7 place-items-center rounded-full border border-[#e0e0e6] bg-white text-[#171719]"
+              title="Ver detalle"
+              aria-hidden
+            >
+              <ChevronRight className="size-3.5" strokeWidth={2.25} />
+            </span>
           </div>
         )}
       </button>
       <button
         type="button"
         onClick={onOpen}
-        className="hidden text-right text-[12px] text-[#75757d] sm:block"
+        title="Ver detalle"
+        aria-label={`Abrir detalle de ${video.name}`}
+        className="mt-0.5 hidden shrink-0 items-center gap-2 text-right text-[12px] text-[#75757d] sm:mt-0 sm:flex"
       >
-        <div className="font-medium text-[#171719]">{statusLabel(video.status)}</div>
-        <div className="mt-1">{video.progress}%</div>
+        <div>
+          <div className="font-medium text-[#171719]">{statusLabel(video.status)}</div>
+          <div className="mt-1">{video.progress}%</div>
+        </div>
+        <span className="grid size-8 place-items-center rounded-full border border-[#e0e0e6] bg-[#fafafa] text-[#171719] transition-colors hover:border-[#c8c8d0] hover:bg-white">
+          <ChevronRight className="size-4" strokeWidth={2.25} />
+        </span>
       </button>
     </div>
   );
@@ -1040,6 +1097,12 @@ function VideoDetail({ video }: { video: StoredVideo }) {
     costCfg
   );
 
+  const durationSec = Math.max(
+    5,
+    (video.probe?.durationMs ?? video.extraction?.media?.duration_ms ?? 45_000) / 1000
+  );
+  const moduleEstimateSec = estimatePipelineSeconds(durationSec, costCfg).byId;
+
   const tabBtn = (id: string, label: string, hint?: string) => {
     const active = detailTab === id;
     return (
@@ -1098,12 +1161,11 @@ function VideoDetail({ video }: { video: StoredVideo }) {
             </span>
           </div>
           {(video.status === "processing" || video.status === "queued") && (
-            <div className="mt-3 h-1.5 max-w-full overflow-hidden rounded-full bg-[#eef0f3] sm:max-w-sm">
-              <div
-                className={`h-full rounded-full ${video.status === "queued" ? "bg-[#e2b340]" : "bg-[#3d6f99]"}`}
-                style={{ width: `${Math.max(6, Math.min(100, video.progress))}%` }}
-              />
-            </div>
+            <ThinProgressBar
+              value={video.progress}
+              tone={video.status === "queued" ? "queued" : "active"}
+              className="mt-3 max-w-full sm:max-w-sm"
+            />
           )}
           {eta && (video.status === "processing" || video.status === "queued") ? (
             <p className="mt-2 text-[12px] leading-relaxed text-[#6a7380] sm:text-[12.5px]">
@@ -1213,6 +1275,7 @@ function VideoDetail({ video }: { video: StoredVideo }) {
                           row={row}
                           stageStartedAt={video.stageStartedAt}
                           nowMs={now}
+                          estimatedSec={moduleEstimateSec[row.id] ?? 60}
                         />
                       </button>
                     ))
@@ -1289,6 +1352,7 @@ function ModuleLiveRow({
   row,
   stageStartedAt,
   nowMs,
+  estimatedSec,
 }: {
   row: {
     id: string;
@@ -1298,6 +1362,7 @@ function ModuleLiveRow({
   };
   stageStartedAt?: string;
   nowMs: number;
+  estimatedSec: number;
 }) {
   const mark =
     row.phase === "done" ? (
@@ -1314,50 +1379,81 @@ function ModuleLiveRow({
       </span>
     );
 
+  let elapsedSec = 0;
+  if (row.phase === "running" && stageStartedAt) {
+    const started = Date.parse(stageStartedAt);
+    if (Number.isFinite(started)) {
+      elapsedSec = Math.max(0, (nowMs - started) / 1000);
+    }
+  }
+
+  const est = Math.max(8, estimatedSec || 60);
+  let barValue = 0;
+  let tone: "active" | "queued" | "done" | "idle" = "idle";
+  let remainingHint: string | null = null;
+
+  if (row.phase === "done") {
+    barValue = 100;
+    tone = "done";
+  } else if (row.phase === "running") {
+    barValue = Math.min(92, Math.max(4, (elapsedSec / est) * 100));
+    tone = "active";
+    const left = Math.max(5, Math.round(est - elapsedSec));
+    remainingHint = `≈ quedan ${formatElapsed(left)}`;
+  } else {
+    barValue = 0;
+    tone = "idle";
+  }
+
   const detail =
     row.phase === "done"
       ? row.module?.summary || "Listo"
       : row.phase === "running"
-        ? "Extrayendo…"
+        ? remainingHint || "Extrayendo…"
         : "En espera";
 
   let timeLabel: string | null = null;
   if (row.phase === "done" && row.module?.duration_ms) {
     timeLabel = formatModuleDuration(row.module.duration_ms);
-  } else if (row.phase === "running" && stageStartedAt) {
-    const started = Date.parse(stageStartedAt);
-    if (Number.isFinite(started)) {
-      timeLabel = formatElapsed(Math.max(1, (nowMs - started) / 1000));
-    }
+  } else if (row.phase === "running") {
+    timeLabel = formatElapsed(Math.max(1, elapsedSec || 1));
   }
 
   return (
-    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-[#ececf0] bg-[#fbfbfc] px-2.5 py-2 sm:gap-2.5 sm:px-3">
-      {mark}
-      <div className="min-w-0">
-        <div className="truncate text-[13px] font-medium leading-tight sm:text-sm">{row.title}</div>
-        <div
-          className={`mt-0.5 text-[11px] leading-snug break-words sm:text-[12px] ${
-            row.phase === "done"
-              ? row.module?.status === "error"
-                ? "text-[#b42318]"
-                : "text-[#177245]"
-              : row.phase === "running"
-                ? "text-[#9a6700]"
-                : "text-[#9a9aa3]"
-          }`}
-        >
-          {detail}
-          {row.module?.error ? ` · ${row.module.error}` : ""}
+    <div className="rounded-lg border border-[#ececf0] bg-[#fbfbfc] px-2.5 py-2 sm:px-3">
+      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 sm:gap-2.5">
+        {mark}
+        <div className="min-w-0">
+          <div className="truncate text-[13px] font-medium leading-tight sm:text-sm">{row.title}</div>
+          <div
+            className={`mt-0.5 text-[11px] leading-snug break-words sm:text-[12px] ${
+              row.phase === "done"
+                ? row.module?.status === "error"
+                  ? "text-[#b42318]"
+                  : "text-[#177245]"
+                : row.phase === "running"
+                  ? "text-[#9a6700]"
+                  : "text-[#9a9aa3]"
+            }`}
+          >
+            {detail}
+            {row.module?.error ? ` · ${row.module.error}` : ""}
+          </div>
+        </div>
+        <div className="shrink-0 text-right text-[11px] text-[#9a9aa3]">
+          {timeLabel ? <div className="tabular-nums text-[#75757d]">{timeLabel}</div> : null}
+          {row.module?.engine ? (
+            <div className="mt-0.5 hidden max-w-[7rem] truncate sm:block sm:max-w-[9rem]">
+              {row.module.engine}
+            </div>
+          ) : null}
         </div>
       </div>
-      <div className="shrink-0 text-right text-[11px] text-[#9a9aa3]">
-        {timeLabel ? <div className="tabular-nums text-[#75757d]">{timeLabel}</div> : null}
-        {row.module?.engine ? (
-          <div className="mt-0.5 hidden max-w-[7rem] truncate sm:block sm:max-w-[9rem]">
-            {row.module.engine}
-          </div>
-        ) : null}
+      <div className="mt-1.5 flex items-center gap-2 pl-[30px]">
+        <ThinProgressBar value={barValue} tone={tone} className="min-w-0 flex-1" />
+        <span className="w-8 shrink-0 text-right text-[10px] tabular-nums text-[#9a9aa3]">
+          {row.phase === "waiting" ? "0%" : `${Math.round(barValue)}%`}
+        </span>
       </div>
     </div>
   );
