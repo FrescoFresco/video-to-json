@@ -44,4 +44,33 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/windows/VideoExtractionStudio-Setup.exe
+          files: |
+            dist/windows/VideoExtractionStudio-Setup.exe
+            desktop/windows/installer/VideoExtractionStudio.exe
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+          body: |
+            ## Instalación (Windows)
+
+            1. Descarga **VideoExtractionStudio-Setup.exe**
+            2. Ábrelo → Siguiente → Listo
+            3. En el escritorio, abre **Video Extraction Studio**
+
+            La primera vez puede tardar (Docker). Si Docker pide WSL:
+            - PowerShell como Administrador
+            - `wsl --install --no-distribution`
+            - Reinicia, abre Docker Desktop, y vuelve a abrir la app
+
+            ## Archivos
+
+            - `VideoExtractionStudio-Setup.exe` — instalador (recomendado)
+            - `VideoExtractionStudio.exe` — solo el acceso directo (sin instalador)
+
+            **Actualizar:** usa `Update.bat` o vuelve a pegar el comando de PowerShell. Abrir el icono solo arranca.
+
+            ## Cambios en 0.1.1
+
+            - AppId del instalador con GUID válido
+            - Update fuerza rebuild aunque el Studio ya esté abierto
+            - PATH de Docker más fiable + mensajes de error más claros
+            - Bootstrap PowerShell sin BOM (compatible con Windows 5.1)
