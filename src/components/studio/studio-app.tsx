@@ -18,12 +18,35 @@ import {
 import { Button } from "@/components/ui/button";
 import { etaLabel } from "@/lib/eta";
 import { formatElapsed, formatModuleDuration } from "@/lib/format-time";
+import { DEFAULT_COST, type CostConfig } from "@/lib/pipeline-cost";
 import { msToClock } from "@/lib/extraction";
 import { isLinkListFilename, readLinksFromFile } from "@/lib/ingest-links";
 import { useStudio } from "@/lib/store";
 import type { ExtractionModule, JobStatus, StoredVideo, ViewName } from "@/lib/types";
 import { isVideoFile } from "@/lib/video-file";
 import { IdeaView } from "@/components/studio/recreation-diagram";
+
+/** Config de coste del servidor (Whisper / VLM / max frames) para ETA realista. */
+function useCostConfig() {
+  const [cost, setCost] = useState<CostConfig>(DEFAULT_COST);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/modules", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = (await res.json()) as { cost?: CostConfig };
+        if (!cancelled && data.cost) setCost(data.cost);
+      } catch {
+        // fallback DEFAULT_COST
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return cost;
+}
 
 function downloadJson(name: string, obj: unknown) {
   const blob = new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" });
@@ -214,6 +237,17 @@ function HomeView() {
   const [link, setLink] = useState("");
   const [linkBusy, setLinkBusy] = useState(false);
   const [folderBusy, setFolderBusy] = useState(false);
+  const homeCost = useCostConfig();
+  const [homeNow, setHomeNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const active = s.videos.some(
+      (v) => v.status === "queued" || v.status === "processing"
+    );
+    if (!active) return;
+    const timer = window.setInterval(() => setHomeNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [s.videos]);
 
   async function handleIncoming(files: FileList | File[] | null) {
     if (!files?.length) return;
@@ -404,7 +438,7 @@ function HomeView() {
             </div>
             <div className="min-w-0 overflow-hidden border border-[#e7e7eb] bg-white">
               {s.videos.slice(0, 5).map((video) => {
-                const eta = etaLabel(video, s.videos);
+                const eta = etaLabel(video, s.videos, 12, homeNow, homeCost);
                 return (
                 <button
                   key={video.id}
@@ -604,7 +638,8 @@ function VideosView() {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [sortMode, setSortMode] = useState<SortMode>("newest");
-  const [moduleCount, setModuleCount] = useState(10);
+  const [moduleCount, setModuleCount] = useState(12);
+  const costCfg = useCostConfig();
   const [now, setNow] = useState(() => Date.now());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [bulkMsg, setBulkMsg] = useState<string | null>(null);
@@ -891,7 +926,7 @@ function VideosView() {
                 <VideoQueueRow
                   key={video.id}
                   video={video}
-                  eta={etaLabel(video, s.videos, moduleCount, now)}
+                  eta={etaLabel(video, s.videos, moduleCount, now, costCfg)}
                   selected={selectedIds.has(video.id)}
                   onToggle={() => toggleOne(video.id)}
                   onOpen={() => s.openVideo(video.id)}
@@ -910,6 +945,7 @@ function VideoDetail({ video }: { video: StoredVideo }) {
   const extraction = video.extraction;
   const [catalog, setCatalog] = useState<Array<{ id: string; title: string; stage: string }>>([]);
   const [detailTab, setDetailTab] = useState("estado");
+  const costCfg = useCostConfig();
 
   useEffect(() => {
     let cancelled = false;
@@ -1000,7 +1036,8 @@ function VideoDetail({ video }: { video: StoredVideo }) {
     video,
     s.videos,
     Math.max(catalog.length, liveRows.length, 10),
-    now
+    now,
+    costCfg
   );
 
   const tabBtn = (id: string, label: string, hint?: string) => {

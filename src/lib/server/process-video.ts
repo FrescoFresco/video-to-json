@@ -1,6 +1,11 @@
 import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
 import { buildVideoExtraction } from "@/lib/extraction";
+import {
+  costConfigFromEnv,
+  progressAfterModule,
+  progressAtModuleStart,
+} from "@/lib/pipeline-cost";
 import type { ExtractionModule, ProbeResult, VideoJobResult } from "@/lib/types";
 import { probeVideo } from "./media";
 import { EXTRACTION_MODULES } from "./modules";
@@ -30,20 +35,19 @@ export async function processVideoFile(
     typeof callbacks === "function" ? { onProgress: callbacks } : callbacks || {};
 
   const workDir = path.join(path.dirname(videoPath), `${path.basename(videoPath)}-work`);
+  const costCfg = costConfigFromEnv();
 
   try {
     await mkdir(workDir, { recursive: true });
-    cb.onProgress?.(12, "Leyendo metadatos");
+    cb.onProgress?.(8, "Leyendo metadatos");
     const probe = await probeVideo(videoPath, filename);
     cb.onProbe?.(probe);
 
+    const durationSec = Math.max(1, (probe.durationMs || 45_000) / 1000);
     const modules: ExtractionModule[] = [];
-    const total = EXTRACTION_MODULES.length || 1;
 
     for (const [index, definition] of EXTRACTION_MODULES.entries()) {
-      const start = 20;
-      const span = 70;
-      const progress = Math.round(start + (span * index) / total);
+      const progress = progressAtModuleStart(index, durationSec, costCfg);
       cb.onProgress?.(progress, definition.stage);
 
       const t0 = Date.now();
@@ -60,9 +64,13 @@ export async function processVideoFile(
       };
       modules.push(timed);
       cb.onModule?.({ module: timed, modules: [...modules], probe });
+      cb.onProgress?.(
+        progressAfterModule(index, durationSec, costCfg),
+        definition.stage
+      );
     }
 
-    cb.onProgress?.(95, "Componiendo JSON");
+    cb.onProgress?.(96, "Componiendo JSON");
     const extraction = buildVideoExtraction({
       filename,
       processedAt: new Date().toISOString(),
