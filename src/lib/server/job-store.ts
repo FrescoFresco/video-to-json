@@ -11,7 +11,7 @@ import {
 import { processVideoFile } from "./process-video";
 import { withProcessSlot } from "./process-queue";
 import { uploadJsonToDrive } from "./google-drive";
-import { readAppConfig } from "./app-config";
+import { hasDriveAuth, readAppConfig } from "./app-config";
 import { deliverWebhook } from "./webhook";
 import { buildVideoExtraction } from "@/lib/extraction";
 import {
@@ -442,7 +442,7 @@ async function runQueuedProcessing(
         const willDrive =
           config.driveEnabled &&
           Boolean(config.driveFolderId?.trim()) &&
-          Boolean(config.driveServiceAccountJson?.trim());
+          hasDriveAuth(config);
         const needsDelivery = willWebhook || willDrive;
 
         const initialDeliveries: JobDeliveries = {

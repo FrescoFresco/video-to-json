@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { EXTRACTION_SCHEMA_VERSION } from "@/lib/extraction";
 import type { StoredVideo } from "@/lib/types";
 import {
+  hasDriveAuth,
   publicAppConfig,
   readAppConfig,
   writeAppConfig,
@@ -27,7 +28,10 @@ export async function PUT(request: Request) {
     driveEnabled?: boolean;
     driveFolderId?: string;
     driveServiceAccountJson?: string;
+    driveOAuthClientId?: string;
+    driveOAuthClientSecret?: string;
     clearDriveCredentials?: boolean;
+    clearDriveOAuth?: boolean;
   } | null;
 
   if (!body || typeof body !== "object") {
@@ -60,6 +64,9 @@ export async function PUT(request: Request) {
     }
   }
 
+  const clearAllDriveAuth = body.clearDriveCredentials === true;
+  const clearOAuthOnly = body.clearDriveOAuth === true;
+
   const next = await writeAppConfig({
     webhookUrl: typeof body.webhookUrl === "string" ? body.webhookUrl : undefined,
     webhookSecret:
@@ -74,11 +81,25 @@ export async function PUT(request: Request) {
     driveEnabled: typeof body.driveEnabled === "boolean" ? body.driveEnabled : undefined,
     driveFolderId: typeof body.driveFolderId === "string" ? body.driveFolderId : undefined,
     driveServiceAccountJson:
-      body.clearDriveCredentials === true
+      clearAllDriveAuth
         ? ""
         : typeof body.driveServiceAccountJson === "string"
           ? body.driveServiceAccountJson
           : undefined,
+    driveOAuthClientId:
+      typeof body.driveOAuthClientId === "string" ? body.driveOAuthClientId : undefined,
+    driveOAuthClientSecret:
+      typeof body.driveOAuthClientSecret === "string"
+        ? body.driveOAuthClientSecret
+        : undefined,
+    ...(clearAllDriveAuth || clearOAuthOnly
+      ? {
+          driveOAuthRefreshToken: "",
+          driveOAuthAccessToken: "",
+          driveOAuthAccessExpiresAt: 0,
+          driveOAuthEmail: "",
+        }
+      : {}),
   });
 
   return NextResponse.json(publicAppConfig(next));
@@ -93,28 +114,24 @@ export async function POST(request: Request) {
   let config = await readAppConfig();
 
   if (body.action === "test_drive") {
-    // Si hay carpeta + clave pero el switch está apagado, activarlo para la prueba
-    if (
-      !config.driveEnabled &&
-      config.driveFolderId &&
-      config.driveServiceAccountJson
-    ) {
+    // Si hay carpeta + auth pero el switch está apagado, activarlo para la prueba
+    if (!config.driveEnabled && config.driveFolderId && hasDriveAuth(config)) {
       config = await writeAppConfig({ driveEnabled: true });
     }
     if (!config.driveEnabled) {
       return NextResponse.json(
         {
           error:
-            "Activa «Subir automáticamente cada JSON», pega el ID de carpeta y la clave, y pulsa Guardar",
+            "Activa «Subir automáticamente cada JSON», conecta Google, pega la carpeta y pulsa Guardar",
         },
         { status: 400 }
       );
     }
-    if (!config.driveFolderId || !config.driveServiceAccountJson) {
+    if (!config.driveFolderId || !hasDriveAuth(config)) {
       return NextResponse.json(
         {
           error:
-            "Falta el ID de carpeta o la clave JSON. Guarda ambos y vuelve a probar.",
+            "Falta la carpeta o la conexión con Google. Conecta con Google (o modo avanzado), guarda y prueba.",
         },
         { status: 400 }
       );
@@ -144,7 +161,7 @@ export async function POST(request: Request) {
       cleanedUp: deleted.ok,
       cleanupError: deleted.ok ? undefined : deleted.error,
       folderId: config.driveFolderId,
-      clientEmail: (() => {
+      clientEmail: config.driveOAuthEmail || (() => {
         try {
           return (
             (JSON.parse(config.driveServiceAccountJson) as { client_email?: string })

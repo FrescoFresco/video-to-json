@@ -41,17 +41,23 @@ Eso descarga el Studio, instala Docker si puede, lo arranca y abre el navegador.
 
 ## Google Drive (guardar JSON en la nube)
 
-### Opción 1 — API de Drive (recomendado)
+### Opción 1 — Iniciar sesión con Google (recomendado, Gmail / Mi unidad)
 
 En **Conexiones → Google Drive**:
 
-1. Crea una cuenta de servicio en Google Cloud (activa Drive API) y descarga el JSON.
-2. Crea una carpeta en Drive, copia el **ID** de la URL (`…/folders/ID`) y compártela con el email `…@…gserviceaccount.com` (editor).
-3. Pega el ID + el JSON en Conexiones, activa y pulsa **Probar**.
+1. En [Google Cloud → Credenciales](https://console.cloud.google.com/apis/credentials) crea un **ID de cliente OAuth** tipo **Aplicación web**.
+2. Activa **Google Drive API**. En «URI de redirección autorizados» pega exactamente:
+   `http://127.0.0.1:43141/api/drive/oauth/callback`
+3. Copia Client ID y Client Secret en la app → **Conectar con Google** → elige tu cuenta.
+4. Pega la URL de tu carpeta de **Mi unidad** → Guardar → **Probar**.
 
-Cada extracción terminada se sube sola a esa carpeta. No hace falta Drive Desktop.
+Cada extracción terminada se sube sola a esa carpeta. No hace falta Unidad compartida ni compartir con un email raro.
 
-### Opción 2 — Drive para escritorio (carpetas locales)
+### Opción 2 — Cuenta de servicio (solo Unidades compartidas / Workspace)
+
+Modo avanzado en Conexiones: JSON de cuenta de servicio + carpeta en una **Unidad compartida**. No funciona en «Mi unidad» de Gmail (cuota 0).
+
+### Opción 3 — Drive para escritorio (carpetas locales)
 
 1. Carpeta de entrada + carpeta de salida sincronizadas.
 2. En **Conexiones → Carpeta local**: activa vigilancia y pon las rutas locales.
@@ -90,7 +96,7 @@ También puedes usar webhook (Make/n8n) si prefieres otro destino.
 - Instalador firmado tipo App Store / `.dmg` / `.exe` empaquetado con modelos dentro (ahora: lanzadores nativos + Docker o local).
 - API key de acceso (el secreto del webhook es opcional).
 - Emoción facial / pose tracking (candidatos futuros).
-- OAuth «Iniciar sesión con Google» (ahora: cuenta de servicio + ID de carpeta).
+- (Hecho) OAuth «Iniciar sesión con Google» para subir a Mi unidad; cuenta de servicio queda como modo avanzado.
 
 ## Subir varios vídeos (API)
 

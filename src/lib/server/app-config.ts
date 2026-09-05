@@ -16,8 +16,20 @@ export type AppConfig = {
   driveEnabled: boolean;
   /** ID de la carpeta de Drive (el de la URL). */
   driveFolderId: string;
-  /** JSON completo de la cuenta de servicio de Google Cloud. */
+  /** JSON completo de la cuenta de servicio (modo avanzado / Unidades compartidas). */
   driveServiceAccountJson: string;
+  /** OAuth Client ID (Google Cloud → Credenciales). */
+  driveOAuthClientId: string;
+  /** OAuth Client Secret. */
+  driveOAuthClientSecret: string;
+  /** Refresh token tras «Conectar con Google». */
+  driveOAuthRefreshToken: string;
+  /** Access token en caché. */
+  driveOAuthAccessToken: string;
+  /** Epoch ms en que caduca el access token. */
+  driveOAuthAccessExpiresAt: number;
+  /** Email de la cuenta Google conectada por OAuth. */
+  driveOAuthEmail: string;
 };
 
 const DEFAULT_CONFIG: AppConfig = {
@@ -29,13 +41,45 @@ const DEFAULT_CONFIG: AppConfig = {
   driveEnabled: false,
   driveFolderId: "",
   driveServiceAccountJson: "",
+  driveOAuthClientId: "",
+  driveOAuthClientSecret: "",
+  driveOAuthRefreshToken: "",
+  driveOAuthAccessToken: "",
+  driveOAuthAccessExpiresAt: 0,
+  driveOAuthEmail: "",
 };
 
-function configPath() {
-  const root = process.env.VX_DATA_DIR
+export function dataDirRoot() {
+  return process.env.VX_DATA_DIR
     ? path.dirname(process.env.VX_DATA_DIR)
     : path.join(/*turbopackIgnore: true*/ process.cwd(), "data");
-  return path.join(/*turbopackIgnore: true*/ root, "config.json");
+}
+
+function configPath() {
+  return path.join(/*turbopackIgnore: true*/ dataDirRoot(), "config.json");
+}
+
+function asString(v: unknown): string {
+  return typeof v === "string" ? v.trim() : "";
+}
+
+function asNumber(v: unknown): number {
+  return typeof v === "number" && Number.isFinite(v) ? v : 0;
+}
+
+/** True si hay OAuth conectado o cuenta de servicio. */
+export function hasDriveAuth(config: AppConfig): boolean {
+  return Boolean(
+    config.driveOAuthRefreshToken?.trim() || config.driveServiceAccountJson?.trim()
+  );
+}
+
+export function driveAuthMethod(
+  config: AppConfig
+): "oauth" | "service_account" | null {
+  if (config.driveOAuthRefreshToken?.trim()) return "oauth";
+  if (config.driveServiceAccountJson?.trim()) return "service_account";
+  return null;
 }
 
 export async function readAppConfig(): Promise<AppConfig> {
@@ -43,20 +87,20 @@ export async function readAppConfig(): Promise<AppConfig> {
     const raw = await readFile(/*turbopackIgnore: true*/ configPath(), "utf8");
     const parsed = JSON.parse(raw) as Partial<AppConfig>;
     return {
-      webhookUrl: typeof parsed.webhookUrl === "string" ? parsed.webhookUrl.trim() : "",
-      webhookSecret:
-        typeof parsed.webhookSecret === "string" ? parsed.webhookSecret.trim() : "",
-      inboxPath: typeof parsed.inboxPath === "string" ? parsed.inboxPath.trim() : "",
-      outboxPath: typeof parsed.outboxPath === "string" ? parsed.outboxPath.trim() : "",
+      webhookUrl: asString(parsed.webhookUrl),
+      webhookSecret: asString(parsed.webhookSecret),
+      inboxPath: asString(parsed.inboxPath),
+      outboxPath: asString(parsed.outboxPath),
       inboxEnabled: Boolean(parsed.inboxEnabled),
       driveEnabled: Boolean(parsed.driveEnabled),
-      driveFolderId: normalizeDriveFolderId(
-        typeof parsed.driveFolderId === "string" ? parsed.driveFolderId : ""
-      ),
-      driveServiceAccountJson:
-        typeof parsed.driveServiceAccountJson === "string"
-          ? parsed.driveServiceAccountJson.trim()
-          : "",
+      driveFolderId: normalizeDriveFolderId(asString(parsed.driveFolderId)),
+      driveServiceAccountJson: asString(parsed.driveServiceAccountJson),
+      driveOAuthClientId: asString(parsed.driveOAuthClientId),
+      driveOAuthClientSecret: asString(parsed.driveOAuthClientSecret),
+      driveOAuthRefreshToken: asString(parsed.driveOAuthRefreshToken),
+      driveOAuthAccessToken: asString(parsed.driveOAuthAccessToken),
+      driveOAuthAccessExpiresAt: asNumber(parsed.driveOAuthAccessExpiresAt),
+      driveOAuthEmail: asString(parsed.driveOAuthEmail),
     };
   } catch {
     const fromEnv = (process.env.WEBHOOK_URL || "").trim();
@@ -70,6 +114,8 @@ export async function readAppConfig(): Promise<AppConfig> {
       driveEnabled: process.env.VX_DRIVE_ENABLED === "1",
       driveFolderId: normalizeDriveFolderId(process.env.VX_DRIVE_FOLDER_ID || ""),
       driveServiceAccountJson: (process.env.VX_DRIVE_SERVICE_ACCOUNT_JSON || "").trim(),
+      driveOAuthClientId: (process.env.VX_DRIVE_OAUTH_CLIENT_ID || "").trim(),
+      driveOAuthClientSecret: (process.env.VX_DRIVE_OAUTH_CLIENT_SECRET || "").trim(),
     };
   }
 }
@@ -99,14 +145,39 @@ export async function writeAppConfig(patch: Partial<AppConfig>): Promise<AppConf
       typeof patch.driveServiceAccountJson === "string"
         ? patch.driveServiceAccountJson.trim()
         : current.driveServiceAccountJson,
+    driveOAuthClientId:
+      typeof patch.driveOAuthClientId === "string"
+        ? patch.driveOAuthClientId.trim()
+        : current.driveOAuthClientId,
+    driveOAuthClientSecret:
+      typeof patch.driveOAuthClientSecret === "string"
+        ? patch.driveOAuthClientSecret.trim()
+        : current.driveOAuthClientSecret,
+    driveOAuthRefreshToken:
+      typeof patch.driveOAuthRefreshToken === "string"
+        ? patch.driveOAuthRefreshToken.trim()
+        : current.driveOAuthRefreshToken,
+    driveOAuthAccessToken:
+      typeof patch.driveOAuthAccessToken === "string"
+        ? patch.driveOAuthAccessToken.trim()
+        : current.driveOAuthAccessToken,
+    driveOAuthAccessExpiresAt:
+      typeof patch.driveOAuthAccessExpiresAt === "number"
+        ? patch.driveOAuthAccessExpiresAt
+        : current.driveOAuthAccessExpiresAt,
+    driveOAuthEmail:
+      typeof patch.driveOAuthEmail === "string"
+        ? patch.driveOAuthEmail.trim()
+        : current.driveOAuthEmail,
   };
-  // Si en este guardado hay carpeta + clave, activar Drive
+  // Si en este guardado hay carpeta + auth, activar Drive
   // (evita el fallo típico de rellenar todo y olvidar el checkbox).
   if (
     next.driveFolderId &&
-    next.driveServiceAccountJson &&
+    hasDriveAuth(next) &&
     (patch.driveFolderId !== undefined ||
       patch.driveServiceAccountJson !== undefined ||
+      patch.driveOAuthRefreshToken !== undefined ||
       patch.driveEnabled === true)
   ) {
     if (patch.driveEnabled !== false) {
@@ -123,18 +194,21 @@ export async function writeAppConfig(patch: Partial<AppConfig>): Promise<AppConf
   return next;
 }
 
-/** Respuesta segura para la UI (sin filtrar la clave privada). */
+/** Respuesta segura para la UI (sin filtrar secretos). */
 export function publicAppConfig(config: AppConfig) {
   let driveClientEmail: string | null = null;
   if (config.driveServiceAccountJson) {
     try {
-      const parsed = JSON.parse(config.driveServiceAccountJson) as { client_email?: string };
+      const parsed = JSON.parse(config.driveServiceAccountJson) as {
+        client_email?: string;
+      };
       driveClientEmail =
         typeof parsed.client_email === "string" ? parsed.client_email : null;
     } catch {
       driveClientEmail = null;
     }
   }
+  const method = driveAuthMethod(config);
   return {
     webhookUrl: config.webhookUrl,
     webhookSecretSet: Boolean(config.webhookSecret),
@@ -143,7 +217,14 @@ export function publicAppConfig(config: AppConfig) {
     inboxEnabled: config.inboxEnabled,
     driveEnabled: config.driveEnabled,
     driveFolderId: config.driveFolderId,
-    driveCredentialsSet: Boolean(config.driveServiceAccountJson),
-    driveClientEmail,
+    driveCredentialsSet: hasDriveAuth(config),
+    driveAuthMethod: method,
+    driveOAuthClientId: config.driveOAuthClientId,
+    driveOAuthClientSecretSet: Boolean(config.driveOAuthClientSecret),
+    driveOAuthConnected: Boolean(config.driveOAuthRefreshToken),
+    driveOAuthEmail: config.driveOAuthEmail || null,
+    driveClientEmail:
+      method === "oauth" ? config.driveOAuthEmail || null : driveClientEmail,
+    driveRedirectUri: "http://127.0.0.1:43141/api/drive/oauth/callback",
   };
 }

@@ -48,6 +48,17 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   }, [refreshJobs]);
 
   useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("view") === "connections" || params.get("drive_oauth")) {
+        setView("connections");
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
     const hasRunning = videos.some((video) => video.status === "queued" || video.status === "processing");
     if (!hasRunning) return;
     const timer = window.setInterval(() => {
