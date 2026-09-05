@@ -6,46 +6,36 @@ Software web que convierte un clip en un dossier estructurado (cortes, cámara, 
 
 La idea: cualquiera lo instala de un golpe, abre el navegador, mete un vídeo y obtiene el JSON.
 
-## Instalación de un golpe
+## Instalación (fácil)
 
-### Opción A — Lanzador nativo (recomendado si no quieres terminal)
+Guía corta y clara → **[INSTALL.md](./INSTALL.md)**
 
-- **Mac:** `./scripts/build-macos-app.sh` → abre `dist/Video Extraction Studio.app`
-- **Windows (instalación de un comando):** abre PowerShell y pega:
+### Windows (un comando)
+
+1. Abre **PowerShell**
+2. Pega esto y pulsa Enter:
 
 ```powershell
 irm https://raw.githubusercontent.com/FrescoFresco/video-to-json/main/desktop/windows/bootstrap-from-web.ps1 | iex
 ```
 
-Eso descarga el programa en `%USERPROFILE%\VideoExtractionStudio`, instala Docker si puede, arranca todo y abre el navegador.
+### Mac (un comando)
 
-Si ya tienes la carpeta del proyecto: doble clic en `desktop/windows/Launch.bat`.
-
-- **Linux:** `./desktop/launch.sh`
-
-Detalles: [desktop/README.md](desktop/README.md).
-
-### Opción B — Docker
-
-Docker es una “caja” con el programa y sus dependencias. Necesitas [Docker Desktop](https://www.docker.com/products/docker-desktop/).
+1. Abre **Terminal**
+2. Pega esto y pulsa Enter:
 
 ```bash
-./install.sh
+curl -fsSL https://raw.githubusercontent.com/FrescoFresco/video-to-json/main/desktop/macos/bootstrap-from-web.sh | bash
 ```
 
-Abre [http://localhost:43141](http://localhost:43141).
+Eso descarga el Studio, instala Docker si puede, lo arranca y abre el navegador.
 
-### Opción C — Sin Docker (local)
+### Otras opciones
 
-Hace falta Node 20+, Python 3.12, ffmpeg y ffprobe.
+- Ya tienes la carpeta: Windows → `desktop/windows/Launch.bat` · Mac → `./desktop/macos/install.sh`
+- Manual Docker: `./install.sh` → http://localhost:43141
+- Sin Docker (dev): Node 20+, Python 3.12, ffmpeg → `./install.sh local`
 
-```bash
-./install.sh local          # desarrollo
-FORCE_LOCAL=1 ./install.sh  # igual, fuerza local aunque haya Docker
-./install.sh prod           # build + start de producción
-```
-
-Si no pasas modo (`./install.sh` a secas) y Docker está disponible, usa Docker.
 ## Google Drive (guardar JSON en la nube)
 
 ### Opción 1 — API de Drive (recomendado)

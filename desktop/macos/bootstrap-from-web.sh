@@ -26,19 +26,29 @@ if [[ -z "$UNPACKED" || ! -d "$UNPACKED" ]]; then
   exit 1
 fi
 
+# Conserva data/ si ya existía una instalación previa
+PRESERVE=""
+if [[ -d "$INSTALL_DIR/data" ]]; then
+  PRESERVE="$(mktemp -d -t vx-data)"
+  cp -R "$INSTALL_DIR/data/." "$PRESERVE/" 2>/dev/null || true
+fi
+
+rm -rf "$INSTALL_DIR"
 mkdir -p "$INSTALL_DIR"
-# Actualiza contenido sin borrar la carpeta destino entera (por si hay data/)
-rsync -a --delete \
-  --exclude 'data/' \
-  --exclude 'node_modules/' \
-  --exclude '.next/' \
-  --exclude 'video-py/' \
-  "$UNPACKED"/ "$INSTALL_DIR"/
+cp -R "$UNPACKED"/. "$INSTALL_DIR/"
+
+if [[ -n "$PRESERVE" && -d "$PRESERVE" ]]; then
+  mkdir -p "$INSTALL_DIR/data"
+  cp -R "$PRESERVE"/. "$INSTALL_DIR/data/" 2>/dev/null || true
+  rm -rf "$PRESERVE"
+fi
 
 rm -f "$TMP_ZIP"
 rm -rf "$TMP_DIR"
 
-chmod +x "$INSTALL_DIR/desktop/macos/install.sh" \
+chmod +x \
+  "$INSTALL_DIR/desktop/macos/install.sh" \
+  "$INSTALL_DIR/desktop/macos/bootstrap-from-web.sh" \
   "$INSTALL_DIR/desktop/launch.sh" \
   "$INSTALL_DIR/scripts/build-macos-app.sh" \
   "$INSTALL_DIR/install.sh" 2>/dev/null || true
