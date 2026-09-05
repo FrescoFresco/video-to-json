@@ -119,7 +119,7 @@ export async function transcribeVideoSpeech(
       if (/does not contain any stream/i.test(msg)) {
         return {
           engine: "faster-whisper",
-          model: process.env.WHISPER_MODEL || "small",
+          model: process.env.WHISPER_MODEL || "large-v3",
           language: null,
           speakers: [],
           speaker_count: 0,
@@ -138,15 +138,18 @@ export async function transcribeVideoSpeech(
       "Falta el entorno Python del pipeline. Ejecuta ./install.sh en la raiz del proyecto."
     );
   }
-  // `small` mejora diarización/transcripción en CPU; override con WHISPER_MODEL.
-  const model = process.env.WHISPER_MODEL || "small";
+  // large-v3 = máxima calidad local (faster-whisper). Override: WHISPER_MODEL=medium|turbo|…
+  const model = process.env.WHISPER_MODEL || "large-v3";
   await execFileAsync(python, [script, wavPath, model, outJson], {
-    timeout: 480000,
-    maxBuffer: 16 * 1024 * 1024,
+    // large-v3 en CPU puede tardar bastante en el primer vídeo.
+    timeout: 1200000,
+    maxBuffer: 32 * 1024 * 1024,
     env: {
       ...process.env,
       HF_HUB_DISABLE_TELEMETRY: "1",
+      WHISPER_MODEL: model,
       WHISPER_BEAM_SIZE: process.env.WHISPER_BEAM_SIZE || "5",
+      WHISPER_COMPUTE_TYPE: process.env.WHISPER_COMPUTE_TYPE || "int8",
       DIARIZE_MIN_SPEAKERS: process.env.DIARIZE_MIN_SPEAKERS || "1",
       DIARIZE_MAX_SPEAKERS: process.env.DIARIZE_MAX_SPEAKERS || "8",
     },
@@ -256,8 +259,14 @@ export async function readOnScreenText(
   }
   await writeFile(manifestPath, JSON.stringify({ frames }), "utf8");
   await execFileAsync(python, [script, manifestPath, outJson], {
-    timeout: 180000,
-    maxBuffer: 8 * 1024 * 1024,
+    // OCR + Moondream (contexto de texto) puede tardar en CPU.
+    timeout: 900000,
+    maxBuffer: 16 * 1024 * 1024,
+    env: {
+      ...process.env,
+      HF_HUB_DISABLE_TELEMETRY: "1",
+      OCR_VLM: process.env.OCR_VLM || "1",
+    },
   });
   return JSON.parse(await readFile(outJson, "utf8")) as OnScreenText;
 }

@@ -27,16 +27,24 @@ export type OnScreenText = {
   engine: string;
   backend?: string;
   swap_in?: string;
+  repo?: string;
+  vision_model?: string | null;
   frame_count: number;
+  vlm_described?: number;
+  role_counts?: Record<string, number>;
   items: Array<{
     text: string;
+    raw_text?: string;
     start_ms: number;
     end_ms: number;
     conf: number;
     bbox?: number[];
+    layout?: { cx?: number; cy?: number; w_ratio?: number; h_ratio?: number };
     role?: string;
+    description?: string | null;
   }>;
   brands?: string[];
+  vlm_error?: string;
   error?: string;
 };
 

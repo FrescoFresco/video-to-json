@@ -55,9 +55,10 @@ También puedes usar webhook (Make/n8n) si prefieres otro destino.
 - **Objetos y personas** (YOLOv8n + Moondream): detección y descripción del crop (color, ropa, estado) dentro del mismo módulo.
 - **Pose y acciones** (YOLOv8n-pose + Moondream): postura geométrica y descripción de la acción en el crop.
 - Observación visual con preguntas de recreación (lugar, acciones, caras, cámara).
-- Diarización con el paquete `diarize` (Silero VAD + WeSpeaker) + Whisper `small`.
+- Diarización con el paquete `diarize` (Silero VAD + WeSpeaker) + Whisper `large-v3` (texto denso; override con `WHISPER_MODEL`).
+- **Texto en pantalla** (RapidOCR + Moondream): lee letras, clasifica rol (título, CTA, watermark…) y añade contexto del crop.
 - **Cara ↔ voz** en `speakers`: enlaza interlocutores diarizados con pistas de `faces_framing` por solape temporal (prioriza boca abierta y tamaño de cara).
-- Muestreo temporal más denso en objetos/caras/pose/visión.
+- Muestreo temporal más denso en objetos/caras/pose/visión/OCR.
 - **Música y ambiente** local (`librosa`): energía, ritmo/BPM si es claro, brillo del audio por pasajes. No identifica canciones.
 - **Movimiento de cámara** local (OpenCV): estática, paneo, zoom, trepidación por tramos.
 - **Eventos de audio** local (PANNs / AudioSet): habla, música, aplausos, sirenas, etc. con puntuación.
@@ -136,8 +137,10 @@ Vídeos cortos: minutos en CPU. Largos o con visión: más tiempo. Un portátil 
 
 | Variable | Por defecto | Uso |
 | --- | --- | --- |
-| `WHISPER_MODEL` | `small` | Modelo Whisper (`tiny`, `base`, `small`…). `small` mejora diarización. |
+| `WHISPER_MODEL` | `large-v3` | Modelo Whisper (`large-v3`, `medium`, `turbo`…). Más grande = mejor texto. |
 | `WHISPER_BEAM_SIZE` | `5` | Beam de Whisper (más = mejor y más lento). |
+| `OCR_VLM` | `1` | Describe cada texto detectado con Moondream (`0` = solo OCR). |
+| `OCR_MAX_FRAMES` | `16` | Fotogramas densos para OCR. |
 | `DIARIZE_MIN_SPEAKERS` / `DIARIZE_MAX_SPEAKERS` | `1` / `8` | Rango de hablantes para WeSpeaker. |
 | `VIDEO_PYTHON` | `video-py/bin/python` | Interprete Python del pipeline |
 | `VISION_MAX_FRAMES` | `6` | Máx. fotogramas a observar (CPU) |
