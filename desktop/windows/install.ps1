@@ -12,7 +12,7 @@ function Write-Step([string]$msg) {
   Write-Host "==> $msg"
 }
 
-function Write-Help-DockerWsl {
+function Show-DockerWslHelp {
   Write-Host ""
   Write-Host "Docker necesita WSL2. Haz esto:"
   Write-Host "  1) Cierra esta ventana"
@@ -111,7 +111,7 @@ function Start-DockerDesktopAndWait {
   }
 
   Write-Host "Docker no arranco a tiempo."
-  Write-Help-DockerWsl
+  Show-DockerWslHelp
   exit 1
 }
 
@@ -134,7 +134,7 @@ Write-Step "Construyendo y arrancando el Studio (la primera vez tarda)..."
 docker compose up --build -d
 if ($LASTEXITCODE -ne 0) {
   Write-Host "Fallo docker compose."
-  Write-Help-DockerWsl
+  Show-DockerWslHelp
   exit 1
 }
 
