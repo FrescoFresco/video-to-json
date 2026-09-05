@@ -10,16 +10,29 @@ import {
 
 export const runtime = "nodejs";
 
+function htmlError(message: string) {
+  const safe = message.replace(/[<>&]/g, "");
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"><title>Google Drive</title></head>
+<body style="font-family:system-ui,sans-serif;padding:24px;color:#171719">
+  <h1 style="font-size:18px;margin:0 0 8px">No se puede conectar con Google</h1>
+  <p style="color:#b42318">${safe}</p>
+  <p style="color:#75757d;font-size:13px">Cierra esta ventana, revisa Client ID / Secret en Conexiones → Drive, y vuelve a intentar.</p>
+</body>
+</html>`;
+  return new NextResponse(html, {
+    status: 400,
+    headers: { "Content-Type": "text/html; charset=utf-8" },
+  });
+}
+
 export async function GET(request: Request) {
   const config = await readAppConfig();
   const oauth = await resolveOAuthClient(config);
   if (!oauth.clientId || !oauth.clientSecret) {
-    return NextResponse.json(
-      {
-        error:
-          "Faltan las credenciales OAuth de la app. Configura VX_DRIVE_OAUTH_CLIENT_ID / VX_DRIVE_OAUTH_CLIENT_SECRET o el archivo data/oauth-client.json.",
-      },
-      { status: 400 }
+    return htmlError(
+      "Faltan Client ID y Client Secret de la app. Pégalos en Conexiones → Drive (setup una vez) o en data/oauth-client.json."
     );
   }
 

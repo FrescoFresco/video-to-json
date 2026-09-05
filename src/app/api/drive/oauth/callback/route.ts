@@ -27,19 +27,22 @@ function finishHtml(input: {
 <html lang="es">
 <head><meta charset="utf-8"><title>Google Drive</title></head>
 <body style="font-family:system-ui,sans-serif;padding:24px;color:#171719">
-  <p>${input.ok ? "Conectado con Google. Puedes cerrar esta ventana." : "No se pudo conectar con Google."}</p>
+  <p>${input.ok ? "Conectado con Google. Esta ventana se cerrará sola." : "No se pudo conectar con Google."}</p>
   <p style="color:#75757d;font-size:13px">${input.message.replace(/[<>&]/g, "")}</p>
   <script>
     (function () {
       var payload = ${payload};
+      var href = ${href};
       try {
         if (window.opener && !window.opener.closed) {
-          window.opener.postMessage(payload, window.location.origin);
-          window.close();
+          // "*" evita fallos localhost vs 127.0.0.1; el padre filtra por type
+          window.opener.postMessage(payload, "*");
+          try { window.opener.focus(); } catch (e) {}
+          setTimeout(function () { window.close(); }, 200);
           return;
         }
       } catch (e) {}
-      location.href = ${href};
+      location.href = href;
     })();
   </script>
 </body>
@@ -51,9 +54,9 @@ function finishHtml(input: {
 
 function appHref(request: Request, query: Record<string, string>) {
   const url = new URL(request.url);
-  const host = url.hostname === "localhost" ? "127.0.0.1" : url.hostname;
+  // Mismo host que la petición (no reescribir localhost ↔ 127.0.0.1)
   const port = url.port ? `:${url.port}` : "";
-  const target = new URL(`${url.protocol}//${host}${port}/`);
+  const target = new URL(`${url.protocol}//${url.hostname}${port}/`);
   target.searchParams.set("view", "connections");
   target.searchParams.set("panel", "drive");
   for (const [k, v] of Object.entries(query)) {

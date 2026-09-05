@@ -56,6 +56,7 @@ export function ConnectionsView() {
   const [showAdvancedDrive, setShowAdvancedDrive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [connectingGoogle, setConnectingGoogle] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testingDrive, setTestingDrive] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -84,6 +85,18 @@ export function ConnectionsView() {
     if (data.driveRedirectUri) setDriveRedirectUri(data.driveRedirectUri);
     if (data.driveAuthMethod === "service_account") setShowAdvancedDrive(true);
   }
+
+  useEffect(() => {
+    // URI de redirección = mismo host con el que abres la app
+    try {
+      const u = new URL(window.location.href);
+      setDriveRedirectUri(
+        `${u.protocol}//${u.hostname}${u.port ? `:${u.port}` : ""}/api/drive/oauth/callback`
+      );
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -120,6 +133,7 @@ export function ConnectionsView() {
       setError(msg || "No se pudo conectar con Google.");
       setMessage(null);
     }
+    setConnectingGoogle(false);
     params.delete("drive_oauth");
     params.delete("drive_oauth_msg");
     params.delete("view");
@@ -140,9 +154,20 @@ export function ConnectionsView() {
 
   useEffect(() => {
     function onMessage(event: MessageEvent) {
-      if (event.origin !== window.location.origin) return;
       const data = event.data as { type?: string; ok?: boolean; message?: string } | null;
       if (!data || data.type !== "vx-drive-oauth") return;
+      // Aceptamos localhost y 127.0.0.1 del mismo puerto
+      try {
+        const allowed = new URL(window.location.origin);
+        const from = new URL(event.origin);
+        const samePort = allowed.port === from.port;
+        const local =
+          (allowed.hostname === "localhost" || allowed.hostname === "127.0.0.1") &&
+          (from.hostname === "localhost" || from.hostname === "127.0.0.1");
+        if (!(samePort && (allowed.origin === event.origin || local))) return;
+      } catch {
+        return;
+      }
       if (data.ok) {
         setMessage(data.message || "Google conectado.");
         setError(null);
@@ -150,6 +175,7 @@ export function ConnectionsView() {
         setError(data.message || "No se pudo conectar con Google.");
         setMessage(null);
       }
+      setConnectingGoogle(false);
       setOpenPanel("drive");
       void (async () => {
         try {
@@ -271,9 +297,22 @@ export function ConnectionsView() {
   async function connectGoogle() {
     setError(null);
     setMessage(null);
+    setConnectingGoogle(true);
+    // Abrir el popup YA (gesto del usuario). Si lo abrimos después del await,
+    // el navegador lo bloquea y parece que el botón no hace nada.
+    const popup = window.open(
+      "about:blank",
+      "vx-google-oauth",
+      "width=520,height=700,menubar=no,toolbar=no,status=no"
+    );
     try {
-      // Si aún no hay credenciales de app, guardar las del formulario (setup una vez)
       if (!driveOAuthClientConfigured) {
+        if (!driveOAuthClientId.trim() || (!driveOAuthClientSecret.trim() && !driveOAuthClientSecretSet)) {
+          if (popup && !popup.closed) popup.close();
+          throw new Error(
+            "Primero pega Client ID y Client Secret (setup una vez), luego pulsa Conectar con Google."
+          );
+        }
         const res = await fetch("/api/settings", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -291,24 +330,43 @@ export function ConnectionsView() {
         applySettings(data);
         setDriveOAuthClientSecret("");
         if (!data.driveOAuthClientConfigured) {
+          if (popup && !popup.closed) popup.close();
           throw new Error(
-            "Faltan las credenciales de Google de la app. Pégalas una vez o configura el archivo oauth-client.json."
+            "Faltan Client ID / Secret. Pégalos arriba y vuelve a pulsar Conectar."
           );
         }
       }
 
-      const popup = window.open(
-        "/api/drive/oauth/start",
-        "vx-google-oauth",
-        "width=520,height=700,menubar=no,toolbar=no,status=no"
-      );
-      if (!popup) {
-        // Si el navegador bloquea ventanas, navegar en la misma pestaña
-        window.location.href = "/api/drive/oauth/start";
+      const startUrl = "/api/drive/oauth/start";
+      if (!popup || popup.closed) {
+        window.location.href = startUrl;
         return;
       }
+      popup.location.href = startUrl;
       setMessage("Completa el login de Google en la ventana emergente…");
+      // Si el popup muere al momento (bloqueador), ir en la misma pestaña
+      window.setTimeout(() => {
+        try {
+          if (popup.closed) {
+            setConnectingGoogle(false);
+            setError(
+              "El navegador bloqueó la ventana de Google. Permite popups o se abrirá en esta pestaña."
+            );
+            window.location.href = startUrl;
+          }
+        } catch {
+          /* ignore */
+        }
+      }, 800);
     } catch (err) {
+      setConnectingGoogle(false);
+      if (popup && !popup.closed) {
+        try {
+          popup.close();
+        } catch {
+          /* ignore */
+        }
+      }
       setError(err instanceof Error ? err.message : "No se pudo iniciar el login de Google");
     }
   }
@@ -655,10 +713,10 @@ export function ConnectionsView() {
                   ) : (
                     <Button
                       className="rounded-xl"
-                      disabled={saving}
+                      disabled={saving || connectingGoogle}
                       onClick={() => void connectGoogle()}
                     >
-                      Conectar con Google
+                      {connectingGoogle ? "Abriendo Google…" : "Conectar con Google"}
                     </Button>
                   )}
                 </div>

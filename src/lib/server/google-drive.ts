@@ -130,7 +130,10 @@ export function buildOAuthAuthorizeUrl(input: {
 
 export function redirectUriFromRequest(request: Request): string {
   const url = new URL(request.url);
-  const host = url.hostname === "localhost" ? "127.0.0.1" : url.hostname;
+  // Mantener el host tal cual (localhost o 127.0.0.1).
+  // Si lo reescribimos, el popup y la ventana principal no comparten origen
+  // y el postMessage del callback se pierde en silencio.
+  const host = url.hostname;
   const port = url.port ? `:${url.port}` : "";
   return `${url.protocol}//${host}${port}/api/drive/oauth/callback`;
 }
