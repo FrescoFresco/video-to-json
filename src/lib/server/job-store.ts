@@ -1,11 +1,15 @@
-import { writeFile, mkdir, copyFile } from "node:fs/promises";
+import { writeFile, mkdir, copyFile, unlink } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import type { JobDeliveries, StoredVideo, VideoJobResult } from "@/lib/types";
 import {
+  clearJobResultFile,
   clearJobsFromDisk,
+  jobSourceExists,
+  jobSourcePath,
   loadAllJobsFromDisk,
   persistJob,
+  saveJobSource,
   type JobRecord,
 } from "./job-persistence";
 import { processVideoFile } from "./process-video";
@@ -31,9 +35,22 @@ type EnqueueOptions = {
   webhookUrl?: string | null;
   sourceUrl?: string | null;
   sourceKind?: StoredVideo["sourceKind"];
+  /** Si el job ya tiene id (p. ej. link o reintento). */
+  existingId?: string;
+  keepSource?: boolean;
   onReady?: (result: VideoJobResult, job: JobRecord) => Promise<void> | void;
   onError?: (error: string, job: JobRecord) => Promise<void> | void;
 };
+
+export class JobRetryError extends Error {
+  constructor(
+    public code: "not_found" | "not_error" | "no_source" | "busy",
+    message: string
+  ) {
+    super(message);
+    this.name = "JobRetryError";
+  }
+}
 
 const globalForJobs = globalThis as typeof globalThis & {
   __vxJobStore?: JobStore;
@@ -67,7 +84,10 @@ async function ensureLoaded() {
             status: "error",
             progress: 100,
             stage: "Error",
-            error: "Interrumpido al reiniciar el servidor. Vuelve a subir el vídeo.",
+            error:
+              job.sourceUrl
+                ? "Interrumpido al reiniciar el servidor. Pulsa Reintentar."
+                : "Interrumpido al reiniciar el servidor. Vuelve a subir el vídeo o pulsa Reintentar si aún está guardado.",
           });
         }
       }
@@ -144,26 +164,44 @@ async function enqueueVideoJob(
   options?: EnqueueOptions
 ): Promise<StoredVideo> {
   await ensureLoaded();
-  const id = createId();
+  const id = options?.existingId || createId();
   const createdAt = new Date().toISOString();
-  const webhookUrl = options?.webhookUrl?.trim() || null;
 
+  const inputFile = await saveJobSource(id, tempPath, filename);
+  await unlink(/*turbopackIgnore: true*/ tempPath).catch(() => undefined);
+  const sourcePath = jobSourcePath(id, inputFile);
+
+  const existing = getStore().jobs.get(id);
   const job: JobRecord = {
     id,
     name: filename,
-    createdAt,
+    createdAt: existing?.createdAt || createdAt,
     status: "queued",
     progress: 5,
     stage: "En espera",
-    sourceKind: options?.sourceKind || "upload",
-    ...(options?.sourceUrl ? { sourceUrl: options.sourceUrl } : {}),
-    activity: [{ time: clock(), title: "Archivo recibido", detail: filename, status: "ready" }],
+    sourceKind: options?.sourceKind || existing?.sourceKind || "upload",
+    inputFile,
+    ...(options?.sourceUrl || existing?.sourceUrl
+      ? { sourceUrl: options?.sourceUrl || existing?.sourceUrl }
+      : {}),
+    activity: [
+      ...(existing?.activity ?? []),
+      {
+        time: clock(),
+        title: existing ? "Archivo listo" : "Archivo recibido",
+        detail: filename,
+        status: "ready",
+      },
+    ],
   };
 
   getStore().jobs.set(id, job);
   schedulePersist(job, true);
 
-  void runQueuedProcessing(id, filename, tempPath, options);
+  void runQueuedProcessing(id, filename, sourcePath, {
+    ...options,
+    keepSource: true,
+  });
 
   return (await getJob(id)) as StoredVideo;
 }
@@ -233,104 +271,197 @@ export async function createJobFromUrl(
   schedulePersist(job, true);
 
   void (async () => {
-    let workDir: string | undefined;
-    try {
-      const downloaded = await downloadVideoFromUrl(url.href);
-      workDir = downloaded.workDir;
-
-      const dir = path.join(os.tmpdir(), "vx-jobs");
-      await mkdir(dir, { recursive: true });
-      const tempPath = path.join(
-        dir,
-        `${id}-${downloaded.filename.replace(/[^\w.-]+/g, "_")}`
-      );
-      await copyFile(
-        /*turbopackIgnore: true*/ downloaded.filePath,
-        /*turbopackIgnore: true*/ tempPath
-      );
-      await cleanupDownloadDir(workDir);
-      workDir = undefined;
-
-      updateJob(
-        id,
-        {
-          name: downloaded.filename,
-          status: "queued",
-          progress: 5,
-          stage: "En espera",
-          activity: [
-            ...(getStore().jobs.get(id)?.activity ?? []),
-            {
-              time: clock(),
-              title: "Descarga",
-              detail: downloaded.extractor
-                ? `${downloaded.filename} · ${downloaded.extractor}`
-                : downloaded.filename,
-              status: "ready",
-            },
-          ],
-        },
-        true
-      );
-
-      await runQueuedProcessing(id, downloaded.filename, tempPath, {
-        webhookUrl,
-        sourceUrl: downloaded.sourceUrl || url.href,
-        sourceKind: "url",
-      });
-    } catch (error) {
-      await cleanupDownloadDir(workDir);
-      const message =
-        error instanceof Error ? error.message : "No se pudo descargar el vídeo";
-      updateJob(
-        id,
-        {
-          status: "error",
-          progress: 100,
-          stage: "Error",
-          error: message,
-          completedAt: new Date().toISOString(),
-          activity: [
-            ...(getStore().jobs.get(id)?.activity ?? []),
-            {
-              time: clock(),
-              title: "Descarga",
-              detail: message,
-              status: "error",
-            },
-          ],
-        },
-        true
-      );
-
-      const failedJob = getStore().jobs.get(id);
-      if (!failedJob) return;
-      const delivery = await deliverWebhook({
-        event: "job.error",
-        job: failedJob,
-        webhookUrl,
-      });
-      if (delivery) {
-        updateJob(
-          id,
-          {
-            activity: [
-              ...(getStore().jobs.get(id)?.activity ?? []),
-              {
-                time: clock(),
-                title: "Webhook",
-                detail: delivery.ok
-                  ? `Aviso de error enviado a ${delivery.url}`
-                  : `Falló el aviso: ${delivery.error || "error"}`,
-                status: delivery.ok ? "ready" : "error",
-              },
-            ],
-          },
-          true
-        );
-      }
-    }
+    await downloadAndProcessUrlJob(id, url.href, webhookUrl);
   })();
+
+  return (await getJob(id)) as StoredVideo;
+}
+
+/** Descarga un link, guarda el archivo y encola la extracción (también usado al reintentar). */
+async function downloadAndProcessUrlJob(
+  id: string,
+  href: string,
+  webhookUrl?: string | null
+) {
+  let workDir: string | undefined;
+  try {
+    const downloaded = await downloadVideoFromUrl(href);
+    workDir = downloaded.workDir;
+
+    const dir = path.join(os.tmpdir(), "vx-jobs");
+    await mkdir(dir, { recursive: true });
+    const tempPath = path.join(
+      dir,
+      `${id}-${downloaded.filename.replace(/[^\w.-]+/g, "_")}`
+    );
+    await copyFile(
+      /*turbopackIgnore: true*/ downloaded.filePath,
+      /*turbopackIgnore: true*/ tempPath
+    );
+    await cleanupDownloadDir(workDir);
+    workDir = undefined;
+
+    const inputFile = await saveJobSource(id, tempPath, downloaded.filename);
+    await unlink(/*turbopackIgnore: true*/ tempPath).catch(() => undefined);
+    const sourcePath = jobSourcePath(id, inputFile);
+
+    updateJob(
+      id,
+      {
+        name: downloaded.filename,
+        status: "queued",
+        progress: 5,
+        stage: "En espera",
+        inputFile,
+        sourceUrl: downloaded.sourceUrl || href,
+        sourceKind: "url",
+        activity: [
+          ...(getStore().jobs.get(id)?.activity ?? []),
+          {
+            time: clock(),
+            title: "Descarga",
+            detail: downloaded.extractor
+              ? `${downloaded.filename} · ${downloaded.extractor}`
+              : downloaded.filename,
+            status: "ready",
+          },
+        ],
+      },
+      true
+    );
+
+    await runQueuedProcessing(id, downloaded.filename, sourcePath, {
+      webhookUrl,
+      sourceUrl: downloaded.sourceUrl || href,
+      sourceKind: "url",
+      keepSource: true,
+    });
+  } catch (error) {
+    await cleanupDownloadDir(workDir);
+    const message =
+      error instanceof Error ? error.message : "No se pudo descargar el vídeo";
+    updateJob(
+      id,
+      {
+        status: "error",
+        progress: 100,
+        stage: "Error",
+        error: message,
+        completedAt: new Date().toISOString(),
+        activity: [
+          ...(getStore().jobs.get(id)?.activity ?? []),
+          {
+            time: clock(),
+            title: "Descarga",
+            detail: message,
+            status: "error",
+          },
+        ],
+      },
+      true
+    );
+
+    const failedJob = getStore().jobs.get(id);
+    if (!failedJob) return;
+    const delivery = await deliverWebhook({
+      event: "job.error",
+      job: failedJob,
+      webhookUrl,
+    });
+    if (delivery) {
+      updateJob(
+        id,
+        {
+          activity: [
+            ...(getStore().jobs.get(id)?.activity ?? []),
+            {
+              time: clock(),
+              title: "Webhook",
+              detail: delivery.ok
+                ? `Aviso de error enviado a ${delivery.url}`
+                : `Falló el aviso: ${delivery.error || "error"}`,
+              status: delivery.ok ? "ready" : "error",
+            },
+          ],
+        },
+        true
+      );
+    }
+  }
+}
+
+/**
+ * Vuelve a lanzar un trabajo en error: reusa el archivo guardado o vuelve a bajar el link.
+ */
+export async function retryJob(id: string): Promise<StoredVideo> {
+  await ensureLoaded();
+  const job = getStore().jobs.get(id);
+  if (!job) {
+    throw new JobRetryError("not_found", "Trabajo no encontrado");
+  }
+  if (job.status === "queued" || job.status === "processing") {
+    throw new JobRetryError("busy", "El trabajo ya se está procesando");
+  }
+  if (job.status !== "error") {
+    throw new JobRetryError(
+      "not_error",
+      "Solo se pueden reintentar trabajos que hayan fallado"
+    );
+  }
+
+  const sourceUrl = job.sourceUrl?.trim() || null;
+  const hasSource = await jobSourceExists(id, job.inputFile);
+
+  if (!hasSource && !sourceUrl) {
+    throw new JobRetryError(
+      "no_source",
+      "Ya no está el vídeo guardado. Vuelve a subirlo o pega el link otra vez."
+    );
+  }
+
+  await clearJobResultFile(id);
+
+  const resetActivity = [
+    ...(job.activity ?? []),
+    {
+      time: clock(),
+      title: "Reintento",
+      detail: hasSource
+        ? "Se vuelve a procesar el mismo archivo"
+        : "Se vuelve a descargar el link",
+      status: "ready" as const,
+    },
+  ];
+
+  updateJob(
+    id,
+    {
+      status: hasSource ? "queued" : "processing",
+      progress: hasSource ? 5 : 3,
+      stage: hasSource ? "En espera" : "Descargando desde link…",
+      error: undefined,
+      completedAt: undefined,
+      processingStartedAt: hasSource ? undefined : new Date().toISOString(),
+      stageStartedAt: undefined,
+      probe: undefined,
+      extraction: undefined,
+      result: undefined,
+      deliveries: undefined,
+      activity: resetActivity,
+    },
+    true
+  );
+
+  if (hasSource && job.inputFile) {
+    const sourcePath = jobSourcePath(id, job.inputFile);
+    void runQueuedProcessing(id, job.name, sourcePath, {
+      sourceUrl,
+      sourceKind: job.sourceKind || (sourceUrl ? "url" : "upload"),
+      keepSource: true,
+    });
+  } else if (sourceUrl) {
+    void downloadAndProcessUrlJob(id, sourceUrl, null);
+  }
 
   return (await getJob(id)) as StoredVideo;
 }
@@ -367,6 +498,7 @@ async function runQueuedProcessing(
           options?.sourceKind || currentJob?.sourceKind || (sourceUrl ? "url" : "upload");
 
         const result = await processVideoFile(tempPath, filename, {
+          keepSource: options?.keepSource === true,
           source: { url: sourceUrl, kind: sourceKind },
           onProgress: (progress, stage) => {
             const current = getStore().jobs.get(id);

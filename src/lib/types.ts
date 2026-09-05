@@ -190,6 +190,11 @@ export type StoredVideo = {
   sourceKind?: VideoSourceInput;
   /** Link original si se importó por URL. */
   sourceUrl?: string;
+  /**
+   * Nombre del archivo de origen guardado en data/jobs/{id}/source/.
+   * Permite reintentar tras un error sin volver a subir el vídeo.
+   */
+  inputFile?: string;
   /** ISO: cuando empezó el procesado real (para ETA). */
   processingStartedAt?: string;
   /** ISO: cuando terminó (listo o error tras procesar). */

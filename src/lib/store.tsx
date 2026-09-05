@@ -22,6 +22,7 @@ type StudioContextValue = {
   openVideo: (id: string) => void;
   ingestFiles: (files: File[]) => Promise<void>;
   ingestUrls: (urls: string[]) => Promise<void>;
+  retryVideo: (id: string) => Promise<void>;
   clearAll: () => void;
 };
 
@@ -242,6 +243,29 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     void fetch("/api/jobs", { method: "DELETE" });
   }, []);
 
+  const retryVideo = useCallback(
+    async (id: string) => {
+      const res = await fetch(`/api/jobs/${encodeURIComponent(id)}/retry`, {
+        method: "POST",
+      });
+      const data = (await res.json()) as StoredVideo & { error?: string };
+      if (!res.ok) {
+        throw new Error(data.error || "No se pudo reintentar");
+      }
+      setVideos((prev) => {
+        const next = prev.map((item) => (item.id === id ? { ...item, ...data } : item));
+        if (!next.some((item) => item.id === id)) {
+          return [data, ...next];
+        }
+        return next;
+      });
+      setActiveVideoId(id);
+      setView("video-detail");
+      void refreshJobs();
+    },
+    [refreshJobs]
+  );
+
   const value = useMemo<StudioContextValue>(
     () => ({
       videos,
@@ -254,9 +278,10 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       openVideo,
       ingestFiles,
       ingestUrls,
+      retryVideo,
       clearAll,
     }),
-    [videos, view, activeVideoId, openVideo, ingestFiles, ingestUrls, clearAll]
+    [videos, view, activeVideoId, openVideo, ingestFiles, ingestUrls, retryVideo, clearAll]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

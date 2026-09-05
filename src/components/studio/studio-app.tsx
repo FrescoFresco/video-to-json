@@ -210,11 +210,20 @@ function IconBtn({
   );
 }
 
-function EmptyCard({ title, body }: { title: string; body: string }) {
+function EmptyCard({
+  title,
+  body,
+  action,
+}: {
+  title: string;
+  body: string;
+  action?: ReactNode;
+}) {
   return (
     <div className="rounded-2xl border border-[#e7e7eb] bg-white p-5">
       <div className="text-sm font-semibold">{title}</div>
       <p className="mt-2 text-sm leading-relaxed text-[#75757d]">{body}</p>
+      {action ? <div className="mt-4">{action}</div> : null}
     </div>
   );
 }
@@ -1107,7 +1116,41 @@ function VideoDetail({ video }: { video: StoredVideo }) {
   const extraction = video.extraction;
   const [catalog, setCatalog] = useState<Array<{ id: string; title: string; stage: string }>>([]);
   const [detailTab, setDetailTab] = useState("estado");
+  const [retryBusy, setRetryBusy] = useState(false);
+  const [retryError, setRetryError] = useState<string | null>(null);
   const costCfg = useCostConfig();
+
+  useEffect(() => {
+    setRetryBusy(false);
+    setRetryError(null);
+  }, [video.id, video.status]);
+
+  async function handleRetry() {
+    if (retryBusy) return;
+    setRetryBusy(true);
+    setRetryError(null);
+    try {
+      await s.retryVideo(video.id);
+    } catch (error) {
+      setRetryError(
+        error instanceof Error ? error.message : "No se pudo reintentar"
+      );
+      setRetryBusy(false);
+    }
+  }
+
+  const retryButton =
+    video.status === "error" ? (
+      <Button
+        className="w-full rounded-xl sm:w-auto"
+        variant="outline"
+        disabled={retryBusy}
+        onClick={() => void handleRetry()}
+      >
+        <RotateCcw className={`mr-2 size-4 ${retryBusy ? "animate-spin" : ""}`} />
+        {retryBusy ? "Reintentando…" : "Reintentar"}
+      </Button>
+    ) : null;
 
   useEffect(() => {
     let cancelled = false;
@@ -1279,23 +1322,29 @@ function VideoDetail({ video }: { video: StoredVideo }) {
             </p>
           ) : null}
         </div>
-        {extraction && (
-          <Button
-            className="w-full rounded-xl sm:w-auto"
-            onClick={() =>
-              downloadJson(
-                video.status === "ready"
-                  ? `${safeDownloadName(video.name)}-complete.json`
-                  : `${safeDownloadName(video.name)}-parcial-complete.json`,
-                extraction
-              )
-            }
-          >
-            <Download className="mr-2 size-4" />
-            {video.status === "ready" ? "Descargar JSON completo" : "Descargar JSON parcial"}
-          </Button>
-        )}
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+          {retryButton}
+          {extraction ? (
+            <Button
+              className="w-full rounded-xl sm:w-auto"
+              onClick={() =>
+                downloadJson(
+                  video.status === "ready"
+                    ? `${safeDownloadName(video.name)}-complete.json`
+                    : `${safeDownloadName(video.name)}-parcial-complete.json`,
+                  extraction
+                )
+              }
+            >
+              <Download className="mr-2 size-4" />
+              {video.status === "ready" ? "Descargar JSON completo" : "Descargar JSON parcial"}
+            </Button>
+          ) : null}
+        </div>
       </div>
+      {retryError ? (
+        <p className="mb-4 text-sm text-[#b42318]">{retryError}</p>
+      ) : null}
 
       <div
         role="tablist"
@@ -1328,7 +1377,11 @@ function VideoDetail({ video }: { video: StoredVideo }) {
       <div className="mt-5 min-w-0" role="tabpanel">
         {detailTab === "estado" ? (
           video.status === "error" && !extraction ? (
-            <EmptyCard title="No se pudo procesar" body={video.error || "Error desconocido"} />
+            <EmptyCard
+              title="No se pudo procesar"
+              body={video.error || "Error desconocido"}
+              action={retryButton}
+            />
           ) : (
             <div className="grid gap-4">
               {extraction?.media ? (

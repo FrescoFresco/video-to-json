@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { access, copyFile, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { ensureCompleteExtraction } from "@/lib/extraction";
 import type { StoredVideo, VideoJobResult } from "@/lib/types";
@@ -14,6 +14,45 @@ function dataRoot() {
 
 function jobDir(id: string) {
   return path.join(/*turbopackIgnore: true*/ dataRoot(), id);
+}
+
+function safeSourceName(filename: string) {
+  const cleaned = filename.replace(/[^\w.-]+/g, "_").replace(/^\.+/, "");
+  return cleaned || "video.bin";
+}
+
+export function jobSourcePath(id: string, inputFile: string) {
+  return path.join(/*turbopackIgnore: true*/ jobDir(id), "source", inputFile);
+}
+
+/** Copia el vídeo a data/jobs/{id}/source/ para poder reintentar después. */
+export async function saveJobSource(
+  id: string,
+  fromPath: string,
+  filename: string
+): Promise<string> {
+  const inputFile = safeSourceName(filename);
+  const dir = path.join(/*turbopackIgnore: true*/ jobDir(id), "source");
+  await mkdir(/*turbopackIgnore: true*/ dir, { recursive: true });
+  const dest = jobSourcePath(id, inputFile);
+  await copyFile(/*turbopackIgnore: true*/ fromPath, /*turbopackIgnore: true*/ dest);
+  return inputFile;
+}
+
+export async function jobSourceExists(id: string, inputFile?: string | null) {
+  if (!inputFile) return false;
+  try {
+    await access(/*turbopackIgnore: true*/ jobSourcePath(id, inputFile));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function clearJobResultFile(id: string) {
+  await rm(/*turbopackIgnore: true*/ path.join(jobDir(id), "result.json"), {
+    force: true,
+  }).catch(() => undefined);
 }
 
 export async function ensureDataRoot() {

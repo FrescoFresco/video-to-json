@@ -24,6 +24,11 @@ export type ProcessVideoCallbacks = {
     url?: string | null;
     kind?: "upload" | "url" | "folder";
   };
+  /**
+   * Si true, no borra el archivo de entrada al terminar.
+   * Útil cuando el vídeo está persistido para reintentos.
+   */
+  keepSource?: boolean;
 };
 
 export async function processVideoFile(
@@ -87,6 +92,8 @@ export async function processVideoFile(
     };
   } finally {
     await rm(workDir, { recursive: true, force: true }).catch(() => undefined);
-    await rm(videoPath, { force: true }).catch(() => undefined);
+    if (!cb.keepSource) {
+      await rm(videoPath, { force: true }).catch(() => undefined);
+    }
   }
 }
