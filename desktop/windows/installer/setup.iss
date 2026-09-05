@@ -10,7 +10,7 @@
 #define MyAppExe "VideoExtractionStudio.exe"
 
 [Setup]
-AppId={{8F3C2A91-6B4E-4D2F-9C1A-VIDEOEXTRACT01}
+AppId={{8F3C2A91-6B4E-4D2F-9C1A-7E5B0A1D2C3F}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}

@@ -2,7 +2,7 @@
 # Instalación Mac de un solo comando.
 # Pégalo en Terminal:
 #
-#   curl -fsSL https://cdn.jsdelivr.net/gh/FrescoFresco/video-to-json@main/desktop/macos/bootstrap-from-web.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/FrescoFresco/video-to-json/main/desktop/macos/bootstrap-from-web.sh | bash
 #
 set -euo pipefail
 

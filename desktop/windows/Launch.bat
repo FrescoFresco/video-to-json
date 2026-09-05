@@ -4,6 +4,6 @@ cd /d "%~dp0"
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0install.ps1"
 if errorlevel 1 (
   echo.
-  echo Si algo falló, deja esta ventana abierta y lee el mensaje de arriba.
+  echo Si algo fallo, deja esta ventana abierta y lee el mensaje de arriba.
   pause
 )

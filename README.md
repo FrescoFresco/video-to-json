@@ -12,11 +12,11 @@ Guía corta y clara → **[INSTALL.md](./INSTALL.md)**
 
 ### Windows (recomendado: instalador)
 
-1. Descarga **[VideoExtractionStudio-Setup.exe](https://github.com/FrescoFresco/video-to-json/releases/latest)**
+1. Descarga **[VideoExtractionStudio-Setup.exe](https://github.com/FrescoFresco/video-to-json/releases/latest/download/VideoExtractionStudio-Setup.exe)**
 2. Instálalo (Siguiente → Listo)
 3. Abre el icono del escritorio
 
-Si aún no hay Release, usa el comando de PowerShell (mismo que actualizar):
+**Actualizar:** usa `Update.bat` o el comando de PowerShell de abajo (abrir el icono solo arranca).
 
 ```powershell
 powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/FrescoFresco/video-to-json/main/desktop/windows/bootstrap-from-web.ps1 | iex"
@@ -28,7 +28,7 @@ powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.c
 2. Pega esto y pulsa Enter:
 
 ```bash
-curl -fsSL https://cdn.jsdelivr.net/gh/FrescoFresco/video-to-json@main/desktop/macos/bootstrap-from-web.sh | bash
+curl -fsSL https://raw.githubusercontent.com/FrescoFresco/video-to-json/main/desktop/macos/bootstrap-from-web.sh | bash
 ```
 
 Eso descarga el Studio, instala Docker si puede, lo arranca y abre el navegador.
@@ -36,25 +36,25 @@ Eso descarga el Studio, instala Docker si puede, lo arranca y abre el navegador.
 ### Otras opciones
 
 - Ya tienes la carpeta: Windows → `desktop/windows/Launch.bat` · Mac → `./desktop/macos/install.sh`
-- Manual Docker: `./install.sh` → http://localhost:43141
+- Manual Docker: `./install.sh` → http://127.0.0.1:43141
 - Sin Docker (dev): Node 20+, Python 3.12, ffmpeg → `./install.sh local`
 
 ## Google Drive (guardar JSON en la nube)
 
 ### Opción 1 — API de Drive (recomendado)
 
-En **Ajustes → Google Drive (nube)**:
+En **Conexiones → Google Drive**:
 
 1. Crea una cuenta de servicio en Google Cloud (activa Drive API) y descarga el JSON.
 2. Crea una carpeta en Drive, copia el **ID** de la URL (`…/folders/ID`) y compártela con el email `…@…gserviceaccount.com` (editor).
-3. Pega el ID + el JSON en Ajustes, activa y pulsa **Probar Drive**.
+3. Pega el ID + el JSON en Conexiones, activa y pulsa **Probar**.
 
 Cada extracción terminada se sube sola a esa carpeta. No hace falta Drive Desktop.
 
 ### Opción 2 — Drive para escritorio (carpetas locales)
 
 1. Carpeta de entrada + carpeta de salida sincronizadas.
-2. En Ajustes: activa vigilancia y pon las rutas locales.
+2. En **Conexiones → Carpeta local**: activa vigilancia y pon las rutas locales.
 3. Deja el Studio encendido. Vídeo a la entrada → JSON en la salida.
 
 También puedes usar webhook (Make/n8n) si prefieres otro destino.
@@ -96,7 +96,7 @@ También puedes usar webhook (Make/n8n) si prefieres otro destino.
 
 ```bash
 curl -F "files=@video1.mp4" -F "files=@video2.mp4" -F "files=@video3.mp4" \
-  http://localhost:43141/api/jobs
+  http://127.0.0.1:43141/api/jobs
 ```
 
 Respuesta: lista de trabajos. Se procesan en cola (`VX_MAX_CONCURRENT`, por defecto 1). Cada uno, al terminar, puede disparar el webhook.
@@ -113,12 +113,12 @@ Por API:
 
 ```bash
 # Uno
-curl -X POST http://localhost:43141/api/jobs/from-url \
+curl -X POST http://127.0.0.1:43141/api/jobs/from-url \
   -H "Content-Type: application/json" \
   -d '{"url":"https://www.tiktok.com/@cuenta/video/123"}'
 
 # Varios
-curl -X POST http://localhost:43141/api/jobs/from-url \
+curl -X POST http://127.0.0.1:43141/api/jobs/from-url \
   -H "Content-Type: application/json" \
   -d '{"urls":["https://www.tiktok.com/@a/video/1","https://www.youtube.com/watch?v=xyz"]}'
 ```

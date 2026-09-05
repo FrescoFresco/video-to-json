@@ -4,7 +4,8 @@
 
 1. **VideoExtractionStudio-Setup.exe** — normal installer (Next → Finish)
 2. Desktop shortcut **Video Extraction Studio**
-3. First open downloads/starts the Studio (Docker). Later opens it again.
+3. First open downloads/starts the Studio (Docker). Later opens it again (does **not** auto-update).
+4. To update: `Update.bat` or re-run the PowerShell bootstrap command.
 
 ## Build
 

@@ -307,7 +307,7 @@ export function ConnectionsView() {
         </div>
       )}
 
-      {(message || error) && (
+      {(message || error) && !openPanel && (
         <div className="min-w-0 rounded-xl border border-[#e7e7eb] bg-white px-4 py-3">
           {message ? <p className="text-sm text-[#177245]">{message}</p> : null}
           {error ? <p className="text-sm text-[#b42318]">{error}</p> : null}
@@ -321,6 +321,8 @@ export function ConnectionsView() {
           statusOk={modalMeta.statusOk}
           statusLabel={modalMeta.statusLabel}
           icon={modalMeta.icon}
+          message={message}
+          error={error}
           onClose={closePanel}
           footer={
             openPanel === "drive" ? (

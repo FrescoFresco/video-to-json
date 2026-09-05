@@ -17,6 +17,8 @@ export function ConnectionConfigModal({
   onClose,
   children,
   footer,
+  message,
+  error,
 }: {
   open: boolean;
   title: string;
@@ -26,6 +28,8 @@ export function ConnectionConfigModal({
   onClose: () => void;
   children: ReactNode;
   footer?: ReactNode;
+  message?: string | null;
+  error?: string | null;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -85,6 +89,12 @@ export function ConnectionConfigModal({
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">{children}</div>
         {footer ? (
           <footer className="shrink-0 border-t border-[#ececf0] px-4 py-3 sm:px-5">
+            {(message || error) && (
+              <div className="mb-3 min-w-0 rounded-xl border border-[#e7e7eb] bg-[#fbfbfc] px-3 py-2.5">
+                {message ? <p className="text-sm text-[#177245]">{message}</p> : null}
+                {error ? <p className="text-sm text-[#b42318]">{error}</p> : null}
+              </div>
+            )}
             {footer}
           </footer>
         ) : null}

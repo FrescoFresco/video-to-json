@@ -1,4 +1,4 @@
-﻿# Single-command Windows install.
+# Single-command Windows install.
 # Paste in PowerShell:
 #
 #   powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/FrescoFresco/video-to-json/main/desktop/windows/bootstrap-from-web.ps1 | iex"
@@ -7,6 +7,7 @@
 #   powershell -ExecutionPolicy Bypass -File .\desktop\windows\install.ps1
 #
 # ASCII-only so Windows PowerShell 5.1 does not break on encoding.
+# IMPORTANT: keep this file UTF-8 WITHOUT BOM (irm | iex on PS 5.1).
 
 $ErrorActionPreference = "Stop"
 
@@ -57,11 +58,13 @@ if (-not (Test-Path $InstallScript)) {
 }
 
 Set-Location $InstallDir
+$env:VX_FORCE_REBUILD = "1"
 
 $psi = Start-Process -FilePath "powershell.exe" -ArgumentList @(
   "-NoProfile",
   "-ExecutionPolicy", "Bypass",
-  "-File", $InstallScript
+  "-File", $InstallScript,
+  "-ForceRebuild"
 ) -WorkingDirectory $InstallDir -Wait -PassThru -NoNewWindow
 
 if ($null -ne $psi.ExitCode -and $psi.ExitCode -ne 0) {

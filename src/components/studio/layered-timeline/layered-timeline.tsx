@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import type { TimelineEvent } from "@/lib/types";
 import { buildTimelineLayers } from "@/lib/timeline-layers";
 import { BlockDetailPanel } from "./block-detail-panel";
@@ -25,6 +25,17 @@ export function LayeredTimeline({
   );
   const { selectedId, selected, selectedColor, selectBlock, clearSelection } =
     useBlockSelection(model.layers);
+
+  useEffect(() => {
+    if (!selected) return;
+    const mq = window.matchMedia("(max-width: 1023px)");
+    if (!mq.matches) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [selected]);
 
   if (!model.layers.length) {
     return (
@@ -74,7 +85,7 @@ export function LayeredTimeline({
         </div>
 
         <div className="hidden lg:block" aria-hidden={!selected}>
-          <div className="absolute inset-y-0 right-0 w-80">
+          <div className="absolute inset-y-0 right-0 flex h-auto min-h-0 w-80 flex-col overflow-hidden">
             <BlockDetailPanel
               block={selected}
               color={selectedColor}

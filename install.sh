@@ -27,7 +27,7 @@ start_docker() {
     docker-compose up --build -d
   fi
   echo
-  echo "Listo. Abre http://localhost:43141"
+  echo "Listo. Abre http://127.0.0.1:43141"
   echo "Parar: docker compose down"
 }
 
@@ -59,12 +59,12 @@ start_local() {
     echo "→ build de producción"
     npm run build
     echo
-    echo "Listo. Abre http://localhost:${PORT}"
+    echo "Listo. Abre http://127.0.0.1:${PORT}"
     exec npm run start
   fi
 
   echo
-  echo "Listo. Abre http://localhost:${PORT}"
+  echo "Listo. Abre http://127.0.0.1:${PORT}"
   exec npm run dev
 }
 

@@ -1,15 +1,33 @@
-﻿# Windows one-click installer (ASCII-only for PowerShell 5.1).
+# Windows one-click installer (ASCII-only for PowerShell 5.1).
 # Usage:
 #   powershell -ExecutionPolicy Bypass -File .\desktop\windows\install.ps1
+# Force rebuild even if the server is already up (used by Update / bootstrap):
+#   $env:VX_FORCE_REBUILD = "1"
+
+param(
+  [switch]$ForceRebuild
+)
 
 $ErrorActionPreference = "Stop"
 $Root = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 Set-Location $Root
 $Url = "http://127.0.0.1:43141"
+$DoForce = $ForceRebuild -or ($env:VX_FORCE_REBUILD -eq "1")
 
 function Write-Step([string]$msg) {
   Write-Host ""
   Write-Host "==> $msg"
+}
+
+function Refresh-DockerPath {
+  $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
+  $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+  $extra = @(
+    "$env:ProgramFiles\Docker\Docker\resources\bin",
+    "$env:ProgramFiles\Docker\Docker",
+    "${env:ProgramFiles(x86)}\Docker\Docker\resources\bin"
+  ) | Where-Object { $_ -and (Test-Path $_) }
+  $env:Path = (@($machinePath, $userPath) + $extra) -join ";"
 }
 
 function Show-DockerWslHelp {
@@ -24,7 +42,19 @@ function Show-DockerWslHelp {
   Write-Host ""
 }
 
+function Show-DockerPathHelp {
+  Write-Host ""
+  Write-Host "Docker Desktop parece instalado, pero el comando 'docker' no esta en PATH."
+  Write-Host "Haz esto:"
+  Write-Host "  1) Abre Docker Desktop y espera a 'Engine running'"
+  Write-Host "  2) Cierra esta ventana"
+  Write-Host "  3) Abre una nueva ventana de PowerShell / Launch.bat"
+  Write-Host "  4) Si sigue fallando, reinicia el PC y vuelve a intentar"
+  Write-Host ""
+}
+
 function Test-DockerCli {
+  Refresh-DockerPath
   return [bool](Get-Command docker -ErrorAction SilentlyContinue)
 }
 
@@ -76,9 +106,7 @@ function Install-DockerDesktop {
     exit 1
   }
 
-  $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
-  $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
-  $env:Path = "$machinePath;$userPath"
+  Refresh-DockerPath
 
   if (-not (Get-DockerDesktopExe)) {
     Write-Host "Docker instalado. Cierra esta ventana, reinicia si Windows lo pide,"
@@ -90,11 +118,19 @@ function Install-DockerDesktop {
 }
 
 function Start-DockerDesktopAndWait {
+  Refresh-DockerPath
+
   if (Test-DockerEngine) { return }
 
   $exe = Get-DockerDesktopExe
   if (-not $exe) {
     Write-Host "No encuentro Docker Desktop. Abrelo a mano y vuelve a intentar."
+    exit 1
+  }
+
+  if (-not (Test-DockerCli)) {
+    Write-Host "Docker Desktop esta instalado, pero 'docker' no esta en PATH todavia."
+    Show-DockerPathHelp
     exit 1
   }
 
@@ -110,7 +146,9 @@ function Start-DockerDesktopAndWait {
     Start-Sleep -Seconds 2
   }
 
-  Write-Host "Docker no arranco a tiempo."
+  Write-Host "Docker no arranco a tiempo (el motor no responde)."
+  Write-Host "Abre Docker Desktop, espera a 'Engine running' y vuelve a intentar."
+  Write-Host "Si Docker pide WSL2:"
   Show-DockerWslHelp
   exit 1
 }
@@ -118,7 +156,9 @@ function Start-DockerDesktopAndWait {
 Write-Host "Video Extraction Studio"
 Write-Host "Carpeta: $Root"
 
-if (Test-Server) {
+Refresh-DockerPath
+
+if ((-not $DoForce) -and (Test-Server)) {
   Write-Step "Ya esta en marcha. Abriendo navegador..."
   Start-Process $Url
   exit 0
@@ -128,12 +168,28 @@ if (-not (Test-DockerCli) -and -not (Get-DockerDesktopExe)) {
   Install-DockerDesktop
 }
 
+if (-not (Test-DockerCli) -and (Get-DockerDesktopExe)) {
+  Refresh-DockerPath
+  if (-not (Test-DockerCli)) {
+    Show-DockerPathHelp
+    exit 1
+  }
+}
+
 Start-DockerDesktopAndWait
 
-Write-Step "Construyendo y arrancando el Studio (la primera vez tarda)..."
+if ($DoForce) {
+  Write-Step "Actualizando: reconstruyendo el Studio..."
+  docker compose down 2>$null | Out-Null
+} else {
+  Write-Step "Construyendo y arrancando el Studio (la primera vez tarda)..."
+}
+
 docker compose up --build -d
 if ($LASTEXITCODE -ne 0) {
-  Write-Host "Fallo docker compose."
+  Write-Host "Fallo docker compose (codigo $LASTEXITCODE)."
+  Write-Host "No siempre es WSL. Revisa el mensaje de Docker arriba."
+  Write-Host "Si el motor no arranca o pide WSL2:"
   Show-DockerWslHelp
   exit 1
 }

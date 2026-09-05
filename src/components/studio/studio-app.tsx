@@ -2424,7 +2424,7 @@ function InstallDocsSection() {
               Descarga{" "}
               <a
                 className="font-medium text-[#171719] underline underline-offset-2"
-                href="https://github.com/FrescoFresco/video-to-json/releases/latest"
+                href="https://github.com/FrescoFresco/video-to-json/releases/latest/download/VideoExtractionStudio-Setup.exe"
                 target="_blank"
                 rel="noreferrer"
               >
@@ -2434,10 +2434,7 @@ function InstallDocsSection() {
             <li>Instálalo (Siguiente → Listo)</li>
             <li>Abre el icono del escritorio</li>
           </ol>
-          <p className="mt-3 text-[12px] leading-relaxed text-[#75757d]">
-            Si aun no hay instalador en Releases, usa el comando de abajo.
-          </p>
-          <p className="mt-2 text-[12px] font-medium text-[#171719]">O con un comando:</p>
+          <p className="mt-3 text-[12px] font-medium text-[#171719]">O con un comando:</p>
           <CopyCommand command={WIN_INSTALL_CMD} />
           <p className="mt-2 text-[12px] leading-relaxed text-[#75757d]">
             Si pide permiso → Sí. Si pide reiniciar → reinicia y repite el mismo comando.
@@ -2465,12 +2462,13 @@ function InstallDocsSection() {
 
       <div className="mt-4 grid gap-1 text-[12.5px] leading-relaxed text-[#75757d]">
         <div>
-          <span className="font-medium text-[#171719]">Abrir otra vez:</span>{" "}
-          <code className="text-[12px]">Launch.bat</code> (Windows) ·{" "}
-          <code className="text-[12px]">desktop/macos/install.sh</code> (Mac)
+          <span className="font-medium text-[#171719]">Abrir otra vez:</span> icono del escritorio
+          (Windows) · <code className="text-[12px]">desktop/macos/install.sh</code> (Mac)
         </div>
         <div>
-          <span className="font-medium text-[#171719]">Actualizar:</span> el mismo comando
+          <span className="font-medium text-[#171719]">Actualizar:</span>{" "}
+          <code className="text-[12px]">Update.bat</code> o el mismo comando de arriba (abrir el
+          icono solo arranca, no actualiza)
         </div>
         <div>
           <span className="font-medium text-[#171719]">Parar:</span>{" "}
@@ -2486,7 +2484,7 @@ function DocsView({ onOpenConnections }: { onOpenConnections: () => void }) {
 
   const tabs = [
     { id: "install" as const, label: "Instalar" },
-    { id: "pc" as const, label: "PC" },
+    { id: "pc" as const, label: "Requisitos" },
     { id: "json" as const, label: "JSON" },
     { id: "connect" as const, label: "Conectar" },
     { id: "api" as const, label: "API" },
@@ -2640,26 +2638,26 @@ function DocsView({ onOpenConnections }: { onOpenConnections: () => void }) {
         <div className="grid min-w-0 gap-3">
           <section className="min-w-0 rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
             <div className="text-sm font-semibold">Subir un vídeo</div>
-            <DocsCode>{`curl -F "file=@clip.mp4" http://localhost:43141/api/jobs
+            <DocsCode>{`curl -F "file=@clip.mp4" http://127.0.0.1:43141/api/jobs
 
-curl http://localhost:43141/api/jobs/JOB_ID
-curl http://localhost:43141/api/jobs/JOB_ID/result`}</DocsCode>
+curl http://127.0.0.1:43141/api/jobs/JOB_ID
+curl http://127.0.0.1:43141/api/jobs/JOB_ID/result`}</DocsCode>
           </section>
 
           <section className="min-w-0 rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
             <div className="text-sm font-semibold">Varios vídeos</div>
             <DocsCode>{`curl -F "files=@video1.mp4" \\
   -F "files=@video2.mp4" \\
-  http://localhost:43141/api/jobs`}</DocsCode>
+  http://127.0.0.1:43141/api/jobs`}</DocsCode>
           </section>
 
           <section className="min-w-0 rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
             <div className="text-sm font-semibold">Links (TikTok, YouTube…)</div>
-            <DocsCode>{`curl -X POST http://localhost:43141/api/jobs/from-url \\
+            <DocsCode>{`curl -X POST http://127.0.0.1:43141/api/jobs/from-url \\
   -H "Content-Type: application/json" \\
   -d '{"url":"https://www.tiktok.com/@cuenta/video/123"}'`}</DocsCode>
             <p className="mt-3 text-[12.5px] text-[#75757d]">O muchos:</p>
-            <DocsCode>{`curl -X POST http://localhost:43141/api/jobs/from-url \\
+            <DocsCode>{`curl -X POST http://127.0.0.1:43141/api/jobs/from-url \\
   -H "Content-Type: application/json" \\
   -d '{"urls":["https://.../1","https://.../2"]}'`}</DocsCode>
           </section>

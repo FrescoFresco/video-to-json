@@ -8,7 +8,7 @@ Al terminar, se abre el navegador en **http://127.0.0.1:43141**
 
 ## Windows (recomendado: instalador)
 
-1. Descarga **[VideoExtractionStudio-Setup.exe](https://github.com/FrescoFresco/video-to-json/releases/latest)**  
+1. Descarga **[VideoExtractionStudio-Setup.exe](https://github.com/FrescoFresco/video-to-json/releases/latest/download/VideoExtractionStudio-Setup.exe)**  
 2. Instálalo (Siguiente → Listo)  
 3. Abre el icono **Video Extraction Studio** del escritorio  
 
@@ -20,7 +20,7 @@ La primera vez puede tardar (Docker + descarga). Si Docker pide WSL: PowerShell 
 powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/FrescoFresco/video-to-json/main/desktop/windows/bootstrap-from-web.ps1 | iex"
 ```
 
-**Actualizar:** vuelve a abrir la app, o pega otra vez el comando, o usa `Update.bat`.
+**Actualizar:** usa `Update.bat` o pega otra vez el comando de PowerShell. Abrir el icono solo arranca el Studio; no descarga la última versión.
 
 **Parar:**
 
@@ -47,7 +47,7 @@ O en GitHub: Actions → **Windows installer** → Run workflow (o publica un ta
 2. Copia **toda** esta línea, pégala y pulsa **Enter**:
 
 ```bash
-curl -fsSL https://cdn.jsdelivr.net/gh/FrescoFresco/video-to-json@main/desktop/macos/bootstrap-from-web.sh | bash
+curl -fsSL https://raw.githubusercontent.com/FrescoFresco/video-to-json/main/desktop/macos/bootstrap-from-web.sh | bash
 ```
 
 3. Espera (la primera vez puede tardar).
