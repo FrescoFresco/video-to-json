@@ -21,7 +21,7 @@ export function BlockDetailPanel({
 }) {
   if (!block) {
     return (
-      <div className="flex h-full min-h-[12rem] flex-col justify-center rounded-2xl border border-dashed border-[#d7d7dc] bg-[#fbfbfc] p-4 text-sm text-[#75757d]">
+      <div className="flex h-full min-h-0 flex-col justify-center rounded-2xl border border-dashed border-[#d7d7dc] bg-[#fbfbfc] p-4 text-sm text-[#75757d]">
         Pulsa una caja o un punto para ver su contenido.
       </div>
     );
@@ -33,12 +33,12 @@ export function BlockDetailPanel({
 
   const shell =
     variant === "sheet"
-      ? "rounded-t-2xl border border-[#e7e7eb] bg-white p-4 shadow-[0_-8px_30px_rgba(0,0,0,0.08)]"
-      : "flex h-full min-h-0 flex-col rounded-2xl border border-[#e7e7eb] bg-white p-4";
+      ? "flex max-h-[min(55vh,28rem)] flex-col overflow-hidden rounded-t-2xl border border-[#e7e7eb] bg-white shadow-[0_-8px_30px_rgba(0,0,0,0.08)]"
+      : "flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-[#e7e7eb] bg-white";
 
   return (
     <div className={shell}>
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex shrink-0 items-start justify-between gap-2 px-4 pt-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             {color ? (
@@ -67,17 +67,22 @@ export function BlockDetailPanel({
         </button>
       </div>
 
-      {block.label ? (
-        <div className="mt-3 text-[12px] font-medium uppercase tracking-[0.04em] text-[#6a7380]">
-          {block.label}
-        </div>
-      ) : null}
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+        {block.label ? (
+          <div className="text-[12px] font-medium uppercase tracking-[0.04em] text-[#6a7380]">
+            {block.label}
+          </div>
+        ) : null}
+        <p
+          className={`text-sm leading-relaxed break-words text-[#171719] ${
+            block.label ? "mt-2" : ""
+          }`}
+        >
+          {block.text || "Sin texto en este bloque."}
+        </p>
+      </div>
 
-      <p className="mt-2 text-sm leading-relaxed break-words text-[#171719]">
-        {block.text || "Sin texto en este bloque."}
-      </p>
-
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="shrink-0 border-t border-[#ececf0] px-4 py-3">
         <Button
           className="rounded-xl"
           onClick={() => onOpenModule(block.moduleId)}

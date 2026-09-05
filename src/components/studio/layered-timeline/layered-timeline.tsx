@@ -45,7 +45,8 @@ export function LayeredTimeline({
         </p>
       </div>
 
-      <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+      {/* La altura la marcan las capas; el detalle se ancla a esa misma altura. */}
+      <div className="relative grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="min-w-0 overflow-hidden rounded-2xl border border-[#e7e7eb] bg-white">
           <div className="grid grid-cols-[7.5rem_minmax(0,1fr)] border-b border-[#ececf0] sm:grid-cols-[9rem_minmax(0,1fr)]">
             <div className="px-2 py-2 text-[11px] font-medium uppercase tracking-[0.04em] text-[#9a9aa3] sm:px-3">
@@ -72,14 +73,16 @@ export function LayeredTimeline({
           </div>
         </div>
 
-        <div className="hidden min-h-[16rem] lg:block">
-          <BlockDetailPanel
-            block={selected}
-            color={selectedColor}
-            onClose={clearSelection}
-            onOpenModule={onOpenModule}
-            variant="side"
-          />
+        <div className="hidden lg:block" aria-hidden={!selected}>
+          <div className="absolute inset-y-0 right-0 w-80">
+            <BlockDetailPanel
+              block={selected}
+              color={selectedColor}
+              onClose={clearSelection}
+              onOpenModule={onOpenModule}
+              variant="side"
+            />
+          </div>
         </div>
       </div>
 
