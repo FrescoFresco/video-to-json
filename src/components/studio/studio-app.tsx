@@ -2451,60 +2451,92 @@ function InstallDocsSection() {
 }
 
 function DocsView({ onOpenConnections }: { onOpenConnections: () => void }) {
+  const [tab, setTab] = useState<"install" | "pc" | "json" | "connect" | "api">("install");
+
+  const tabs = [
+    { id: "install" as const, label: "Instalar" },
+    { id: "pc" as const, label: "PC" },
+    { id: "json" as const, label: "JSON" },
+    { id: "connect" as const, label: "Conectar" },
+    { id: "api" as const, label: "API" },
+  ];
+
   return (
     <div className="grid min-w-0 gap-4 sm:gap-5">
       <div className="min-w-0">
         <h1 className="text-[clamp(24px,2.4vw,32px)] font-semibold tracking-[-0.035em]">Docs</h1>
         <p className="mt-1 text-sm leading-relaxed text-[#75757d]">
-          Instalar el Studio y conectar salidas (Drive, webhook, carpetas).
+          Elige una pestaña. Solo lo que necesitas en cada momento.
         </p>
       </div>
 
-      <InstallDocsSection />
-
-      <section className="min-w-0 rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
-        <div className="text-sm font-semibold">Requisitos del ordenador</div>
-        <p className="mt-2 text-sm leading-relaxed text-[#75757d]">
-          Todo corre en local (sin GPU obligatoria). En CPU funciona, pero puede ir lento.
-        </p>
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
-          <div className="min-w-0 rounded-xl bg-[#f5f5f7] p-4">
-            <div className="text-sm font-medium">Mínimo usable</div>
-            <ul className="mt-2 grid gap-1.5 text-[12.5px] leading-relaxed text-[#75757d]">
-              <li>Windows 10/11, macOS 12+ o Linux reciente</li>
-              <li>16 GB de RAM (con 8 GB va justo)</li>
-              <li>CPU de los últimos ~6–8 años, o Apple Silicon (M1/M2/M3…)</li>
-              <li>15–25 GB libres en disco (modelos de IA)</li>
-              <li>Docker Desktop, o Node + Python + ffmpeg</li>
-            </ul>
-          </div>
-          <div className="min-w-0 rounded-xl bg-[#f5f5f7] p-4">
-            <div className="text-sm font-medium">Recomendado</div>
-            <ul className="mt-2 grid gap-1.5 text-[12.5px] leading-relaxed text-[#75757d]">
-              <li>32 GB de RAM</li>
-              <li>SSD con 30+ GB libres</li>
-              <li>M1/M2/M3 o Intel/AMD de 6+ núcleos</li>
-              <li>GPU opcional (este build está pensado en CPU)</li>
-            </ul>
-          </div>
+      <div className="min-w-0 overflow-x-auto">
+        <div
+          role="tablist"
+          aria-label="Secciones de documentación"
+          className="inline-flex min-w-full gap-1 rounded-xl border border-[#e7e7eb] bg-[#f5f5f7] p-1 sm:min-w-0"
+        >
+          {tabs.map((item) => {
+            const active = tab === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setTab(item.id)}
+                className={`shrink-0 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors sm:flex-1 ${
+                  active
+                    ? "bg-white text-[#171719] shadow-[0_1px_0_rgba(0,0,0,0.04)]"
+                    : "text-[#75757d] hover:text-[#171719]"
+                }`}
+              >
+                {item.label}
+              </button>
+            );
+          })}
         </div>
-        <p className="mt-4 text-[12.5px] leading-relaxed text-[#75757d]">
-          Vídeos cortos (30–60 s): minutos en CPU. Vídeos largos o con visión: pueden tardar
-          bastante. Un portátil viejo de 8 GB no es buen candidato.
-        </p>
-      </section>
+      </div>
 
-      <section className="min-w-0 overflow-hidden rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
-        <div className="text-sm font-semibold">JSON de salida completo (schema 2.0)</div>
-        <p className="mt-2 text-sm leading-relaxed text-[#75757d]">
-          Cada vídeo genera un único JSON denso (<code className="text-[12.5px]">kind: video_complete</code>).
-          Dentro van <strong className="font-medium">todos los módulos juntos</strong> en{" "}
-          <code className="text-[12.5px]">content</code>, una{" "}
-          <code className="text-[12.5px]">timeline</code> ordenada y el resumen de la corrida en{" "}
-          <code className="text-[12.5px]">run</code>. La versión es{" "}
-          <code className="text-[12.5px]">&quot;2.0&quot;</code>.
-        </p>
-        <DocsCode>{`extraction  (schema_version: "2.0", kind: "video_complete")
+      {tab === "install" ? <InstallDocsSection /> : null}
+
+      {tab === "pc" ? (
+        <section className="min-w-0 rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
+          <div className="text-sm font-semibold">Qué PC hace falta</div>
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <div className="min-w-0 rounded-xl bg-[#f5f5f7] p-4">
+              <div className="text-sm font-medium">Mínimo</div>
+              <ul className="mt-2 grid gap-1.5 text-[12.5px] leading-relaxed text-[#75757d]">
+                <li>Windows 10/11, macOS 12+ o Linux</li>
+                <li>16 GB de RAM (8 GB va justo)</li>
+                <li>CPU reciente o Apple M1/M2/M3</li>
+                <li>15–25 GB libres</li>
+                <li>Docker Desktop</li>
+              </ul>
+            </div>
+            <div className="min-w-0 rounded-xl bg-[#f5f5f7] p-4">
+              <div className="text-sm font-medium">Mejor</div>
+              <ul className="mt-2 grid gap-1.5 text-[12.5px] leading-relaxed text-[#75757d]">
+                <li>32 GB de RAM</li>
+                <li>SSD con 30+ GB libres</li>
+                <li>M1/M2/M3 o CPU de 6+ núcleos</li>
+                <li>GPU no hace falta</li>
+              </ul>
+            </div>
+          </div>
+          <p className="mt-4 text-[12.5px] leading-relaxed text-[#75757d]">
+            Vídeo corto: minutos. Vídeo largo: puede tardar bastante.
+          </p>
+        </section>
+      ) : null}
+
+      {tab === "json" ? (
+        <section className="min-w-0 overflow-hidden rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
+          <div className="text-sm font-semibold">Qué sale (JSON)</div>
+          <p className="mt-2 text-sm leading-relaxed text-[#75757d]">
+            Un archivo por vídeo, con todo dentro.
+          </p>
+          <DocsCode>{`extraction  (schema_version: "2.0", kind: "video_complete")
 ├── source
 │   ├── filename
 │   ├── processed_at
@@ -2525,188 +2557,110 @@ function DocsView({ onOpenConnections }: { onOpenConnections: () => void }) {
 │   ├── music_ambiance
 │   ├── audio_events
 │   └── summary
-│         └── cada uno: { status, items, data, … }
-├── timeline[]           ← todas las filas ordenadas por tiempo
-└── modules[]            ← misma info en lista (UI / compat)`}</DocsCode>
-        <p className="mt-3 text-[12.5px] leading-relaxed text-[#75757d]">
-          Descárgalo como <code className="text-[12.5px]">*-complete.json</code>, o recíbelo en el
-          webhook / carpeta de salida de Drive.
-        </p>
-      </section>
+├── timeline[]           ← filas ordenadas por tiempo
+└── modules[]            ← misma info en lista`}</DocsCode>
+          <p className="mt-3 text-[12.5px] leading-relaxed text-[#75757d]">
+            Descarga: <code className="text-[12px]">*-complete.json</code>. O llega solo por
+            Drive / webhook.
+          </p>
+        </section>
+      ) : null}
 
-      <section className="min-w-0 rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
-        <div className="text-sm font-semibold">Las dos direcciones</div>
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
-          <div className="min-w-0 rounded-xl bg-[#f5f5f7] p-4">
-            <div className="text-sm font-medium">1. Meter vídeos (API)</div>
-            <p className="mt-2 text-[12.5px] leading-relaxed text-[#75757d]">
-              Otra app (o tú con curl) envía uno o muchos vídeos a este programa.
-            </p>
-          </div>
-          <div className="min-w-0 rounded-xl bg-[#f5f5f7] p-4">
-            <div className="text-sm font-medium">2. Avisar al terminar (webhook)</div>
-            <p className="mt-2 text-[12.5px] leading-relaxed text-[#75757d]">
-              Cuando un vídeo acaba, este programa hace POST a tu URL con el JSON.
-            </p>
-          </div>
-        </div>
-      </section>
+      {tab === "connect" ? (
+        <div className="grid min-w-0 gap-3">
+          <section className="min-w-0 rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
+            <div className="text-sm font-semibold">Google Drive</div>
+            <ol className="mt-3 grid gap-2 text-sm text-[#171719]">
+              <li>1. Conexiones → Google Drive</li>
+              <li>2. Pega ID de carpeta + JSON de cuenta de servicio</li>
+              <li>3. Comparte la carpeta con ese email (editor)</li>
+              <li>4. Activa, guarda y pulsa «Probar Drive»</li>
+            </ol>
+            <div className="mt-4">
+              <Button className="rounded-xl" onClick={onOpenConnections}>
+                Ir a Conexiones
+              </Button>
+            </div>
+          </section>
 
-      <section className="min-w-0 overflow-hidden rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
-        <div className="text-sm font-semibold">Google Drive (JSON en la nube)</div>
-        <p className="mt-2 text-sm leading-relaxed text-[#75757d]">
-          En Conexiones pegas el ID de una carpeta de Drive y la clave de una cuenta de servicio:
-          cada JSON se sube solo a la nube. También puedes usar carpetas locales con Drive
-          Desktop si lo prefieres.
-        </p>
-        <ol className="mt-4 grid gap-2 text-sm text-[#171719]">
-          <li>1. Conexiones → Google Drive: ID de carpeta + JSON de cuenta de servicio.</li>
-          <li>2. Comparte la carpeta con el email de esa cuenta (permiso editor).</li>
-          <li>3. Activa, guarda y pulsa «Probar Drive». Cada extracción se copia ahí.</li>
-        </ol>
-        <div className="mt-4">
-          <Button className="rounded-xl" onClick={onOpenConnections}>
-            Ir a Conexiones
-          </Button>
-        </div>
-      </section>
-
-      <section className="min-w-0 overflow-hidden rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
-        <div className="text-sm font-semibold">Webhook</div>
-        <p className="mt-2 text-sm leading-relaxed text-[#75757d]">
-          Configura la URL en Conexiones. Sirve para Make, n8n, Zapier o tu backend.
-        </p>
-        <ol className="mt-4 grid gap-2 text-sm text-[#171719]">
-          <li>1. Abre Conexiones y pega tu URL de webhook.</li>
-          <li>2. Guarda y pulsa «Probar webhook».</li>
-          <li>3. Procesa un vídeo: al terminar recibirás un POST automático.</li>
-        </ol>
-        <div className="mt-4">
-          <Button className="rounded-xl" onClick={onOpenConnections}>
-            Ir a Conexiones
-          </Button>
-        </div>
-        <p className="mt-4 text-[12.5px] text-[#75757d]">Ejemplo de lo que recibe la otra app:</p>
-        <DocsCode>{`{
+          <section className="min-w-0 rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
+            <div className="text-sm font-semibold">Webhook</div>
+            <ol className="mt-3 grid gap-2 text-sm text-[#171719]">
+              <li>1. Conexiones → pega tu URL</li>
+              <li>2. Guarda y «Probar webhook»</li>
+              <li>3. Al terminar un vídeo, llega un POST con el JSON</li>
+            </ol>
+            <div className="mt-4">
+              <Button className="rounded-xl" onClick={onOpenConnections}>
+                Ir a Conexiones
+              </Button>
+            </div>
+            <p className="mt-4 text-[12.5px] text-[#75757d]">Ejemplo de POST:</p>
+            <DocsCode>{`{
   "event": "job.ready",
-  "sent_at": "2026-09-04T00:00:00.000Z",
   "job": { "id": "job_123", "name": "clip.mp4", "status": "ready" },
-  "extraction": {
-    "schema_version": "2.0",
-    "kind": "video_complete",
-    "source": { "filename": "clip.mp4", "processed_at": "...", "input": "url", "url": "https://www.tiktok.com/@cuenta/video/123" },
-    "media": { "duration_ms": 12000, "width": 1080, "height": 1920 },
-    "run": { "module_count": 10, "ok": 9, "empty": 1, "error": 0 },
-    "content": {
-      "speech": { "status": "ok", "data": { "...": "payload Whisper" }, "items": [ ... ] },
-      "on_screen_text": { "status": "ok", "data": { "...": "OCR" }, "items": [ ... ] },
-      "summary": { "status": "ok", "data": { "text": "..." } }
-    },
-    "timeline": [ { "module_id": "speech", "start_ms": 0, "text": "..." } ],
-    "modules": [ { "id": "speech", "status": "ok", "items": [ ... ] } ]
-  }
+  "extraction": { "kind": "video_complete", "content": { "...": "..." } }
 }`}</DocsCode>
-      </section>
+          </section>
+        </div>
+      ) : null}
 
-      <section className="min-w-0 overflow-hidden rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
-        <div className="text-sm font-semibold">Subir un vídeo desde fuera</div>
-        <p className="mt-2 text-sm leading-relaxed text-[#75757d]">
-          La otra app manda el archivo a la API. Luego puede consultar el estado o esperar el webhook.
-        </p>
-        <DocsCode>{`curl -F "file=@clip.mp4" \\
-  http://localhost:43141/api/jobs
+      {tab === "api" ? (
+        <div className="grid min-w-0 gap-3">
+          <section className="min-w-0 rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
+            <div className="text-sm font-semibold">Subir un vídeo</div>
+            <DocsCode>{`curl -F "file=@clip.mp4" http://localhost:43141/api/jobs
 
-# Estado
 curl http://localhost:43141/api/jobs/JOB_ID
-
-# Resultado
 curl http://localhost:43141/api/jobs/JOB_ID/result`}</DocsCode>
-      </section>
+          </section>
 
-      <section className="min-w-0 overflow-hidden rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
-        <div className="text-sm font-semibold">Varios vídeos de golpe</div>
-        <p className="mt-2 text-sm leading-relaxed text-[#75757d]">
-          Puedes mandar muchos archivos en la misma petición. Se encolan y, si hay webhook,
-          cada uno avisa cuando termina.
-        </p>
-        <DocsCode>{`curl -F "files=@video1.mp4" \\
+          <section className="min-w-0 rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
+            <div className="text-sm font-semibold">Varios vídeos</div>
+            <DocsCode>{`curl -F "files=@video1.mp4" \\
   -F "files=@video2.mp4" \\
-  -F "files=@video3.mp4" \\
   http://localhost:43141/api/jobs`}</DocsCode>
-      </section>
+          </section>
 
-      <section className="min-w-0 overflow-hidden rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
-        <div className="text-sm font-semibold">Importar muchos de golpe</div>
-        <p className="mt-2 text-sm leading-relaxed text-[#75757d]">
-          Tres formas cómodas. Todo acaba en la misma cola de Vídeos.
-        </p>
-        <ol className="mt-4 grid gap-2 text-sm text-[#171719]">
-          <li>
-            1. <strong className="font-medium">Carpeta de vídeos:</strong> en la home,
-            «Seleccionar carpeta» (o arrastra la carpeta). Encola todos los MP4/MOV/etc.
-          </li>
-          <li>
-            2. <strong className="font-medium">Pegar links:</strong> uno por línea en el
-            cuadro de texto → «Analizar links».
-          </li>
-          <li>
-            3. <strong className="font-medium">Archivo .txt:</strong> un link por línea;
-            súbelo o arrástralo como un archivo más.
-          </li>
-        </ol>
-        <p className="mt-4 text-[12.5px] leading-relaxed text-[#75757d]">
-          Redes: TikTok, Instagram, Facebook, YouTube, X… Solo públicos. No hay tope de
-          cantidad: aunque pegues cientos, entran en cola y se van procesando de poco en
-          poco.
-        </p>
-        <p className="mt-4 text-[12.5px] text-[#75757d]">API — un link:</p>
-        <DocsCode>{`curl -X POST http://localhost:43141/api/jobs/from-url \\
+          <section className="min-w-0 rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
+            <div className="text-sm font-semibold">Links (TikTok, YouTube…)</div>
+            <DocsCode>{`curl -X POST http://localhost:43141/api/jobs/from-url \\
   -H "Content-Type: application/json" \\
   -d '{"url":"https://www.tiktok.com/@cuenta/video/123"}'`}</DocsCode>
-        <p className="mt-4 text-[12.5px] text-[#75757d]">API — muchos links:</p>
-        <DocsCode>{`curl -X POST http://localhost:43141/api/jobs/from-url \\
+            <p className="mt-3 text-[12.5px] text-[#75757d]">O muchos:</p>
+            <DocsCode>{`curl -X POST http://localhost:43141/api/jobs/from-url \\
   -H "Content-Type: application/json" \\
-  -d '{
-    "urls": [
-      "https://www.tiktok.com/@a/video/1",
-      "https://www.instagram.com/reel/ABC/",
-      "https://www.youtube.com/watch?v=xyz"
-    ]
-  }'`}</DocsCode>
-      </section>
+  -d '{"urls":["https://.../1","https://.../2"]}'`}</DocsCode>
+          </section>
 
-      <section className="min-w-0 overflow-hidden rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
-        <div className="text-sm font-semibold">Endpoints útiles</div>
-        <div className="mt-3 grid min-w-0 gap-2 text-sm">
-          <div className="grid min-w-0 gap-1 border-t border-[#e7e7eb] py-3 first:border-t-0 md:grid-cols-[minmax(0,180px)_minmax(0,1fr)]">
-            <code className="break-words text-[12.5px]">POST /api/jobs</code>
-            <span className="text-[#75757d]">Crear uno o varios trabajos (archivos)</span>
-          </div>
-          <div className="grid min-w-0 gap-1 border-t border-[#e7e7eb] py-3 md:grid-cols-[minmax(0,180px)_minmax(0,1fr)]">
-            <code className="break-words text-[12.5px]">POST /api/jobs/from-url</code>
-            <span className="text-[#75757d]">Crear trabajos desde uno o varios links</span>
-          </div>
-          <div className="grid min-w-0 gap-1 border-t border-[#e7e7eb] py-3 md:grid-cols-[minmax(0,180px)_minmax(0,1fr)]">
-            <code className="break-words text-[12.5px]">GET /api/jobs/:id</code>
-            <span className="text-[#75757d]">Estado del trabajo</span>
-          </div>
-          <div className="grid min-w-0 gap-1 border-t border-[#e7e7eb] py-3 md:grid-cols-[minmax(0,180px)_minmax(0,1fr)]">
-            <code className="break-words text-[12.5px]">GET /api/jobs/:id/result</code>
-            <span className="text-[#75757d]">JSON completo</span>
-          </div>
-          <div className="grid min-w-0 gap-1 border-t border-[#e7e7eb] py-3 md:grid-cols-[minmax(0,180px)_minmax(0,1fr)]">
-            <code className="break-words text-[12.5px]">GET /api/modules</code>
-            <span className="text-[#75757d]">Cajitas registradas</span>
-          </div>
-          <div className="grid min-w-0 gap-1 border-t border-[#e7e7eb] py-3 md:grid-cols-[minmax(0,180px)_minmax(0,1fr)]">
-            <code className="break-words text-[12.5px]">PUT /api/settings</code>
-            <span className="text-[#75757d]">Guardar URL del webhook</span>
-          </div>
+          <section className="min-w-0 rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
+            <div className="text-sm font-semibold">Endpoints</div>
+            <div className="mt-3 grid min-w-0 gap-2 text-sm">
+              {[
+                ["POST /api/jobs", "Subir archivos"],
+                ["POST /api/jobs/from-url", "Crear desde links"],
+                ["GET /api/jobs/:id", "Estado"],
+                ["GET /api/jobs/:id/result", "JSON completo"],
+                ["GET /api/modules", "Módulos"],
+                ["PUT /api/settings", "Guardar ajustes"],
+              ].map(([path, label]) => (
+                <div
+                  key={path}
+                  className="grid min-w-0 gap-1 border-t border-[#e7e7eb] py-3 first:border-t-0 md:grid-cols-[minmax(0,200px)_minmax(0,1fr)]"
+                >
+                  <code className="break-words text-[12.5px]">{path}</code>
+                  <span className="text-[#75757d]">{label}</span>
+                </div>
+              ))}
+            </div>
+          </section>
         </div>
-      </section>
+      ) : null}
     </div>
   );
 }
+
+
 
 function SettingsView() {
   const s = useStudio();
