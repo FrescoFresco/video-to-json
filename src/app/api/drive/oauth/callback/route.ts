@@ -7,6 +7,7 @@ import {
 import {
   clearPendingOAuth,
   exchangeOAuthCode,
+  publicOAuthHost,
   readPendingOAuth,
 } from "@/lib/server/google-drive";
 
@@ -54,9 +55,18 @@ function finishHtml(input: {
 
 function appHref(request: Request, query: Record<string, string>) {
   const url = new URL(request.url);
-  // Mismo host que la petición (no reescribir localhost ↔ 127.0.0.1)
-  const port = url.port ? `:${url.port}` : "";
-  const target = new URL(`${url.protocol}//${url.hostname}${port}/`);
+  const headerHost =
+    request.headers.get("x-forwarded-host") || request.headers.get("host") || "";
+  let hostname = url.hostname;
+  let port = url.port || "43141";
+  if (headerHost) {
+    const [h, p] = headerHost.split(":");
+    if (h) hostname = h;
+    if (p) port = p;
+  }
+  const host = publicOAuthHost(hostname);
+  const portPart = port === "80" || port === "443" ? "" : `:${port}`;
+  const target = new URL(`${url.protocol}//${host}${portPart}/`);
   target.searchParams.set("view", "connections");
   target.searchParams.set("panel", "drive");
   for (const [k, v] of Object.entries(query)) {

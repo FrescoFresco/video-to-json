@@ -87,14 +87,24 @@ export function ConnectionsView() {
   }
 
   useEffect(() => {
-    // URI de redirección = mismo host con el que abres la app
+    // Siempre mostrar 127.0.0.1 (nunca 0.0.0.0) — es lo que debe ir en Google Cloud
     try {
       const u = new URL(window.location.href);
+      const host =
+        u.hostname === "0.0.0.0" ||
+        u.hostname === "localhost" ||
+        u.hostname === "::" ||
+        u.hostname === "::1"
+          ? "127.0.0.1"
+          : u.hostname === "127.0.0.1"
+            ? "127.0.0.1"
+            : u.hostname;
+      const port = u.port || "43141";
       setDriveRedirectUri(
-        `${u.protocol}//${u.hostname}${u.port ? `:${u.port}` : ""}/api/drive/oauth/callback`
+        `${u.protocol}//${host}:${port}/api/drive/oauth/callback`
       );
     } catch {
-      /* ignore */
+      setDriveRedirectUri("http://127.0.0.1:43141/api/drive/oauth/callback");
     }
   }, []);
 

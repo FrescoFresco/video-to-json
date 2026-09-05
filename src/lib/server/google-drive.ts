@@ -128,14 +128,42 @@ export function buildOAuthAuthorizeUrl(input: {
   return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 }
 
+/** Host público para OAuth: el servidor puede escuchar en 0.0.0.0, pero Google
+ *  nunca debe recibir 0.0.0.0 (ni ::). Usamos siempre 127.0.0.1 en loopback. */
+export function publicOAuthHost(hostname: string): string {
+  const h = (hostname || "").trim().toLowerCase();
+  if (
+    !h ||
+    h === "0.0.0.0" ||
+    h === "::" ||
+    h === "[::]" ||
+    h === "localhost" ||
+    h === "127.0.0.1" ||
+    h === "::1" ||
+    h === "[::1]"
+  ) {
+    return "127.0.0.1";
+  }
+  return hostname;
+}
+
 export function redirectUriFromRequest(request: Request): string {
   const url = new URL(request.url);
-  // Mantener el host tal cual (localhost o 127.0.0.1).
-  // Si lo reescribimos, el popup y la ventana principal no comparten origen
-  // y el postMessage del callback se pierde en silencio.
-  const host = url.hostname;
-  const port = url.port ? `:${url.port}` : "";
-  return `${url.protocol}//${host}${port}/api/drive/oauth/callback`;
+  // Preferir Host del navegador (127.0.0.1) frente a la URL interna (a veces 0.0.0.0)
+  const headerHost =
+    request.headers.get("x-forwarded-host") || request.headers.get("host") || "";
+  let hostname = url.hostname;
+  let port = url.port;
+  if (headerHost) {
+    const [h, p] = headerHost.split(":");
+    if (h) hostname = h;
+    if (p) port = p;
+  }
+  const host = publicOAuthHost(hostname);
+  const resolvedPort = port || (url.protocol === "https:" ? "443" : "43141");
+  const portPart =
+    resolvedPort === "80" || resolvedPort === "443" ? "" : `:${resolvedPort}`;
+  return `${url.protocol}//${host}${portPart}/api/drive/oauth/callback`;
 }
 
 export async function exchangeOAuthCode(input: {
