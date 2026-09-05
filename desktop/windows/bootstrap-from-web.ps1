@@ -1,5 +1,5 @@
-# Instalación de un solo comando (Windows).
-# Pégalo en PowerShell:
+# Instalacion de un solo comando (Windows).
+# Pegalo en PowerShell:
 #
 #   irm https://cdn.jsdelivr.net/gh/FrescoFresco/video-to-json@main/desktop/windows/bootstrap-from-web.ps1 | iex
 #
@@ -8,25 +8,29 @@
 
 $ErrorActionPreference = "Stop"
 
-# codeload es más fiable que el zip de github.com para PCs sin sesión
+# Evita el bloqueo "ejecucion de scripts deshabilitada" en esta sesion
+try {
+  Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force -ErrorAction SilentlyContinue
+} catch {}
+
+# codeload es mas fiable que el zip de github.com para PCs sin sesion
 $RepoZip = "https://codeload.github.com/FrescoFresco/video-to-json/zip/refs/heads/main"
 $InstallDir = Join-Path $env:USERPROFILE "VideoExtractionStudio"
 
 Write-Host ""
-Write-Host "Video Extraction Studio — instalación automática"
-Write-Host "Se descargará en: $InstallDir"
+Write-Host "Video Extraction Studio - instalacion automatica"
+Write-Host "Se descargara en: $InstallDir"
 Write-Host ""
 
-# winget a veces hace falta para Docker; avisamos pronto
 if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
-  Write-Host "Aviso: este PC no tiene winget. Si Docker no está, habrá que instalarlo a mano."
+  Write-Host "Aviso: este PC no tiene winget. Si Docker no esta, habra que instalarlo a mano."
 }
 
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 $ZipPath = Join-Path $env:TEMP "vx-studio-main.zip"
 $ExtractRoot = Join-Path $env:TEMP "vx-studio-extract"
 
-Write-Host "Descargando el programa…"
+Write-Host "Descargando el programa..."
 Invoke-WebRequest -Uri $RepoZip -OutFile $ZipPath -UseBasicParsing
 
 if (Test-Path $ExtractRoot) { Remove-Item -Recurse -Force $ExtractRoot }
@@ -35,7 +39,6 @@ Expand-Archive -Path $ZipPath -DestinationPath $ExtractRoot -Force
 $Unpacked = Get-ChildItem $ExtractRoot -Directory | Select-Object -First 1
 if (-not $Unpacked) { throw "No se pudo descomprimir el proyecto." }
 
-# Copia/actualiza en la carpeta fija del usuario
 Get-ChildItem $Unpacked.FullName | ForEach-Object {
   $dest = Join-Path $InstallDir $_.Name
   if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }
@@ -45,13 +48,23 @@ Get-ChildItem $Unpacked.FullName | ForEach-Object {
 Remove-Item -Force $ZipPath -ErrorAction SilentlyContinue
 Remove-Item -Recurse -Force $ExtractRoot -ErrorAction SilentlyContinue
 
-Write-Host "Archivos listos. Arrancando instalación (Docker + Studio)…"
+Write-Host "Archivos listos. Arrancando instalacion (Docker + Studio)..."
 Write-Host ""
 
 $InstallScript = Join-Path $InstallDir "desktop\windows\install.ps1"
 if (-not (Test-Path $InstallScript)) {
-  throw "No encuentro $InstallScript. ¿El repo tiene esa ruta?"
+  throw "No encuentro $InstallScript. El repo tiene esa ruta?"
 }
 
 Set-Location $InstallDir
-& $InstallScript
+
+# Importante: Bypass - en muchos Windows no se pueden ejecutar .ps1 locales
+$psi = Start-Process -FilePath "powershell.exe" -ArgumentList @(
+  "-NoProfile",
+  "-ExecutionPolicy", "Bypass",
+  "-File", $InstallScript
+) -WorkingDirectory $InstallDir -Wait -PassThru -NoNewWindow
+
+if ($psi.ExitCode -ne 0) {
+  exit $psi.ExitCode
+}
