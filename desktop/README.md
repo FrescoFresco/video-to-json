@@ -12,9 +12,18 @@ Docker es una **caja** donde el programa y todas sus piezas (Node, Python, ffmpe
 
 Se crea `dist/Video Extraction Studio.app`. Doble clic → arranca y abre el navegador.
 
-## Windows
+## Windows (un solo clic)
 
-Doble clic en `desktop/windows/Launch.bat` (o ejecuta `Launch.ps1` en PowerShell).
+Doble clic en `desktop/windows/Launch.bat`.
+
+Ese script intenta, solo:
+
+1. Instalar **Docker Desktop** con `winget` si no está.
+2. Arrancarlo y esperar al motor.
+3. Levantar el Studio (`docker compose up --build -d`).
+4. Abrir el navegador en `http://127.0.0.1:43141`.
+
+**Límite realista:** la *primera* vez Windows/Docker a veces pide permiso de administrador, activar WSL2 o un reinicio. Si pasa, completa ese aviso, vuelve a hacer doble clic en `Launch.bat` y ya sigue solo. Las siguientes veces suele ser un clic.
 
 ## Linux
 

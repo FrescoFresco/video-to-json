@@ -11,7 +11,7 @@ La idea: cualquiera lo instala de un golpe, abre el navegador, mete un vídeo y 
 ### Opción A — Lanzador nativo (recomendado si no quieres terminal)
 
 - **Mac:** `./scripts/build-macos-app.sh` → abre `dist/Video Extraction Studio.app`
-- **Windows:** doble clic en `desktop/windows/Launch.bat`
+- **Windows:** doble clic en `desktop/windows/Launch.bat` (si no hay Docker, intenta instalarlo solo con winget)
 - **Linux:** `./desktop/launch.sh`
 
 Detalles: [desktop/README.md](desktop/README.md).
