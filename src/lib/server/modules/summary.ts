@@ -31,11 +31,11 @@ export const summaryModule: ExtractionModuleDefinition = {
     const blocks: Array<[string, string]> = [
       ["scene_cuts", "Cortes"],
       ["camera_motion", "Cámara"],
+      ["faces_framing", "Caras y encuadre"],
       ["speakers", "Quién habla"],
       ["speech", "Habla"],
       ["on_screen_text", "Texto en pantalla"],
       ["objects_people", "Objetos/personas"],
-      ["faces_framing", "Caras y encuadre"],
       ["pose_actions", "Pose y acciones"],
       ["visual_observation", "Observación visual"],
       ["music_ambiance", "Música y ambiente"],

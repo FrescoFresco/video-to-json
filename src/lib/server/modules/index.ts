@@ -14,16 +14,16 @@ import { visualObservationModule } from "./visual-observation";
 
 /**
  * Orden = ejecución.
- * Medición primero (audio/CV) → IA visual → summary.
+ * Habla → caras → quién habla (cara↔voz) → resto CV/IA → summary.
  */
 export const EXTRACTION_MODULES: ExtractionModuleDefinition[] = [
   sceneCutsModule,
   cameraMotionModule,
   speechModule,
+  facesFramingModule,
   speakersModule,
   onScreenTextModule,
   objectsPeopleModule,
-  facesFramingModule,
   poseActionsModule,
   visualObservationModule,
   musicAmbianceModule,

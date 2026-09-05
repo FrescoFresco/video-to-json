@@ -56,6 +56,7 @@ También puedes usar webhook (Make/n8n) si prefieres otro destino.
 - **Pose y acciones** (YOLOv8n-pose + Moondream): postura geométrica y descripción de la acción en el crop.
 - Observación visual con preguntas de recreación (lugar, acciones, caras, cámara).
 - Diarización con el paquete `diarize` (Silero VAD + WeSpeaker) + Whisper `small`.
+- **Cara ↔ voz** en `speakers`: enlaza interlocutores diarizados con pistas de `faces_framing` por solape temporal (prioriza boca abierta y tamaño de cara).
 - Muestreo temporal más denso en objetos/caras/pose/visión.
 - **Música y ambiente** local (`librosa`): energía, ritmo/BPM si es claro, brillo del audio por pasajes. No identifica canciones.
 - **Movimiento de cámara** local (OpenCV): estática, paneo, zoom, trepidación por tramos.

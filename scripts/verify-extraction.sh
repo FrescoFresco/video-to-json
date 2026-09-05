@@ -14,10 +14,10 @@ EXPECT_MODULES=(
   scene_cuts
   camera_motion
   speech
+  faces_framing
   speakers
   on_screen_text
   objects_people
-  faces_framing
   pose_actions
   visual_observation
   music_ambiance
@@ -94,10 +94,10 @@ expected = [
   "scene_cuts",
   "camera_motion",
   "speech",
+  "faces_framing",
   "speakers",
   "on_screen_text",
   "objects_people",
-  "faces_framing",
   "pose_actions",
   "visual_observation",
   "music_ambiance",
