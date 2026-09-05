@@ -39,6 +39,7 @@ import type {
 import { isVideoFile } from "@/lib/video-file";
 import { IdeaView } from "@/components/studio/recreation-diagram";
 import { ConnectionsView } from "@/components/studio/connections-view";
+import { LayeredTimeline } from "@/components/studio/layered-timeline";
 
 /** Config de coste del servidor (Whisper / VLM / max frames) para ETA realista. */
 function useCostConfig() {
@@ -1217,7 +1218,7 @@ function VideoDetail({ video }: { video: StoredVideo }) {
         {tabBtn("estado", "Estado")}
         {tabBtn(
           "timeline",
-          "Timeline",
+          "Capas",
           extraction?.timeline?.length ? String(extraction.timeline.length) : undefined
         )}
         {liveRows.map((row) =>
@@ -1312,10 +1313,26 @@ function VideoDetail({ video }: { video: StoredVideo }) {
         ) : null}
 
         {detailTab === "timeline" ? (
-          <TimelinePanel
-            events={extraction?.timeline || []}
-            onOpenModule={(id) => setDetailTab(id)}
-          />
+          <div className="grid gap-8">
+            <LayeredTimeline
+              events={extraction?.timeline || []}
+              durationMs={
+                extraction?.media?.duration_ms ?? video.probe?.durationMs ?? undefined
+              }
+              onOpenModule={(id) => setDetailTab(id)}
+            />
+            <details className="min-w-0 rounded-2xl border border-[#e7e7eb] bg-white p-4 open:pb-2">
+              <summary className="cursor-pointer text-sm font-medium text-[#171719]">
+                Lista temporal (todos los eventos)
+              </summary>
+              <div className="mt-3 border-t border-[#ececf0] pt-3">
+                <TimelinePanel
+                  events={extraction?.timeline || []}
+                  onOpenModule={(id) => setDetailTab(id)}
+                />
+              </div>
+            </details>
+          </div>
         ) : null}
 
         {activeModuleRow ? (
