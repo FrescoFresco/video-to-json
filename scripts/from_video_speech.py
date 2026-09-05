@@ -1,123 +1,230 @@
 #!/usr/bin/env python3
-"""Speech from a video soundtrack. Not a standalone audio product."""
+"""Habla del vídeo: Whisper (texto) + diarize (quién habla).
+
+Pipeline:
+1. `diarize` (Silero VAD + WeSpeaker) → intervalos por hablante
+2. faster-whisper (por defecto large-v3) → texto denso
+3. Cada segmento hereda el hablante del intervalo con más solape
+4. Se fusionan turnos consecutivos del mismo hablante
+
+Sin clustering casero. Si diarize falla → un solo SPEAKER_01.
+"""
 from __future__ import annotations
 
 import json
+import os
 import sys
-import wave
 
-import numpy as np
 from faster_whisper import WhisperModel
-from sklearn.cluster import AgglomerativeClustering
+
+MERGE_GAP_S = float(os.environ.get("DIARIZE_MERGE_GAP", "0.4"))
+DEFAULT_MODEL = os.environ.get("WHISPER_MODEL", "large-v3")
 
 
-def load_wav(path: str) -> tuple[np.ndarray, int]:
-    with wave.open(path, "rb") as w:
-        sr = w.getframerate()
-        n = w.getnframes()
-        ch = w.getnchannels()
-        raw = w.readframes(n)
-    samples = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
-    if ch > 1:
-        samples = samples.reshape(-1, ch).mean(axis=1)
-    return samples, sr
+def normalize_speaker(raw: str) -> str:
+    """diarize usa SPEAKER_00… → SPEAKER_01…"""
+    try:
+        idx = int(str(raw).split("_")[-1])
+        return f"SPEAKER_{idx + 1:02d}"
+    except Exception:
+        return "SPEAKER_01"
 
 
-def speech_windows(samples: np.ndarray, sr: int, win=0.8, hop=0.4):
-    win_n = int(sr * win)
-    hop_n = int(sr * hop)
-    out = []
-    if win_n <= 0:
-        return out
-    for start in range(0, max(1, len(samples) - win_n), hop_n):
-        chunk = samples[start : start + win_n]
-        rms = float(np.sqrt(np.mean(chunk**2)))
-        if rms < 0.012:
-            continue
-        spec = np.abs(np.fft.rfft(chunk * np.hanning(len(chunk))))
-        bands = np.array_split(spec, 24)
-        feat = np.log1p(np.array([float(b.mean()) for b in bands], dtype=np.float64))
-        out.append((start / sr, (start + win_n) / sr, feat))
+def merge_turns(segs: list[dict], gap: float = MERGE_GAP_S) -> list[dict]:
+    if not segs:
+        return []
+    out = [dict(segs[0])]
+    for seg in segs[1:]:
+        prev = out[-1]
+        same = seg["speaker"] == prev["speaker"]
+        close = seg["start"] - prev["end"] <= gap
+        if same and close:
+            prev["end"] = max(prev["end"], seg["end"])
+            if "text" in prev and "text" in seg:
+                prev["text"] = f"{prev['text']} {seg['text']}".strip()
+                prev["end_ms"] = int(prev["end"] * 1000)
+        else:
+            out.append(dict(seg))
     return out
 
 
-def cluster_speakers(windows):
-    if len(windows) < 2:
-        return ["S01"] * len(windows), 1
-    X = np.stack([w[2] for w in windows])
-    X = X - X.mean(axis=0)
-    norms = np.linalg.norm(X, axis=1, keepdims=True)
-    X = X / np.clip(norms, 1e-8, None)
-    dist = 1 - (X @ X.T)
-    tri = dist[np.triu_indices(len(X), k=1)]
-    n_clusters = 2 if len(tri) and float(np.median(tri)) > 0.18 else 1
-    n_clusters = min(n_clusters, min(3, len(X)))
-    if n_clusters <= 1:
-        return ["S01"] * len(X), 1
-    labels = AgglomerativeClustering(
-        n_clusters=n_clusters, metric="cosine", linkage="average"
-    ).fit_predict(X)
-    return [f"S{int(i) + 1:02d}" for i in labels], n_clusters
+def run_diarization(wav_path: str) -> tuple[list[dict], str]:
+    """Devuelve intervalos [{start,end,speaker}] usando el paquete `diarize`."""
+    from diarize import diarize as diarize_file
+
+    kwargs = {
+        "min_speakers": int(os.environ.get("DIARIZE_MIN_SPEAKERS", "1")),
+        "max_speakers": int(os.environ.get("DIARIZE_MAX_SPEAKERS", "8")),
+    }
+    num = os.environ.get("DIARIZE_NUM_SPEAKERS")
+    if num and num.isdigit():
+        kwargs["num_speakers"] = int(num)
+
+    result = diarize_file(wav_path, **kwargs)
+    segs = [
+        {
+            "start": float(seg.start),
+            "end": float(seg.end),
+            "speaker": normalize_speaker(getattr(seg, "speaker", "SPEAKER_00")),
+        }
+        for seg in result.segments
+    ]
+    segs.sort(key=lambda s: s["start"])
+    return merge_turns(segs), "diarize-wespeaker"
 
 
-def speaker_at(t: float, windows, speakers: list[str]) -> str:
-    best, best_ov = "S01", -1.0
-    for (start, end, _), spk in zip(windows, speakers):
-        ov = min(end, t + 0.2) - max(start, t)
+def speaker_for(t: float, dia: list[dict]) -> str:
+    """Hablante del intervalo con más solape en torno a t."""
+    best, best_ov = "SPEAKER_01", -1.0
+    for seg in dia:
+        ov = min(seg["end"], t + 0.05) - max(seg["start"], t - 0.05)
         if ov > best_ov:
-            best_ov, best = ov, spk
-    return best
+            best_ov, best = ov, seg["speaker"]
+    if best_ov > 0:
+        return best
+    return min(dia, key=lambda s: abs((s["start"] + s["end"]) / 2 - t))["speaker"]
 
 
-def collect(model, wav, vad: bool, windows, win_speakers):
-    segs, info = model.transcribe(wav, vad_filter=vad, word_timestamps=True, beam_size=1)
+def resolve_model_name(name: str) -> str:
+    """Alias cómodos → ids que entiende faster-whisper."""
+    key = (name or DEFAULT_MODEL).strip()
+    aliases = {
+        "turbo": "large-v3-turbo",
+        "large": "large-v3",
+        "best": "large-v3",
+    }
+    return aliases.get(key.lower(), key)
+
+
+def transcribe(wav_path: str, model_name: str) -> tuple[list[dict], object]:
+    beam = int(os.environ.get("WHISPER_BEAM_SIZE", "5"))
+    lang = os.environ.get("WHISPER_LANGUAGE") or None
+    prompt = os.environ.get("WHISPER_INITIAL_PROMPT") or None
+    model_name = resolve_model_name(model_name)
+    # int8 en CPU: calidad alta sin reventar RAM
+    compute = os.environ.get("WHISPER_COMPUTE_TYPE", "int8")
+    model = WhisperModel(model_name, device="cpu", compute_type=compute)
+
+    def _run(vad: bool):
+        kwargs = {
+            "vad_filter": vad,
+            "beam_size": max(1, beam),
+            "best_of": max(1, beam),
+            "condition_on_previous_text": True,
+            "language": lang,
+            "word_timestamps": True,
+            "temperature": [0.0, 0.2, 0.4],
+        }
+        if prompt:
+            kwargs["initial_prompt"] = prompt
+        return model.transcribe(wav_path, **kwargs)
+
+    segments, info = _run(True)
     rows = []
-    for seg in segs:
+    for seg in segments:
         text = (seg.text or "").strip()
         if not text:
             continue
-        mid = (seg.start + seg.end) / 2
-        speaker = speaker_at(mid, windows, win_speakers) if windows else "S01"
+        words = []
+        if getattr(seg, "words", None):
+            for w in seg.words:
+                token = (getattr(w, "word", None) or "").strip()
+                if not token:
+                    continue
+                words.append(
+                    {
+                        "word": token,
+                        "start": round(float(w.start), 3),
+                        "end": round(float(w.end), 3),
+                        "start_ms": int(float(w.start) * 1000),
+                        "end_ms": int(float(w.end) * 1000),
+                    }
+                )
         rows.append(
             {
-                "start": round(seg.start, 3),
-                "end": round(seg.end, 3),
-                "start_ms": int(seg.start * 1000),
-                "end_ms": int(seg.end * 1000),
-                "speaker": speaker,
+                "start": float(seg.start),
+                "end": float(seg.end),
                 "text": text,
+                "words": words or None,
             }
         )
+    if not rows:
+        segments, info = _run(False)
+        for seg in segments:
+            text = (seg.text or "").strip()
+            if text:
+                rows.append(
+                    {
+                        "start": float(seg.start),
+                        "end": float(seg.end),
+                        "text": text,
+                        "words": None,
+                    }
+                )
     return rows, info
 
 
-def main():
-    wav = sys.argv[1]
-    model_name = sys.argv[2] if len(sys.argv) > 2 else "base"
-    out = sys.argv[3]
-    samples, sr = load_wav(wav)
-    windows = speech_windows(samples, sr)
-    win_speakers, n_speakers = cluster_speakers(windows)
-    model = WhisperModel(model_name, device="cpu", compute_type="int8")
-    transcript, info = collect(model, wav, True, windows, win_speakers)
-    if not transcript:
-        transcript, info = collect(model, wav, False, windows, win_speakers)
-    speakers = sorted({t["speaker"] for t in transcript}) or ["S01"]
-    open(out, "w", encoding="utf-8").write(
-        json.dumps(
-            {
-                "engine": "faster-whisper",
-                "model": model_name,
-                "language": getattr(info, "language", None),
-                "speakers": speakers,
-                "speaker_count": max(n_speakers, len(speakers)),
-                "diarization": "spectral-clustering",
-                "segments": transcript,
-            },
-            ensure_ascii=False,
-        )
-    )
+def attach_speakers(transcript: list[dict], dia: list[dict]) -> list[dict]:
+    labeled = []
+    for row in transcript:
+        mid = (row["start"] + row["end"]) / 2
+        spk = speaker_for(mid, dia) if dia else "SPEAKER_01"
+        item = {
+            "start": round(row["start"], 3),
+            "end": round(row["end"], 3),
+            "start_ms": int(row["start"] * 1000),
+            "end_ms": int(row["end"] * 1000),
+            "speaker": spk,
+            "text": row["text"],
+        }
+        if row.get("words"):
+            item["words"] = row["words"]
+        labeled.append(item)
+    return merge_turns(labeled)
+
+
+def main() -> int:
+    if len(sys.argv) < 4:
+        print("usage: from_video_speech.py <wav> <whisper_model> <out.json>", file=sys.stderr)
+        return 2
+
+    wav, model_name, out_path = sys.argv[1], sys.argv[2], sys.argv[3]
+    if not model_name:
+        model_name = DEFAULT_MODEL
+    model_name = resolve_model_name(model_name)
+
+    diarization = "none"
+    dia: list[dict] = []
+    error = None
+    try:
+        dia, diarization = run_diarization(wav)
+    except Exception as exc:  # noqa: BLE001
+        error = str(exc)
+        print(f"[speech] diarize unavailable, single speaker: {exc}", file=sys.stderr)
+
+    transcript, info = transcribe(wav, model_name)
+    segments = attach_speakers(transcript, dia)
+    speakers = sorted({s["speaker"] for s in segments}) or ["SPEAKER_01"]
+
+    payload = {
+        "engine": "faster-whisper",
+        "model": model_name,
+        "language": getattr(info, "language", None),
+        "language_probability": getattr(info, "language_probability", None),
+        "speakers": speakers,
+        "speaker_count": len(speakers),
+        "diarization": diarization,
+        "diarization_segments": dia,
+        "segments": segments,
+        "word_timestamps": True,
+    }
+    if error:
+        payload["diarization_error"] = error
+
+    with open(out_path, "w", encoding="utf-8") as fh:
+        json.dump(payload, fh, ensure_ascii=False, indent=2)
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

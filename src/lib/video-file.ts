@@ -9,12 +9,3 @@ export function isVideoFile(file: { name: string; type: string }) {
   if (file.type.startsWith("video/")) return true;
   return isVideoFilename(file.name);
 }
-
-export function isUrlListFile(name: string) {
-  const lower = name.toLowerCase();
-  return lower.endsWith(".txt") || lower.endsWith(".csv");
-}
-
-export function isVideoZip(name: string) {
-  return name.toLowerCase().endsWith(".zip");
-}

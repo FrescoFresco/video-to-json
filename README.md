@@ -1,45 +1,157 @@
 # Video Extraction Studio
 
-De **vídeo a texto reconstruible**. Solo vídeos. No es un editor y no es un producto de audio: importas un vídeo (archivo o URL) y sales con un JSON denso — qué se ve, cuándo, qué se dice, quién habla, texto en pantalla — pensado para imaginarse el plano.
+**Extractor de vídeo → JSON denso.**
 
-Un **módulo** es un nombre (y, si quieres, un repo). La app espera **JSON**. El **Composer** mapea esas fuentes a un `final.json`.
+Software web que convierte un clip en un dossier estructurado (cortes, cámara, habla, caras, texto en pantalla, objetos, pose, audio…) **sin pasos técnicos sueltos**. No genera vídeo: extrae.
 
-## Qué hay ahora
+La idea: cualquiera lo instala de un golpe, abre el navegador, mete un vídeo y obtiene el JSON.
 
-- UI: Home, lotes, Vídeos, Módulos, Composer, Ajustes.
-- Solo se aceptan vídeos (`video/*`, `.mp4`, `.mov`, `.mkv`, `.webm`). Un ZIP de vídeos o un TXT/CSV de URLs de vídeo.
-- Sonda real con **ffprobe / ffmpeg** (metadatos y cortes de plano).
-- Habla **del propio vídeo**: Whisper local (`faster-whisper`, CPU) + agrupación de speakers.
-- **Texto en pantalla conectado:** RapidOCR (PP-OCR ONNX, CPU) sobre fotogramas del vídeo.
-- Módulos listos para enganchar: Qwen2.5-VL / Moondream (descripción de plano, GPU), YOLO / YOLO-World (objetos).
-- Ejemplo denso (`reel_cafeteria_18s.mp4`) para ver el JSON objetivo.
+## Instalación de un golpe
 
-## Cómo arrancar
+### Opción A — Lanzador nativo (recomendado si no quieres terminal)
 
-Hace falta Node, `ffmpeg`/`ffprobe` y Python 3.12.
+- **Mac:** `./scripts/build-macos-app.sh` → abre `dist/Video Extraction Studio.app`
+- **Windows:** doble clic en `desktop/windows/Launch.bat`
+- **Linux:** `./desktop/launch.sh`
+
+Detalles: [desktop/README.md](desktop/README.md).
+
+### Opción B — Docker
+
+Docker es una “caja” con el programa y sus dependencias. Necesitas [Docker Desktop](https://www.docker.com/products/docker-desktop/).
 
 ```bash
-npm install
-python3 -m venv .venv
-.venv/bin/pip install -r requirements-video.txt
-# la primera transcripción descarga el modelo Whisper `base`
-npm run dev -- --port 43141 --hostname 0.0.0.0
+./install.sh
 ```
 
-## Idea de módulos
+Abre [http://localhost:43141](http://localhost:43141).
 
-Contrato único: **entra un vídeo, sale JSON**.
+### Opción C — Sin Docker (local)
 
-| Módulo | Rol |
-|---|---|
-| Media Probe | duración, tamaño, códecs |
-| Scene Cuts | cuándo cambia el plano |
-| Visual Reconstruction | describir cada escena — Qwen2.5-VL / Moondream (GPU) |
-| Habla del vídeo | **conectado** — Whisper local sobre el vídeo |
-| Texto en pantalla | **conectado** — RapidOCR / PaddleOCR |
-| Objetos en el plano | YOLO11 / YOLO-World (sample hasta enganchar) |
-| Eventos del plano | risa, máquina, tráfico |
+Hace falta Node 20+, Python 3.12, ffmpeg y ffprobe.
 
-## Licencia de esta app
+```bash
+./install.sh local          # desarrollo
+FORCE_LOCAL=1 ./install.sh  # igual, fuerza local aunque haya Docker
+./install.sh prod           # build + start de producción
+```
 
-El código de este repo es el estudio. Cada modelo que enganches trae la suya. No hay APIs de pago.
+Si no pasas modo (`./install.sh` a secas) y Docker está disponible, usa Docker.
+## Google Drive (vídeo in → JSON out)
+
+Con **Google Drive para escritorio** (carpetas locales sincronizadas):
+
+1. Carpeta de entrada + carpeta de salida en Drive.
+2. En **Ajustes** del Studio: activa vigilancia y pon las rutas locales.
+3. Deja el Studio encendido. Subes un vídeo a la entrada → el JSON aparece en la salida.
+
+También puedes usar webhook (Make/n8n) si prefieres otro destino.
+## Qué hace hoy
+
+- Acepta vídeos (`MP4`, `MOV`, `MKV`, `WebM`) por archivo, **carpeta completa**, o por **link** (TikTok, Instagram, Facebook, YouTube, X…).
+- En la home: pegar muchos links, subir un `.txt` con links, o «Seleccionar carpeta».
+- Sin tope de cantidad: todo entra en cola y se procesa por lotes (`VX_MAX_CONCURRENT`).
+- La API acepta listas grandes de archivos o links; el cliente parte las subidas HTTP en tandas si hace falta.
+- Pipeline por **módulos** registrados (mismo contrato para todos).
+- **Caras y encuadre** (OpenCV YuNet + Moondream): rostros, escala de plano y descripción del crop (expresión, mirada, pelo/gafas).
+- **Objetos y personas** (YOLOv8n + Moondream): detección y descripción del crop (color, ropa, estado) dentro del mismo módulo.
+- **Pose y acciones** (YOLOv8n-pose + Moondream): postura geométrica y descripción de la acción en el crop.
+- Observación visual densa (lugar, acciones, caras, cámara, ambiente).
+- Diarización con el paquete `diarize` (Silero VAD + WeSpeaker) + Whisper `large-v3` (texto denso; override con `WHISPER_MODEL`).
+- **Texto en pantalla** (RapidOCR + Moondream): lee letras, clasifica rol (título, CTA, watermark…) y añade contexto del crop.
+- **Cara ↔ voz** en `speakers`: enlaza interlocutores diarizados con pistas de `faces_framing` por solape temporal (prioriza boca abierta y tamaño de cara).
+- Muestreo temporal más denso en objetos/caras/pose/visión/OCR.
+- **Música y ambiente** local (`librosa`): energía, ritmo/BPM si es claro, brillo del audio por pasajes. No identifica canciones.
+- **Movimiento de cámara** local (OpenCV): estática, paneo, zoom, trepidación por tramos.
+- **Eventos de audio** local (PANNs / AudioSet): habla, música, aplausos, sirenas, etc. con puntuación.
+- La UI y el JSON solo muestran lo que cada módulo devuelve (`summary`, `items`, `data`).
+- El JSON de salida es un pack **completo** (`schema_version: "2.0"`, `kind: "video_complete"`):
+  `content` junta todos los módulos, `timeline` ordena todas las filas, y `run` resume la corrida.
+  Si el vídeo entró por link, `source.url` guarda esa URL y `source.input` es `"url"`.
+- Trabajos y JSON guardados en disco (`data/jobs/`); el vídeo temporal se borra al terminar.
+- API: `POST/GET /api/jobs`, `GET /api/jobs/:id/result`, `GET /api/modules`, `GET/PUT/POST /api/settings` (webhook).
+- Webhook al terminar: POST a tu URL con `job.ready` / `job.error` y el JSON de extracción.
+
+## Qué aún no hace
+
+- Identificación de canción (tipo Shazam): requiere API/catálogo externo.
+- Instalador firmado tipo App Store / `.dmg` / `.exe` empaquetado con modelos dentro (ahora: lanzadores nativos + Docker o local).
+- API key de acceso (el secreto del webhook es opcional).
+- Emoción facial / pose tracking (candidatos futuros).
+- Lectura directa de Google Drive en la nube sin Drive Desktop (hace falta sincronizar carpetas locales).
+
+## Subir varios vídeos (API)
+
+```bash
+curl -F "files=@video1.mp4" -F "files=@video2.mp4" -F "files=@video3.mp4" \
+  http://localhost:43141/api/jobs
+```
+
+Respuesta: lista de trabajos. Se procesan en cola (`VX_MAX_CONCURRENT`, por defecto 1). Cada uno, al terminar, puede disparar el webhook.
+
+## Importar muchos links o una carpeta
+
+En la **home**:
+
+1. **Carpeta** → «Seleccionar carpeta» (o arrástrala): encola todos los vídeos.
+2. **Pegar links** → uno por línea → «Analizar links».
+3. **Archivo `.txt`** → un link por línea; súbelo como archivo.
+
+Por API:
+
+```bash
+# Uno
+curl -X POST http://localhost:43141/api/jobs/from-url \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://www.tiktok.com/@cuenta/video/123"}'
+
+# Varios
+curl -X POST http://localhost:43141/api/jobs/from-url \
+  -H "Content-Type: application/json" \
+  -d '{"urls":["https://www.tiktok.com/@a/video/1","https://www.youtube.com/watch?v=xyz"]}'
+```
+
+Solo vídeos públicos. Detalle en **Docs** dentro de la app.
+
+Con el servidor en marcha:
+
+```bash
+npm run verify
+```
+
+Crea un vídeo de prueba (persona + texto + 2 voces), lo procesa y exige que cada módulo responda `ok` con datos.
+
+1. Implementa el contrato `ExtractionModuleDefinition` (`id`, `title`, `stage`, `run`).
+2. Regístralo en `src/lib/server/modules/index.ts`.
+3. La UI y `GET /api/jobs/:id/result` lo recogen solos — sin tocar pantallas fijas.
+
+## Requisitos del ordenador
+
+Todo corre en local (GPU opcional; este build va en CPU).
+
+**Mínimo usable:** Windows 10/11, macOS 12+ o Linux; **16 GB RAM** (8 GB va justo); CPU reciente o Apple Silicon; **15–25 GB** libres; Docker Desktop o Node + Python + ffmpeg.
+
+**Recomendado:** **32 GB RAM**, SSD con **30+ GB** libres, 6+ núcleos (o M1/M2/M3).
+
+Vídeos cortos: minutos en CPU. Largos o con visión: más tiempo. Un portátil viejo de 8 GB no es buen candidato.
+
+## Variables útiles
+
+| Variable | Por defecto | Uso |
+| --- | --- | --- |
+| `WHISPER_MODEL` | `large-v3` | Modelo Whisper (`large-v3`, `medium`, `turbo`…). Más grande = mejor texto. |
+| `WHISPER_BEAM_SIZE` | `5` | Beam de Whisper (más = mejor y más lento). |
+| `OCR_VLM` | `1` | Describe cada texto detectado con Moondream (`0` = solo OCR). |
+| `OCR_MAX_FRAMES` | `16` | Fotogramas densos para OCR. |
+| `DIARIZE_MIN_SPEAKERS` / `DIARIZE_MAX_SPEAKERS` | `1` / `8` | Rango de hablantes para WeSpeaker. |
+| `VIDEO_PYTHON` | `video-py/bin/python` | Interprete Python del pipeline |
+| `VISION_MAX_FRAMES` | `6` | Máx. fotogramas a observar (CPU) |
+| `WEBHOOK_URL` | _(vacío)_ | URL por defecto si no hay config en disco |
+| `VX_MAX_CONCURRENT` | `1` | Vídeos procesándose a la vez |
+| `PORT` | `43141` | Puerto HTTP |
+
+## Notas
+
+- La primera transcripción descarga el modelo Whisper (en Docker queda en el volumen `vx-models`).
+- En CPU el procesado es lento; es intencional en este build sin GPU.
+- No inventa resultados: si una capacidad no está cableada, lo dice.

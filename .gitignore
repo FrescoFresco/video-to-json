@@ -43,6 +43,21 @@ next-env.d.ts
 # local agent dumps
 /agent-tools
 
+# persisted jobs / JSON results (vídeos temporales no se guardan)
+/data/
+
+# native app build output
+/dist/
+
+# model weights downloaded at runtime
+*.pt
+*.onnx
+yolov8*.pt
+
 # local python for video speech
 .venv/
+video-py/
+video-py
 .cache/
+video-extraction-studio-home.webp
+__pycache__/
