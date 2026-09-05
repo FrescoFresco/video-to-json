@@ -14,41 +14,28 @@ Set-Location $Root
 $Url = "http://127.0.0.1:43141"
 $DoForce = $ForceRebuild -or ($env:VX_FORCE_REBUILD -eq "1")
 $SkipUpdate = ($env:VX_SKIP_UPDATE -eq "1")
+$script:VxStep = 0
+$script:VxTotalSteps = 5
 
-# Auto-update when opening the app (unless we are already inside an update).
-if (-not $SkipUpdate) {
-  try {
-    . (Join-Path $PSScriptRoot "update-helpers.ps1")
-    if (Test-UpdateAvailable) {
-      Write-Host ""
-      Write-Host "==> Hay una version nueva. Actualizando solo..."
-      Update-StudioFiles
-      # Re-run the NEW install.ps1 after files were replaced (avoid running stale script).
-      $env:VX_SKIP_UPDATE = "1"
-      $env:VX_FORCE_REBUILD = "1"
-      $newInstall = Join-Path $env:USERPROFILE "VideoExtractionStudio\desktop\windows\install.ps1"
-      $newRoot = Join-Path $env:USERPROFILE "VideoExtractionStudio"
-      if (Test-Path $newInstall) {
-        $p = Start-Process -FilePath "powershell.exe" -ArgumentList @(
-          "-NoProfile", "-ExecutionPolicy", "Bypass",
-          "-File", $newInstall, "-ForceRebuild"
-        ) -WorkingDirectory $newRoot -Wait -PassThru -NoNewWindow
-        exit $(if ($null -ne $p.ExitCode) { $p.ExitCode } else { 0 })
-      }
-      $DoForce = $true
-    } else {
-      # Refresh local sha if missing but already up to date path
-      $remote = Get-RemoteGitSha
-      if ($remote -and -not (Get-LocalGitSha)) { Save-LocalGitSha $remote }
-    }
-  } catch {
-    Write-Host "Aviso: no pude comprobar actualizaciones (sin internet?). Sigo arrancando."
-  }
+function Write-Banner([string]$title) {
+  Write-Host ""
+  Write-Host "========================================"
+  Write-Host ("  {0}" -f $title)
+  Write-Host "========================================"
+}
+
+function Write-Bar([string]$label, [int]$percent) {
+  if ($percent -lt 0) { $percent = 0 }
+  if ($percent -gt 100) { $percent = 100 }
+  $filled = [int]([math]::Round($percent / 5))
+  if ($filled -gt 20) { $filled = 20 }
+  $bar = ("#" * $filled) + ("-" * (20 - $filled))
+  Write-Host ("  [{0}] {1,3}%  {2}" -f $bar, $percent, $label)
 }
 
 function Write-Step([string]$msg) {
-  Write-Host ""
-  Write-Host "==> $msg"
+  $script:VxStep++
+  Write-Banner ("Paso {0}/{1} - {2}" -f $script:VxStep, $script:VxTotalSteps, $msg)
 }
 
 function Refresh-DockerPath {
@@ -122,7 +109,8 @@ function Get-DockerDesktopExe {
 }
 
 function Install-DockerDesktop {
-  Write-Step "Docker no esta. Intentando instalarlo..."
+  Write-Banner "Instalar Docker Desktop"
+  Write-Bar "buscando winget" 10
 
   if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
     Write-Host "No hay winget. Instala Docker a mano:"
@@ -130,7 +118,7 @@ function Install-DockerDesktop {
     exit 1
   }
 
-  Write-Host "Puede pedir Administrador. Espera unos minutos..."
+  Write-Bar "instalando Docker (puede pedir Admin y tardar)" 40
   winget install -e --id Docker.DockerDesktop --accept-package-agreements --accept-source-agreements
   if ($LASTEXITCODE -ne 0) {
     Write-Host "No se pudo instalar Docker (codigo $LASTEXITCODE)."
@@ -146,13 +134,16 @@ function Install-DockerDesktop {
     exit 1
   }
 
-  Write-Host "Docker Desktop instalado."
+  Write-Bar "Docker Desktop instalado" 100
 }
 
 function Start-DockerDesktopAndWait {
   Refresh-DockerPath
 
-  if (Test-DockerEngine) { return }
+  if (Test-DockerEngine) {
+    Write-Bar "Docker ya estaba listo" 100
+    return
+  }
 
   $exe = Get-DockerDesktopExe
   if (-not $exe) {
@@ -166,14 +157,19 @@ function Start-DockerDesktopAndWait {
     exit 1
   }
 
-  Write-Step "Arrancando Docker Desktop..."
+  Write-Banner "Arrancar Docker"
+  Write-Bar "abriendo Docker Desktop" 5
   Start-Process $exe | Out-Null
 
-  Write-Host "Esperando al motor de Docker (1-2 min)..."
+  Write-Host "  Esperando al motor (normal: 1-2 min)..."
   for ($i = 0; $i -lt 90; $i++) {
     if (Test-DockerEngine) {
-      Write-Host "Docker listo."
+      Write-Bar "Docker listo" 100
       return
+    }
+    $pct = [Math]::Min(95, 5 + [int]((($i + 1) / 90.0) * 90))
+    if (($i % 5) -eq 4) {
+      Write-Bar ("esperando motor... {0}s" -f (($i + 1) * 2)) $pct
     }
     Start-Sleep -Seconds 2
   }
@@ -185,14 +181,53 @@ function Start-DockerDesktopAndWait {
   exit 1
 }
 
-Write-Host "Video Extraction Studio"
-Write-Host "Carpeta: $Root"
+Write-Banner "Video Extraction Studio"
+Write-Host ("  Carpeta: {0}" -f $Root)
+Write-Host "  Esta ventana muestra el progreso. No la cierres."
+
+# Auto-update when opening the app (unless we are already inside an update).
+if (-not $SkipUpdate) {
+  try {
+    . (Join-Path $PSScriptRoot "update-helpers.ps1")
+    Write-Step "Comprobar actualizaciones"
+    Write-Bar "consultando GitHub" 20
+    if (Test-UpdateAvailable) {
+      Write-Bar "hay version nueva" 40
+      Update-StudioFiles
+      # Re-run the NEW install.ps1 after files were replaced (avoid running stale script).
+      $env:VX_SKIP_UPDATE = "1"
+      $env:VX_FORCE_REBUILD = "1"
+      $newInstall = Join-Path $env:USERPROFILE "VideoExtractionStudio\desktop\windows\install.ps1"
+      $newRoot = Join-Path $env:USERPROFILE "VideoExtractionStudio"
+      if (Test-Path $newInstall) {
+        Write-Bar "reiniciando con la version nueva" 100
+        $p = Start-Process -FilePath "powershell.exe" -ArgumentList @(
+          "-NoProfile", "-ExecutionPolicy", "Bypass",
+          "-File", $newInstall, "-ForceRebuild"
+        ) -WorkingDirectory $newRoot -Wait -PassThru -NoNewWindow
+        exit $(if ($null -ne $p.ExitCode) { $p.ExitCode } else { 0 })
+      }
+      $DoForce = $true
+    } else {
+      Write-Bar "ya estas al dia" 100
+      $remote = Get-RemoteGitSha
+      if ($remote -and -not (Get-LocalGitSha)) { Save-LocalGitSha $remote }
+    }
+  } catch {
+    Write-Host "  Aviso: no pude comprobar actualizaciones (sin internet?). Sigo arrancando."
+  }
+} else {
+  $script:VxStep = 1
+}
 
 Refresh-DockerPath
 
 if ((-not $DoForce) -and (Test-Server)) {
-  Write-Step "Ya esta en marcha. Abriendo navegador..."
+  Write-Step "Abrir el Studio"
+  Write-Bar "ya estaba en marcha" 100
   Start-Process $Url
+  Write-Host ""
+  Write-Host "  Listo. Navegador abierto."
   exit 0
 }
 
@@ -211,18 +246,47 @@ if (-not (Test-DockerCli) -and (Get-DockerDesktopExe)) {
 Start-DockerDesktopAndWait
 
 if ($DoForce) {
-  Write-Step "Actualizando: reconstruyendo el Studio..."
+  Write-Step "Actualizar / reconstruir el Studio"
+  Write-Bar "parando version anterior" 10
   docker compose down 2>$null | Out-Null
+  Write-Bar "version anterior parada" 20
 } else {
-  Write-Step "Construyendo y arrancando el Studio (la primera vez tarda)..."
+  Write-Step "Construir y arrancar el Studio"
 }
 
+Write-Bar "construyendo imagen Docker" 25
+Write-Host "  Esto puede tardar varios minutos (sobre todo la 1a vez)."
+Write-Host "  Abajo veras logs de Docker en vivo; la barra sube segun avanza."
+Write-Host ""
+
+$composeLines = New-Object System.Collections.Generic.List[string]
+$script:VxBuildPct = 25
 $prevEap = $ErrorActionPreference
 $ErrorActionPreference = "Continue"
-$composeOut = docker compose up --build -d 2>&1 | Out-String
+docker compose up --build -d 2>&1 | ForEach-Object {
+  $line = "$_"
+  [void]$composeLines.Add($line)
+  Write-Host $line
+  $bump = $false
+  if ($line -match "(?i)pulling|downloading|extracting|download complete") {
+    $script:VxBuildPct = [Math]::Max($script:VxBuildPct, 35)
+    $bump = $true
+  }
+  if ($line -match "(?i)#\d+\s+(DONE|CACHED)|Step \d+|RUN |COPY |Building|built|naming to|exporting") {
+    $script:VxBuildPct = [Math]::Min(65, $script:VxBuildPct + 3)
+    $bump = $true
+  }
+  if ($line -match "(?i)Creating|Created|Starting|Started|Container") {
+    $script:VxBuildPct = [Math]::Max($script:VxBuildPct, 68)
+    $bump = $true
+  }
+  if ($bump -and (($composeLines.Count % 4) -eq 0)) {
+    Write-Bar "reconstruyendo..." $script:VxBuildPct
+  }
+}
 $composeExit = $LASTEXITCODE
 $ErrorActionPreference = $prevEap
-Write-Host $composeOut
+$composeOut = ($composeLines -join "`n")
 if ($composeExit -ne 0) {
   Write-Host "Fallo docker compose (codigo $composeExit)."
   Write-Host "Revisa el mensaje de Docker arriba."
@@ -245,13 +309,23 @@ if ($composeExit -ne 0) {
   exit 1
 }
 
-Write-Step "Esperando $Url ..."
+Write-Bar "contenedor arrancado" 70
+
+Write-Step "Esperar a que abra la web"
+Write-Host ("  Esperando {0} ..." -f $Url)
 for ($i = 0; $i -lt 120; $i++) {
   if (Test-Server) {
-    Write-Host "Listo. Abriendo navegador..."
+    Write-Bar "web lista" 100
+    Write-Banner "Listo"
+    Write-Host "  Abriendo navegador..."
     Start-Process $Url
-    Write-Host "Para parar: docker compose down"
+    Write-Host "  Para parar: docker compose down"
+    Write-Host ""
     exit 0
+  }
+  if (($i % 5) -eq 4) {
+    $pct = [int](70 + (($i + 1) * 25 / 120))
+    Write-Bar ("esperando web... {0}s" -f (($i + 1) * 2)) $pct
   }
   Start-Sleep -Seconds 2
 }

@@ -40,20 +40,37 @@ function Test-UpdateAvailable {
   return ($remote -ne $local)
 }
 
+function Write-ProgressLine([string]$label, [int]$percent) {
+  if ($percent -lt 0) { $percent = 0 }
+  if ($percent -gt 100) { $percent = 100 }
+  $filled = [int]([math]::Round($percent / 5))
+  if ($filled -gt 20) { $filled = 20 }
+  $bar = ("#" * $filled) + ("-" * (20 - $filled))
+  Write-Host ("  [{0}] {1,3}%  {2}" -f $bar, $percent, $label)
+}
+
 function Update-StudioFiles {
-  Write-Host "Descargando la version nueva..."
+  Write-Host ""
+  Write-Host "========================================"
+  Write-Host "  Actualizando archivos del Studio"
+  Write-Host "========================================"
+  Write-ProgressLine "preparando descarga" 5
   New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
   $ZipPath = Join-Path $env:TEMP "vx-studio-main.zip"
   $ExtractRoot = Join-Path $env:TEMP "vx-studio-extract"
 
+  Write-ProgressLine "descargando desde GitHub (puede tardar)" 20
   Invoke-WebRequest -Uri $RepoZip -OutFile $ZipPath -UseBasicParsing
+  Write-ProgressLine "descarga lista" 55
 
   if (Test-Path $ExtractRoot) { Remove-Item -Recurse -Force $ExtractRoot }
+  Write-ProgressLine "descomprimiendo" 65
   Expand-Archive -Path $ZipPath -DestinationPath $ExtractRoot -Force
 
   $Unpacked = Get-ChildItem $ExtractRoot -Directory | Select-Object -First 1
   if (-not $Unpacked) { throw "No se pudo descomprimir el proyecto." }
 
+  Write-ProgressLine "copiando archivos" 80
   # Keep local data/ (jobs, config) - only replace files that come from the zip.
   Get-ChildItem $Unpacked.FullName | ForEach-Object {
     if ($_.Name -eq "data") { return }
@@ -67,5 +84,6 @@ function Update-StudioFiles {
 
   $sha = Get-RemoteGitSha
   if ($sha) { Save-LocalGitSha $sha }
-  Write-Host "Archivos actualizados."
+  Write-ProgressLine "archivos actualizados" 100
+  Write-Host "  Listo."
 }

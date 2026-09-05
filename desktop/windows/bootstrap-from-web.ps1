@@ -14,8 +14,12 @@ try {
 $InstallDir = Join-Path $env:USERPROFILE "VideoExtractionStudio"
 
 Write-Host ""
-Write-Host "Video Extraction Studio - instalacion / actualizacion"
-Write-Host "Carpeta: $InstallDir"
+Write-Host "========================================"
+Write-Host "  Video Extraction Studio"
+Write-Host "  instalacion / actualizacion"
+Write-Host "========================================"
+Write-Host ("  Carpeta: {0}" -f $InstallDir)
+Write-Host "  Esta ventana muestra el progreso. No la cierres."
 Write-Host ""
 
 if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
@@ -32,12 +36,14 @@ if (Test-Path $Helpers) {
   $RepoZip = "https://codeload.github.com/FrescoFresco/video-to-json/zip/refs/heads/main"
   $ZipPath = Join-Path $env:TEMP "vx-studio-main.zip"
   $ExtractRoot = Join-Path $env:TEMP "vx-studio-extract"
-  Write-Host "Descargando el programa..."
+  Write-Host "  [####----------------]  20%  descargando desde GitHub..."
   Invoke-WebRequest -Uri $RepoZip -OutFile $ZipPath -UseBasicParsing
+  Write-Host "  [###########---------]  55%  descomprimiendo..."
   if (Test-Path $ExtractRoot) { Remove-Item -Recurse -Force $ExtractRoot }
   Expand-Archive -Path $ZipPath -DestinationPath $ExtractRoot -Force
   $Unpacked = Get-ChildItem $ExtractRoot -Directory | Select-Object -First 1
   if (-not $Unpacked) { throw "No se pudo descomprimir el proyecto." }
+  Write-Host "  [################----]  80%  copiando archivos..."
   Get-ChildItem $Unpacked.FullName | ForEach-Object {
     if ($_.Name -eq "data") { return }
     $dest = Join-Path $InstallDir $_.Name
@@ -53,9 +59,11 @@ if (Test-Path $Helpers) {
     $sha = Get-RemoteGitSha
     if ($sha) { Save-LocalGitSha $sha }
   }
+  Write-Host "  [####################] 100%  archivos listos"
 }
 
-Write-Host "Archivos listos. Arrancando (Docker + Studio)..."
+Write-Host ""
+Write-Host "Archivos listos. Siguiente: Docker + arrancar el Studio..."
 Write-Host ""
 
 $InstallScript = Join-Path $InstallDir "desktop\windows\install.ps1"
