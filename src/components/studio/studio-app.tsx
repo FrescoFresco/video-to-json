@@ -64,37 +64,59 @@ function useCostConfig() {
 }
 
 
-/** Barra fina compartida (catálogo de vídeos y progreso de módulos). */
+/**
+ * Barra fina compartida.
+ * - tone: colores planos (módulos, estados fijos)
+ * - heat: degradado suave coral→ámbar→verde (cola de vídeos)
+ * Colores alineados con chips En espera / Listos / Errores.
+ */
 function ThinProgressBar({
   value,
   tone = "active",
+  variant = "tone",
   className = "",
 }: {
   value: number;
-  tone?: "active" | "queued" | "done" | "idle";
+  tone?: "active" | "queued" | "done" | "idle" | "error";
+  variant?: "tone" | "heat";
   className?: string;
 }) {
   const pct = Math.max(0, Math.min(100, value));
-  const fill =
+  const width =
+    tone === "idle" ? 0 : tone === "done" ? 100 : Math.max(pct > 0 ? 8 : 0, pct);
+
+  const solidFill =
     tone === "done"
       ? "bg-[#3d9a6a]"
       : tone === "queued"
         ? "bg-[#e2b340]"
-        : tone === "idle"
-          ? "bg-transparent"
-          : "bg-[#3d6f99]";
-  const width = tone === "idle" ? 0 : tone === "done" ? 100 : Math.max(pct > 0 ? 6 : 0, pct);
+        : tone === "error"
+          ? "bg-[#c45c4a]"
+          : tone === "idle"
+            ? "bg-transparent"
+            : "bg-[#3d6f99]";
+
   return (
     <div
-      className={`h-1.5 overflow-hidden rounded-full bg-[#eef0f3] ${className}`}
+      className={`h-1 overflow-hidden rounded-full bg-[#ececf0] ${className}`}
       role="progressbar"
       aria-valuenow={Math.round(pct)}
       aria-valuemin={0}
       aria-valuemax={100}
     >
       <div
-        className={`h-full rounded-full transition-all ${fill}`}
-        style={{ width: `${width}%` }}
+        className={`h-full rounded-full transition-[width] duration-500 ease-out ${
+          variant === "heat" ? "" : solidFill
+        }`}
+        style={{
+          width: `${width}%`,
+          ...(variant === "heat" && width > 0
+            ? {
+                backgroundImage:
+                  "linear-gradient(90deg, #c47a6a 0%, #d4a04a 42%, #4a9a72 100%)",
+              }
+            : {}),
+        }}
       />
     </div>
   );
@@ -497,7 +519,10 @@ function HomeView() {
                   key={video.id}
                   type="button"
                   onClick={() => s.openVideo(video.id)}
-                  className="grid w-full min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2.5 border-t border-[#e7e7eb] px-3 py-3.5 text-left first:border-t-0 sm:gap-3 sm:px-4 sm:py-4"
+                  className={`grid w-full min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2.5 border-t border-[#e7e7eb] px-3 py-3.5 text-left first:border-t-0 sm:gap-3 sm:px-4 sm:py-4 ${videoRowSurface(
+                    video.status,
+                    false
+                  )}`}
                 >
                   <StatusDot status={video.status} />
                   <div className="min-w-0">
@@ -505,8 +530,39 @@ function HomeView() {
                     <div className="mt-1 text-[12px] leading-snug break-words text-[#75757d] sm:text-[12.5px]">
                       {videoMetaParts(video, { eta }).join(" · ") || "—"}
                     </div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <ThinProgressBar
+                        value={video.progress}
+                        tone={
+                          video.status === "ready"
+                            ? "done"
+                            : video.status === "error"
+                              ? "error"
+                              : video.status === "queued"
+                                ? "queued"
+                                : "active"
+                        }
+                        variant={video.status === "processing" ? "heat" : "tone"}
+                        className="min-w-0 flex-1"
+                      />
+                      {video.status === "processing" || video.status === "queued" ? (
+                        <span className="shrink-0 text-[11px] tabular-nums text-[#9a9aa3]">
+                          {Math.round(video.progress)}%
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
-                  <div className="shrink-0 text-[12px] text-[#75757d]">{video.progress}%</div>
+                  <div
+                    className={`shrink-0 text-[12px] font-medium ${
+                      video.status === "ready"
+                        ? "text-[#177245]"
+                        : video.status === "error"
+                          ? "text-[#b42318]"
+                          : "text-[#75757d]"
+                    }`}
+                  >
+                    {statusLabel(video.status)}
+                  </div>
                 </button>
                 );
               })}
@@ -613,6 +669,13 @@ function QueueSummary({
   );
 }
 
+function videoRowSurface(status: JobStatus, selected: boolean) {
+  if (selected) return "bg-[#f3f3f6]";
+  if (status === "ready") return "bg-[#f6faf7]";
+  if (status === "error") return "bg-[#fff8f7]";
+  return "bg-white";
+}
+
 function VideoQueueRow({
   video,
   eta,
@@ -626,14 +689,24 @@ function VideoQueueRow({
   onToggle: () => void;
   onOpen: () => void;
 }) {
-  const showBar = video.status === "processing" || video.status === "queued";
-  const tone = video.status === "queued" ? "queued" : "active";
+  const inFlight = video.status === "processing" || video.status === "queued";
+  const barTone =
+    video.status === "ready"
+      ? "done"
+      : video.status === "error"
+        ? "error"
+        : video.status === "queued"
+          ? "queued"
+          : "active";
+  /** Heat solo en marcha: en Listo el verde sólido encaja mejor con el tinte del bloque. */
+  const useHeat = video.status === "processing";
 
   return (
     <div
-      className={`grid w-full min-w-0 grid-cols-[auto_auto_minmax(0,1fr)_auto] items-start gap-2.5 border-t border-[#e7e7eb] px-3 py-3 first:border-t-0 sm:items-center sm:gap-3 sm:px-4 sm:py-4 ${
-        selected ? "bg-[#f7f7f9]" : "bg-white"
-      }`}
+      className={`grid w-full min-w-0 grid-cols-[auto_auto_minmax(0,1fr)_auto] items-start gap-2.5 border-t border-[#e7e7eb] px-3 py-3 first:border-t-0 sm:items-center sm:gap-3 sm:px-4 sm:py-3.5 ${videoRowSurface(
+        video.status,
+        selected
+      )}`}
     >
       <input
         type="checkbox"
@@ -652,10 +725,9 @@ function VideoQueueRow({
         data-video-open={video.id}
       >
         <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 truncate text-sm font-medium">{video.name}</div>
-          <div className="shrink-0 text-right text-[11px] text-[#75757d] sm:hidden">
-            <div className="font-medium text-[#171719]">{statusLabel(video.status)}</div>
-            <div>{video.progress}%</div>
+          <div className="min-w-0 truncate text-sm font-medium text-[#171719]">{video.name}</div>
+          <div className="shrink-0 text-right text-[11px] font-medium text-[#5c5c66] sm:hidden">
+            {statusLabel(video.status)}
           </div>
         </div>
         <div className="mt-1 text-[12px] leading-snug break-words text-[#75757d] sm:text-[12.5px]">
@@ -666,42 +738,46 @@ function VideoQueueRow({
             {videoMetaParts(video, { eta }).join(" · ")}
           </span>
         </div>
-        {showBar ? (
-          <div className="mt-2 flex items-center gap-2">
-            <ThinProgressBar value={video.progress} tone={tone} className="min-w-0 flex-1" />
-            <span className="shrink-0 text-[11px] tabular-nums text-[#75757d]">{video.progress}%</span>
-            <span
-              className="grid size-7 shrink-0 place-items-center rounded-full border border-[#e0e0e6] bg-white text-[#171719] shadow-[0_1px_0_rgba(0,0,0,0.03)]"
-              title="Ver detalle"
-              aria-hidden
-            >
-              <ChevronRight className="size-3.5" strokeWidth={2.25} />
+        <div className="mt-2.5 flex items-center gap-2">
+          <ThinProgressBar
+            value={video.progress}
+            tone={barTone}
+            variant={useHeat ? "heat" : "tone"}
+            className="min-w-0 flex-1"
+          />
+          {inFlight ? (
+            <span className="w-8 shrink-0 text-right text-[11px] tabular-nums text-[#9a9aa3]">
+              {Math.round(video.progress)}%
             </span>
-          </div>
-        ) : (
-          <div className="mt-2 flex items-center justify-end sm:hidden">
-            <span
-              className="grid size-7 place-items-center rounded-full border border-[#e0e0e6] bg-white text-[#171719]"
-              title="Ver detalle"
-              aria-hidden
-            >
-              <ChevronRight className="size-3.5" strokeWidth={2.25} />
-            </span>
-          </div>
-        )}
+          ) : null}
+          <span
+            className="grid size-7 shrink-0 place-items-center rounded-full border border-[#e0e0e6] bg-white/80 text-[#171719] sm:hidden"
+            title="Ver detalle"
+            aria-hidden
+          >
+            <ChevronRight className="size-3.5" strokeWidth={2.25} />
+          </span>
+        </div>
       </button>
       <button
         type="button"
         onClick={onOpen}
         title="Ver detalle"
         aria-label={`Abrir detalle de ${video.name}`}
-        className="mt-0.5 hidden shrink-0 items-center gap-2 text-right text-[12px] text-[#75757d] sm:mt-0 sm:flex"
+        className="mt-0.5 hidden shrink-0 items-center gap-2.5 text-right text-[12px] text-[#75757d] sm:mt-0 sm:flex"
       >
-        <div>
-          <div className="font-medium text-[#171719]">{statusLabel(video.status)}</div>
-          <div className="mt-1">{video.progress}%</div>
-        </div>
-        <span className="grid size-8 place-items-center rounded-full border border-[#e0e0e6] bg-[#fafafa] text-[#171719] transition-colors hover:border-[#c8c8d0] hover:bg-white">
+        <span
+          className={`font-medium ${
+            video.status === "ready"
+              ? "text-[#177245]"
+              : video.status === "error"
+                ? "text-[#b42318]"
+                : "text-[#171719]"
+          }`}
+        >
+          {statusLabel(video.status)}
+        </span>
+        <span className="grid size-8 place-items-center rounded-full border border-[#e0e0e6] bg-white/90 text-[#171719] transition-colors hover:border-[#c8c8d0] hover:bg-white">
           <ChevronRight className="size-4" strokeWidth={2.25} />
         </span>
       </button>
@@ -1183,6 +1259,7 @@ function VideoDetail({ video }: { video: StoredVideo }) {
             <ThinProgressBar
               value={video.progress}
               tone={video.status === "queued" ? "queued" : "active"}
+              variant={video.status === "processing" ? "heat" : "tone"}
               className="mt-3 max-w-full sm:max-w-sm"
             />
           )}
