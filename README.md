@@ -43,15 +43,14 @@ Eso descarga el Studio, instala Docker si puede, lo arranca y abre el navegador.
 
 ### Opción 1 — Iniciar sesión con Google (recomendado, Gmail / Mi unidad)
 
-En **Conexiones → Google Drive**:
+**Como usuario:** en **Conexiones → Google Drive** pulsa **Conectar con Google**, inicia sesión, pega la URL de tu carpeta y **Probar**.
 
-1. En [Google Cloud → Credenciales](https://console.cloud.google.com/apis/credentials) crea un **ID de cliente OAuth** tipo **Aplicación web**.
-2. Activa **Google Drive API**. En «URI de redirección autorizados» pega exactamente:
-   `http://127.0.0.1:43141/api/drive/oauth/callback`
-3. Copia Client ID y Client Secret en la app → **Conectar con Google** → elige tu cuenta.
-4. Pega la URL de tu carpeta de **Mi unidad** → Guardar → **Probar**.
+**Como dueño de la app (una sola vez):** crea un cliente OAuth tipo Aplicación web en Google Cloud, activa Drive API y pon la URI
+`http://127.0.0.1:43141/api/drive/oauth/callback`.
+Luego configura las credenciales con env `VX_DRIVE_OAUTH_CLIENT_ID` / `VX_DRIVE_OAUTH_CLIENT_SECRET`
+o copia `data/oauth-client.example.json` → `data/oauth-client.json`.
 
-Cada extracción terminada se sube sola a esa carpeta. No hace falta Unidad compartida ni compartir con un email raro.
+Cada extracción terminada se sube sola a esa carpeta. No hace falta Unidad compartida.
 
 ### Opción 2 — Cuenta de servicio (solo Unidades compartidas / Workspace)
 

@@ -2601,9 +2601,9 @@ function DocsView({ onOpenConnections }: { onOpenConnections: () => void }) {
             <div className="text-sm font-semibold">Google Drive</div>
             <ol className="mt-3 grid gap-2 text-sm text-[#171719]">
               <li>1. Conexiones → Google Drive</li>
-              <li>2. Crea Client ID OAuth en Google Cloud (tipo Aplicación web)</li>
-              <li>3. Pega la URI de redirección que muestra la app y pulsa Conectar con Google</li>
-              <li>4. Pega la URL de tu carpeta de Mi unidad → Guardar → Probar</li>
+              <li>2. Pulsa Conectar con Google e inicia sesión</li>
+              <li>3. Pega la URL de tu carpeta de Mi unidad</li>
+              <li>4. Guardar → Probar</li>
             </ol>
             <div className="mt-4">
               <Button className="rounded-xl" onClick={onOpenConnections}>

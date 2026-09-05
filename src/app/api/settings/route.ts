@@ -5,6 +5,7 @@ import {
   hasDriveAuth,
   publicAppConfig,
   readAppConfig,
+  resolveOAuthClient,
   writeAppConfig,
 } from "@/lib/server/app-config";
 import { deleteDriveFile, uploadJsonToDrive } from "@/lib/server/google-drive";
@@ -14,7 +15,11 @@ export const runtime = "nodejs";
 
 export async function GET() {
   const config = await readAppConfig();
-  return NextResponse.json(publicAppConfig(config));
+  const oauth = await resolveOAuthClient(config);
+  return NextResponse.json({
+    ...publicAppConfig(config),
+    driveOAuthClientConfigured: Boolean(oauth.clientId && oauth.clientSecret),
+  });
 }
 
 export async function PUT(request: Request) {
@@ -102,7 +107,11 @@ export async function PUT(request: Request) {
       : {}),
   });
 
-  return NextResponse.json(publicAppConfig(next));
+  const oauth = await resolveOAuthClient(next);
+  return NextResponse.json({
+    ...publicAppConfig(next),
+    driveOAuthClientConfigured: Boolean(oauth.clientId && oauth.clientSecret),
+  });
 }
 
 /** Prueba webhook o Google Drive según `action`. */

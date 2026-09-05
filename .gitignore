@@ -64,3 +64,6 @@ __pycache__/
 
 # Windows launcher build artifacts
 desktop/windows/installer/*.exe
+
+# Credenciales OAuth locales (no subir a git)
+data/oauth-client.json

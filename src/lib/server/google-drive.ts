@@ -6,6 +6,7 @@ import {
   driveAuthMethod,
   hasDriveAuth,
   readAppConfig,
+  resolveOAuthClient,
   writeAppConfig,
   type AppConfig,
 } from "./app-config";
@@ -234,9 +235,10 @@ async function getServiceAccountToken(account: ServiceAccount): Promise<string> 
 }
 
 async function refreshOAuthAccessToken(config: AppConfig): Promise<string> {
-  if (!config.driveOAuthClientId || !config.driveOAuthClientSecret) {
+  const oauth = await resolveOAuthClient(config);
+  if (!oauth.clientId || !oauth.clientSecret) {
     throw new Error(
-      "Faltan Client ID / Client Secret de Google. Guárdalos en Conexiones → Drive."
+      "Faltan las credenciales OAuth de la app (env, oauth-client.json o config)."
     );
   }
   if (!config.driveOAuthRefreshToken) {
@@ -244,8 +246,8 @@ async function refreshOAuthAccessToken(config: AppConfig): Promise<string> {
   }
 
   const body = new URLSearchParams({
-    client_id: config.driveOAuthClientId,
-    client_secret: config.driveOAuthClientSecret,
+    client_id: oauth.clientId,
+    client_secret: oauth.clientSecret,
     refresh_token: config.driveOAuthRefreshToken,
     grant_type: "refresh_token",
   });

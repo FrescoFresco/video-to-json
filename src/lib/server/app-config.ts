@@ -67,7 +67,7 @@ function asNumber(v: unknown): number {
   return typeof v === "number" && Number.isFinite(v) ? v : 0;
 }
 
-/** True si hay OAuth conectado o cuenta de servicio. */
+
 export function hasDriveAuth(config: AppConfig): boolean {
   return Boolean(
     config.driveOAuthRefreshToken?.trim() || config.driveServiceAccountJson?.trim()
@@ -120,6 +120,55 @@ export async function readAppConfig(): Promise<AppConfig> {
   }
 }
 
+/** Credenciales OAuth de la app (env o data/oauth-client.json). No van a la UI. */
+export type OAuthClientCredentials = {
+  clientId: string;
+  clientSecret: string;
+  source: "env" | "file" | "config" | null;
+};
+
+function oauthClientFilePath() {
+  return path.join(/*turbopackIgnore: true*/ dataDirRoot(), "oauth-client.json");
+}
+
+async function readOAuthClientFile(): Promise<{ clientId: string; clientSecret: string } | null> {
+  try {
+    const raw = await readFile(/*turbopackIgnore: true*/ oauthClientFilePath(), "utf8");
+    const parsed = JSON.parse(raw) as { clientId?: string; clientSecret?: string; client_id?: string; client_secret?: string };
+    const clientId = asString(parsed.clientId || parsed.client_id);
+    const clientSecret = asString(parsed.clientSecret || parsed.client_secret);
+    if (!clientId || !clientSecret) return null;
+    return { clientId, clientSecret };
+  } catch {
+    return null;
+  }
+}
+
+/** Resuelve Client ID/Secret: env → archivo local → config guardada. */
+export async function resolveOAuthClient(
+  config: AppConfig
+): Promise<OAuthClientCredentials> {
+  const cfg = config;
+  const envId = asString(process.env.VX_DRIVE_OAUTH_CLIENT_ID);
+  const envSecret = asString(process.env.VX_DRIVE_OAUTH_CLIENT_SECRET);
+  if (envId && envSecret) {
+    return { clientId: envId, clientSecret: envSecret, source: "env" };
+  }
+  const file = await readOAuthClientFile();
+  if (file) {
+    return { clientId: file.clientId, clientSecret: file.clientSecret, source: "file" };
+  }
+  if (cfg.driveOAuthClientId && cfg.driveOAuthClientSecret) {
+    return {
+      clientId: cfg.driveOAuthClientId,
+      clientSecret: cfg.driveOAuthClientSecret,
+      source: "config",
+    };
+  }
+  return { clientId: "", clientSecret: "", source: null };
+}
+
+/** True si hay OAuth conectado o cuenta de servicio. */
 export async function writeAppConfig(patch: Partial<AppConfig>): Promise<AppConfig> {
   const current = await readAppConfig();
   const next: AppConfig = {
@@ -209,6 +258,12 @@ export function publicAppConfig(config: AppConfig) {
     }
   }
   const method = driveAuthMethod(config);
+  const envId = asString(process.env.VX_DRIVE_OAUTH_CLIENT_ID);
+  const envSecret = asString(process.env.VX_DRIVE_OAUTH_CLIENT_SECRET);
+  const clientConfigured = Boolean(
+    (envId && envSecret) ||
+      (config.driveOAuthClientId && config.driveOAuthClientSecret)
+  );
   return {
     webhookUrl: config.webhookUrl,
     webhookSecretSet: Boolean(config.webhookSecret),
@@ -219,8 +274,10 @@ export function publicAppConfig(config: AppConfig) {
     driveFolderId: config.driveFolderId,
     driveCredentialsSet: hasDriveAuth(config),
     driveAuthMethod: method,
-    driveOAuthClientId: config.driveOAuthClientId,
-    driveOAuthClientSecretSet: Boolean(config.driveOAuthClientSecret),
+    // Si ya hay credenciales de app, no hace falta que el usuario pegue Client ID
+    driveOAuthClientConfigured: clientConfigured,
+    driveOAuthClientId: envId ? "" : config.driveOAuthClientId,
+    driveOAuthClientSecretSet: Boolean(envSecret || config.driveOAuthClientSecret),
     driveOAuthConnected: Boolean(config.driveOAuthRefreshToken),
     driveOAuthEmail: config.driveOAuthEmail || null,
     driveClientEmail:

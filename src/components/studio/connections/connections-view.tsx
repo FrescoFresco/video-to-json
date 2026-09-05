@@ -19,6 +19,7 @@ type SettingsPayload = {
   driveAuthMethod?: "oauth" | "service_account" | null;
   driveOAuthClientId?: string;
   driveOAuthClientSecretSet?: boolean;
+  driveOAuthClientConfigured?: boolean;
   driveOAuthConnected?: boolean;
   driveOAuthEmail?: string | null;
   driveClientEmail?: string | null;
@@ -46,6 +47,7 @@ export function ConnectionsView() {
   const [driveOAuthClientId, setDriveOAuthClientId] = useState("");
   const [driveOAuthClientSecret, setDriveOAuthClientSecret] = useState("");
   const [driveOAuthClientSecretSet, setDriveOAuthClientSecretSet] = useState(false);
+  const [driveOAuthClientConfigured, setDriveOAuthClientConfigured] = useState(false);
   const [driveOAuthConnected, setDriveOAuthConnected] = useState(false);
   const [driveOAuthEmail, setDriveOAuthEmail] = useState<string | null>(null);
   const [driveRedirectUri, setDriveRedirectUri] = useState(
@@ -75,6 +77,7 @@ export function ConnectionsView() {
     setDriveAuthMethod(data.driveAuthMethod ?? null);
     setDriveOAuthClientId(data.driveOAuthClientId || "");
     setDriveOAuthClientSecretSet(Boolean(data.driveOAuthClientSecretSet));
+    setDriveOAuthClientConfigured(Boolean(data.driveOAuthClientConfigured));
     setDriveOAuthConnected(Boolean(data.driveOAuthConnected));
     setDriveOAuthEmail(data.driveOAuthEmail || null);
     setDriveClientEmail(data.driveClientEmail || null);
@@ -132,6 +135,34 @@ export function ConnectionsView() {
         /* ignore */
       }
     })();
+  }, []);
+
+
+  useEffect(() => {
+    function onMessage(event: MessageEvent) {
+      if (event.origin !== window.location.origin) return;
+      const data = event.data as { type?: string; ok?: boolean; message?: string } | null;
+      if (!data || data.type !== "vx-drive-oauth") return;
+      if (data.ok) {
+        setMessage(data.message || "Google conectado.");
+        setError(null);
+      } else {
+        setError(data.message || "No se pudo conectar con Google.");
+        setMessage(null);
+      }
+      setOpenPanel("drive");
+      void (async () => {
+        try {
+          const res = await fetch("/api/settings", { cache: "no-store" });
+          const payload = (await res.json()) as SettingsPayload;
+          if (res.ok) applySettings(payload);
+        } catch {
+          /* ignore */
+        }
+      })();
+    }
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
   }, []);
 
   async function save() {
@@ -241,29 +272,42 @@ export function ConnectionsView() {
     setError(null);
     setMessage(null);
     try {
-      // Guardar Client ID/Secret antes de redirigir
-      const res = await fetch("/api/settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          driveOAuthClientId: driveOAuthClientId.trim(),
-          ...(driveOAuthClientSecret.trim()
-            ? { driveOAuthClientSecret: driveOAuthClientSecret.trim() }
-            : {}),
-          driveFolderId: driveFolderId.trim(),
-          driveEnabled: true,
-        }),
-      });
-      const data = (await res.json()) as SettingsPayload;
-      if (!res.ok) throw new Error(data.error || "No se pudo guardar Client ID/Secret");
-      applySettings(data);
-      setDriveOAuthClientSecret("");
-      if (!data.driveOAuthClientId || !data.driveOAuthClientSecretSet) {
-        throw new Error(
-          "Pega el Client ID y el Client Secret de Google Cloud, pulsa Guardar o Conectar."
-        );
+      // Si aún no hay credenciales de app, guardar las del formulario (setup una vez)
+      if (!driveOAuthClientConfigured) {
+        const res = await fetch("/api/settings", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            driveOAuthClientId: driveOAuthClientId.trim(),
+            ...(driveOAuthClientSecret.trim()
+              ? { driveOAuthClientSecret: driveOAuthClientSecret.trim() }
+              : {}),
+            driveFolderId: driveFolderId.trim(),
+            driveEnabled: true,
+          }),
+        });
+        const data = (await res.json()) as SettingsPayload;
+        if (!res.ok) throw new Error(data.error || "No se pudo guardar Client ID/Secret");
+        applySettings(data);
+        setDriveOAuthClientSecret("");
+        if (!data.driveOAuthClientConfigured) {
+          throw new Error(
+            "Faltan las credenciales de Google de la app. Pégalas una vez o configura el archivo oauth-client.json."
+          );
+        }
       }
-      window.location.href = "/api/drive/oauth/start";
+
+      const popup = window.open(
+        "/api/drive/oauth/start",
+        "vx-google-oauth",
+        "width=520,height=700,menubar=no,toolbar=no,status=no"
+      );
+      if (!popup) {
+        // Si el navegador bloquea ventanas, navegar en la misma pestaña
+        window.location.href = "/api/drive/oauth/start";
+        return;
+      }
+      setMessage("Completa el login de Google en la ventana emergente…");
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo iniciar el login de Google");
     }
@@ -538,37 +582,11 @@ export function ConnectionsView() {
         >
           {openPanel === "drive" ? (
             <>
-              <ol className="mb-4 list-decimal space-y-1.5 pl-5 text-[12.5px] leading-relaxed text-[#5c5c66]">
-                <li>
-                  En{" "}
-                  <a
-                    className="underline"
-                    href="https://console.cloud.google.com/apis/credentials"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Google Cloud → Credenciales
-                  </a>
-                  : crea un <strong>ID de cliente OAuth</strong> tipo{" "}
-                  <strong>Aplicación web</strong>.
-                </li>
-                <li>
-                  Activa <strong>Google Drive API</strong> en ese proyecto.
-                </li>
-                <li>
-                  En «URI de redirección autorizados» pega exactamente:
-                  <code className="mt-1 block break-all rounded-lg bg-[#f3f3f5] px-2 py-1 text-[11px]">
-                    {driveRedirectUri}
-                  </code>
-                </li>
-                <li>
-                  Copia Client ID y Client Secret aquí →{" "}
-                  <strong>Conectar con Google</strong> → elige tu Gmail.
-                </li>
-                <li>
-                  Pega la URL de tu carpeta de <strong>Mi unidad</strong> → Guardar → Probar.
-                </li>
-              </ol>
+              <p className="mb-4 text-[12.5px] leading-relaxed text-[#5c5c66]">
+                Pulsa <strong>Conectar con Google</strong>, inicia sesión con tu Gmail y
+                autoriza el acceso. Luego pega la URL de tu carpeta y pulsa{" "}
+                <strong>Probar</strong>.
+              </p>
               <div className="grid min-w-0 gap-3">
                 <label className="flex items-center gap-2 text-sm">
                   <input
@@ -579,32 +597,45 @@ export function ConnectionsView() {
                   />
                   <span>Subir automáticamente cada JSON</span>
                 </label>
-                <label className="grid min-w-0 gap-1.5 text-sm">
-                  <span className="text-[#75757d]">Client ID</span>
-                  <input
-                    value={driveOAuthClientId}
-                    onChange={(e) => setDriveOAuthClientId(e.target.value)}
-                    placeholder="xxxxxx.apps.googleusercontent.com"
-                    className="h-10 w-full min-w-0 rounded-xl border border-[#d7d7dc] bg-[#fbfbfc] px-3 font-mono text-[13px] outline-none focus:border-[#9e9ea5]"
-                  />
-                </label>
-                <label className="grid min-w-0 gap-1.5 text-sm">
-                  <span className="text-[#75757d]">
-                    Client Secret{" "}
-                    {driveOAuthClientSecretSet ? "(guardado)" : ""}
-                  </span>
-                  <input
-                    type="password"
-                    value={driveOAuthClientSecret}
-                    onChange={(e) => setDriveOAuthClientSecret(e.target.value)}
-                    placeholder={
-                      driveOAuthClientSecretSet
-                        ? "Vacío = no cambiar el secreto guardado"
-                        : "GOCSPX-…"
-                    }
-                    className="h-10 w-full min-w-0 rounded-xl border border-[#d7d7dc] bg-[#fbfbfc] px-3 font-mono text-[13px] outline-none focus:border-[#9e9ea5]"
-                  />
-                </label>
+
+                {!driveOAuthClientConfigured ? (
+                  <div className="grid min-w-0 gap-3 rounded-xl border border-dashed border-[#d7d7dc] bg-[#fafafa] p-3">
+                    <p className="text-[12px] leading-relaxed text-[#5c5c66]">
+                      Setup una sola vez (dueño de la app): crea un cliente OAuth en Google
+                      Cloud (tipo Aplicación web), activa Drive API y pega aquí Client ID y
+                      Secret. URI de redirección:
+                      <code className="mt-1 block break-all rounded-lg bg-white px-2 py-1 text-[11px]">
+                        {driveRedirectUri}
+                      </code>
+                    </p>
+                    <label className="grid min-w-0 gap-1.5 text-sm">
+                      <span className="text-[#75757d]">Client ID</span>
+                      <input
+                        value={driveOAuthClientId}
+                        onChange={(e) => setDriveOAuthClientId(e.target.value)}
+                        placeholder="xxxxxx.apps.googleusercontent.com"
+                        className="h-10 w-full min-w-0 rounded-xl border border-[#d7d7dc] bg-white px-3 font-mono text-[13px] outline-none focus:border-[#9e9ea5]"
+                      />
+                    </label>
+                    <label className="grid min-w-0 gap-1.5 text-sm">
+                      <span className="text-[#75757d]">
+                        Client Secret {driveOAuthClientSecretSet ? "(guardado)" : ""}
+                      </span>
+                      <input
+                        type="password"
+                        value={driveOAuthClientSecret}
+                        onChange={(e) => setDriveOAuthClientSecret(e.target.value)}
+                        placeholder={
+                          driveOAuthClientSecretSet
+                            ? "Vacío = no cambiar"
+                            : "GOCSPX-…"
+                        }
+                        className="h-10 w-full min-w-0 rounded-xl border border-[#d7d7dc] bg-white px-3 font-mono text-[13px] outline-none focus:border-[#9e9ea5]"
+                      />
+                    </label>
+                  </div>
+                ) : null}
+
                 <div className="flex flex-wrap items-center gap-2">
                   {driveOAuthConnected ? (
                     <>
@@ -631,6 +662,7 @@ export function ConnectionsView() {
                     </Button>
                   )}
                 </div>
+
                 <label className="grid min-w-0 gap-1.5 text-sm">
                   <span className="text-[#75757d]">ID o URL de la carpeta</span>
                   <input
@@ -643,13 +675,14 @@ export function ConnectionsView() {
                     className="h-10 w-full min-w-0 rounded-xl border border-[#d7d7dc] bg-[#fbfbfc] px-3 font-mono text-[13px] outline-none focus:border-[#9e9ea5]"
                   />
                 </label>
+
                 <button
                   type="button"
                   className="justify-self-start text-left text-[12.5px] text-[#75757d] underline"
                   onClick={() => setShowAdvancedDrive((v) => !v)}
                 >
                   {showAdvancedDrive
-                    ? "Ocultar modo avanzado (cuenta de servicio)"
+                    ? "Ocultar modo avanzado"
                     : "Modo avanzado: cuenta de servicio / Unidad compartida"}
                 </button>
                 {showAdvancedDrive ? (
@@ -674,8 +707,8 @@ export function ConnectionsView() {
                       className="w-full min-w-0 resize-y rounded-xl border border-[#d7d7dc] bg-[#fbfbfc] px-3 py-2 font-mono text-[12px] outline-none focus:border-[#9e9ea5]"
                     />
                     <span className="text-[11.5px] text-[#8a8a93]">
-                      Solo para Google Workspace con Unidades compartidas. En Gmail normal
-                      usa «Conectar con Google».
+                      Solo Workspace con Unidades compartidas. En Gmail usa Conectar con
+                      Google.
                     </span>
                   </label>
                 ) : null}

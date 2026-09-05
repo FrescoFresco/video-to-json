@@ -10,6 +10,8 @@ services:
       XDG_CACHE_HOME: /data/cache
       HF_HUB_DISABLE_TELEMETRY: "1"
       VX_DATA_DIR: /data/jobs
+      VX_DRIVE_OAUTH_CLIENT_ID: ${VX_DRIVE_OAUTH_CLIENT_ID:-}
+      VX_DRIVE_OAUTH_CLIENT_SECRET: ${VX_DRIVE_OAUTH_CLIENT_SECRET:-}
     volumes:
       - vx-models:/data
     restart: unless-stopped

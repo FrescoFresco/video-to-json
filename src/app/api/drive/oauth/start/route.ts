@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
-import { readAppConfig } from "@/lib/server/app-config";
+import { readAppConfig, resolveOAuthClient } from "@/lib/server/app-config";
 import {
   buildOAuthAuthorizeUrl,
   createPkcePair,
@@ -12,11 +12,12 @@ export const runtime = "nodejs";
 
 export async function GET(request: Request) {
   const config = await readAppConfig();
-  if (!config.driveOAuthClientId || !config.driveOAuthClientSecret) {
+  const oauth = await resolveOAuthClient(config);
+  if (!oauth.clientId || !oauth.clientSecret) {
     return NextResponse.json(
       {
         error:
-          "Primero guarda el Client ID y el Client Secret de Google en Conexiones → Drive.",
+          "Faltan las credenciales OAuth de la app. Configura VX_DRIVE_OAUTH_CLIENT_ID / VX_DRIVE_OAUTH_CLIENT_SECRET o el archivo data/oauth-client.json.",
       },
       { status: 400 }
     );
@@ -33,7 +34,7 @@ export async function GET(request: Request) {
   });
 
   const url = buildOAuthAuthorizeUrl({
-    clientId: config.driveOAuthClientId,
+    clientId: oauth.clientId,
     redirectUri,
     state,
     codeChallenge: challenge,
