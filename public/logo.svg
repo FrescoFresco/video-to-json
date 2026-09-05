@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" role="img" aria-label="Video Extraction Studio">
   <rect width="64" height="64" rx="14" fill="#F3F0E8"/>
-  <rect x="15" y="19" width="34" height="26" rx="7" stroke="#171719" stroke-width="2.75"/>
-  <path d="M28 26.8v10.4L38.2 32 28 26.8z" fill="#2F6F5E"/>
+  <rect x="12" y="17" width="40" height="30" rx="8" stroke="#171719" stroke-width="3"/>
+  <path d="M27 25.5v13L39.5 32 27 25.5z" fill="#2F6F5E"/>
 </svg>
