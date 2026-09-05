@@ -23,7 +23,7 @@ import { DEFAULT_COST, estimatePipelineSeconds, type CostConfig } from "@/lib/pi
 import { msToClock } from "@/lib/extraction";
 import { isLinkListFilename, readLinksFromFile } from "@/lib/ingest-links";
 import { useStudio } from "@/lib/store";
-import type { ExtractionModule, JobStatus, StoredVideo, ViewName } from "@/lib/types";
+import type { ExtractionModule, JobStatus, StoredVideo, TimelineEvent, ViewName } from "@/lib/types";
 import { isVideoFile } from "@/lib/video-file";
 import { IdeaView } from "@/components/studio/recreation-diagram";
 
@@ -1197,6 +1197,11 @@ function VideoDetail({ video }: { video: StoredVideo }) {
         className="vx-tab-scroll sticky top-0 z-10 -mx-4 flex gap-0 overflow-x-auto overscroll-x-contain border-b border-[#e7e7eb] bg-[#fbfbfc]/95 px-4 backdrop-blur-sm md:mx-0 md:px-0"
       >
         {tabBtn("estado", "Estado")}
+        {tabBtn(
+          "timeline",
+          "Timeline",
+          extraction?.timeline?.length ? String(extraction.timeline.length) : undefined
+        )}
         {liveRows.map((row) =>
           tabBtn(
             row.id,
@@ -1284,6 +1289,13 @@ function VideoDetail({ video }: { video: StoredVideo }) {
               </section>
             </div>
           )
+        ) : null}
+
+        {detailTab === "timeline" ? (
+          <TimelinePanel
+            events={extraction?.timeline || []}
+            onOpenModule={(id) => setDetailTab(id)}
+          />
         ) : null}
 
         {activeModuleRow ? (
@@ -1468,11 +1480,551 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function asArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function chip(text: string, key: string) {
+  return (
+    <span
+      key={key}
+      className="inline-flex items-center rounded-md border border-[#e4e4e8] bg-[#f7f7f9] px-2 py-0.5 text-[11px] text-[#5a6370]"
+    >
+      {text}
+    </span>
+  );
+}
+
+function MetaChips({ module }: { module: ExtractionModule }) {
+  const data = asRecord(module.data);
+  const chips: string[] = [];
+  if (module.engine) chips.push(module.engine);
+  if (data) {
+    if (typeof data.model === "string") chips.push(data.model);
+    if (typeof data.vision_model === "string") chips.push(data.vision_model);
+    if (typeof data.language === "string") {
+      const p = data.language_probability;
+      chips.push(
+        typeof p === "number"
+          ? `idioma ${data.language} (${Math.round(p * 100)}%)`
+          : `idioma ${data.language}`
+      );
+    }
+    if (typeof data.speaker_count === "number") chips.push(`${data.speaker_count} hablantes`);
+    if (typeof data.faces_linked === "number") chips.push(`${data.faces_linked} caras enlazadas`);
+    const bpm = data.tempo_bpm ?? data.tempo_bpm;
+    if (typeof bpm === "number") chips.push(`~${Math.round(bpm)} BPM`);
+    const vlm = data.vlm_described ?? data.vlm_described;
+    if (typeof vlm === "number") chips.push(`VLM ${vlm}`);
+    const frames = data.frame_count ?? data.frame_count;
+    if (typeof frames === "number") chips.push(`${frames} frames`);
+    const profile = asRecord(data.profile);
+    if (profile) {
+      for (const key of ["overall", "overall", "energy", "rhythm", "dominant", "dominant_shot"] as const) {
+        const v = profile[key];
+        if (typeof v === "string" && v.trim()) {
+          chips.push(v.trim());
+          break;
+        }
+      }
+    }
+  }
+  if (!chips.length) return null;
+  return <div className="mt-2 flex flex-wrap gap-1.5">{chips.map((c, i) => chip(c, `${i}`))}</div>;
+}
+
+function TimelinePanel({
+  events,
+  onOpenModule,
+}: {
+  events: TimelineEvent[];
+  onOpenModule: (moduleId: string) => void;
+}) {
+  if (!events.length) {
+    return (
+      <EmptyCard
+        title="Timeline aún vacía"
+        body="Cuando los módulos empiecen a devolver filas, aparecerán aquí ordenadas por tiempo."
+      />
+    );
+  }
+
+  return (
+    <section className="min-w-0 w-full">
+      <div className="border-b border-[#e7e7eb] pb-3">
+        <h2 className="text-base font-semibold tracking-[-0.02em]">Timeline</h2>
+        <p className="mt-1 text-[12.5px] text-[#75757d]">
+          {events.length} eventos de todos los módulos, en orden temporal. Pulsa el módulo para
+          abrir su pestaña.
+        </p>
+      </div>
+      <div className="mt-1 grid min-w-0 gap-0">
+        {events.map((ev, index) => {
+          const end =
+            typeof ev.end_ms === "number" && ev.end_ms !== ev.start_ms
+              ? ` → ${msToClock(ev.end_ms)}`
+              : "";
+          const label = (ev.label || "").trim();
+          const text = (ev.text || "").trim();
+          const line =
+            label && label !== text ? (
+              <>
+                <span className="font-medium text-[#171719]">{label}</span>
+                {text ? <span className="text-[#5a6370]"> · {text}</span> : null}
+              </>
+            ) : (
+              <span className="text-[#171719]">{text || label || "—"}</span>
+            );
+
+          return (
+            <div
+              key={`${ev.module_id}-${ev.start_ms ?? "x"}-${index}`}
+              className="grid min-w-0 grid-cols-1 gap-y-1 border-b border-[#ececf0] py-2.5 last:border-b-0 sm:grid-cols-[7.5rem_7.5rem_minmax(0,1fr)] sm:items-baseline sm:gap-x-3"
+            >
+              <span className="tabular-nums text-[12.5px] text-[#75757d]">
+                {typeof ev.start_ms === "number" ? `${msToClock(ev.start_ms)}${end}` : "—"}
+              </span>
+              <button
+                type="button"
+                onClick={() => onOpenModule(ev.module_id)}
+                className="truncate text-left text-[12px] font-medium text-[#3d6f99] underline-offset-2 hover:underline"
+                title={`Abrir ${ev.module_title}`}
+              >
+                {ev.module_title}
+              </button>
+              <div className="min-w-0 text-sm leading-snug break-words">{line}</div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function ModuleRichExtras({ module }: { module: ExtractionModule }) {
+  const data = asRecord(module.data);
+  if (!data) return null;
+
+  if (module.id === "speech") {
+    const segs = asArray(data.segments);
+    const withWords = segs.filter((s) => asArray(asRecord(s)?.words).length > 0);
+    if (!withWords.length) return null;
+    return (
+      <div className="mt-4 grid gap-3">
+        <div className="text-[12px] font-medium uppercase tracking-[0.04em] text-[#6a7380]">
+          Palabras con tiempo
+        </div>
+        {withWords.slice(0, 8).map((raw, i) => {
+          const seg = asRecord(raw) || {};
+          const words = asArray(seg.words);
+          return (
+            <div key={i} className="rounded-xl border border-[#ececf0] bg-[#fafafb] p-3">
+              <div className="text-[12px] text-[#75757d]">
+                {typeof seg.speaker === "string" ? seg.speaker : "habla"}
+                {typeof seg.start_ms === "number" ? ` · ${msToClock(seg.start_ms)}` : ""}
+              </div>
+              <div className="mt-2 flex flex-wrap gap-x-1 gap-y-1">
+                {words.map((wRaw, wi) => {
+                  const w = asRecord(wRaw) || {};
+                  const word = String(w.word ?? "");
+                  const start = typeof w.start_ms === "number" ? msToClock(w.start_ms) : "";
+                  return (
+                    <span
+                      key={wi}
+                      className="rounded bg-white px-1.5 py-0.5 text-[12.5px] text-[#171719] ring-1 ring-[#e7e7eb]"
+                      title={start}
+                    >
+                      {word}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  if (module.id === "speakers") {
+    const dialogue = asArray(data.dialogue);
+    const speakers = asArray(data.speakers);
+    return (
+      <div className="mt-4 grid gap-4">
+        {speakers.length ? (
+          <div>
+            <div className="text-[12px] font-medium uppercase tracking-[0.04em] text-[#6a7380]">
+              Interlocutores
+            </div>
+            <div className="mt-2 grid gap-2">
+              {speakers.map((raw, i) => {
+                const sp = asRecord(raw) || {};
+                const face = typeof sp.face_description === "string" ? sp.face_description : "";
+                const scoreRaw =
+                  typeof sp.face_match_score === "number"
+                    ? sp.face_match_score
+                    : typeof sp.face_match_score === "number"
+                      ? sp.face_match_score
+                      : null;
+                const score =
+                  typeof scoreRaw === "number" ? `match ${Math.round(scoreRaw * 100)}%` : "";
+                return (
+                  <div key={i} className="rounded-xl border border-[#ececf0] bg-[#fafafb] px-3 py-2.5">
+                    <div className="text-sm font-medium text-[#171719]">
+                      {String(sp.id ?? `S${i + 1}`)}
+                      {typeof sp.turns === "number" ? (
+                        <span className="ml-2 text-[12px] font-normal text-[#75757d]">
+                          {sp.turns} turnos
+                          {typeof sp.duration_ms === "number"
+                            ? ` · ${formatModuleDuration(sp.duration_ms)}`
+                            : ""}
+                        </span>
+                      ) : null}
+                    </div>
+                    {face ? (
+                      <p className="mt-1 text-[12.5px] leading-snug text-[#5a6370]">
+                        Cara: {face}
+                        {score ? ` · ${score}` : ""}
+                      </p>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+        {dialogue.length ? (
+          <div>
+            <div className="text-[12px] font-medium uppercase tracking-[0.04em] text-[#6a7380]">
+              Diálogo
+            </div>
+            <div className="mt-2 grid gap-0">
+              {dialogue.map((raw, i) => {
+                const d = asRecord(raw) || {};
+                return (
+                  <div
+                    key={i}
+                    className="grid gap-0.5 border-b border-[#ececf0] py-2.5 last:border-b-0 sm:grid-cols-[7rem_minmax(0,1fr)] sm:gap-x-3"
+                  >
+                    <div className="text-[12px] text-[#75757d]">
+                      <div className="font-medium text-[#171719]">{String(d.speaker ?? "—")}</div>
+                      <div className="tabular-nums">
+                        {typeof d.start_ms === "number" ? msToClock(d.start_ms) : "—"}
+                      </div>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="m-0 text-sm leading-snug text-[#171719]">{String(d.text ?? "")}</p>
+                      {typeof d.face_description === "string" && d.face_description ? (
+                        <p className="mt-1 m-0 text-[12px] text-[#6a7380]">{d.face_description}</p>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (
+    module.id === "faces_framing" ||
+    module.id === "faces_framing" ||
+    module.id === "objects_people" ||
+    module.id === "objects_people" ||
+    module.id === "pose_actions" ||
+    module.id === "pose_actions"
+  ) {
+    const tracks = asArray(data.tracks);
+    if (!tracks.length) return null;
+    const title =
+      module.id.includes("face")
+        ? "Tracks de caras"
+        : module.id.includes("pose")
+          ? "Tracks de pose"
+          : "Tracks detectados";
+    return (
+      <div className="mt-4">
+        <div className="text-[12px] font-medium uppercase tracking-[0.04em] text-[#6a7380]">{title}</div>
+        <div className="mt-2 grid gap-2">
+          {tracks.slice(0, 12).map((raw, i) => {
+            const t = asRecord(raw) || {};
+            const desc = typeof t.description === "string" ? t.description : "";
+            const head =
+              typeof t.dominant_shot === "string"
+                ? t.dominant_shot
+                : typeof t.dominant_posture === "string"
+                  ? t.dominant_posture
+                  : typeof t.label === "string"
+                    ? t.label
+                    : typeof t.id === "string" || typeof t.id === "number"
+                      ? String(t.id)
+                      : `track ${i + 1}`;
+            const count = typeof t.count === "number" ? `${t.count} hits` : "";
+            const conf =
+              typeof t.avg_conf === "number"
+                ? `conf ${Math.round(t.avg_conf * 100)}%`
+                : typeof t.avg_score === "number"
+                  ? `score ${Math.round(t.avg_score * 100)}%`
+                  : "";
+            return (
+              <div key={i} className="rounded-xl border border-[#ececf0] bg-[#fafafb] px-3 py-2.5">
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                  <span className="text-sm font-medium text-[#171719]">{head}</span>
+                  {count ? <span className="text-[12px] text-[#75757d]">{count}</span> : null}
+                  {conf ? <span className="text-[12px] text-[#75757d]">{conf}</span> : null}
+                  {typeof t.start_ms === "number" ? (
+                    <span className="text-[12px] tabular-nums text-[#75757d]">
+                      {msToClock(t.start_ms)}
+                      {typeof t.end_ms === "number" ? ` → ${msToClock(t.end_ms)}` : ""}
+                    </span>
+                  ) : null}
+                </div>
+                {desc ? <p className="mt-1 m-0 text-[12.5px] leading-snug text-[#5a6370]">{desc}</p> : null}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  if (module.id === "on_screen_text" || module.id === "on_screen_text") {
+    const items = asArray(data.items);
+    const roleCounts = asRecord(data.role_counts);
+    const brands = asArray(data.brands).filter((b) => typeof b === "string") as string[];
+    if (!items.length && !roleCounts && !brands.length) return null;
+    return (
+      <div className="mt-4 grid gap-3">
+        {(roleCounts || brands.length) && (
+          <div className="flex flex-wrap gap-1.5">
+            {brands.slice(0, 8).map((b, i) => chip(`marca ${b}`, `b${i}`))}
+            {roleCounts
+              ? Object.entries(roleCounts)
+                  .slice(0, 8)
+                  .map(([role, n]) => chip(`${role} ×${n}`, role))
+              : null}
+          </div>
+        )}
+        <div>
+          <div className="text-[12px] font-medium uppercase tracking-[0.04em] text-[#6a7380]">
+            Lecturas con rol
+          </div>
+          <div className="mt-2 grid gap-0">
+            {items.slice(0, 40).map((raw, i) => {
+              const it = asRecord(raw) || {};
+              const role = typeof it.role === "string" ? it.role : "texto";
+              const confRaw = typeof it.conf === "number" ? it.conf : typeof it.conf === "number" ? it.conf : null;
+              const conf = typeof confRaw === "number" ? Math.round(confRaw * 100) : null;
+              const rawText =
+                typeof it.raw_text === "string"
+                  ? it.raw_text
+                  : typeof it.raw_text === "string"
+                    ? it.raw_text
+                    : String(it.text ?? "");
+              const desc = typeof it.description === "string" ? it.description : "";
+              return (
+                <div
+                  key={i}
+                  className="grid gap-0.5 border-b border-[#ececf0] py-2.5 last:border-b-0 sm:grid-cols-[7rem_5.5rem_minmax(0,1fr)] sm:gap-x-3"
+                >
+                  <span className="tabular-nums text-[12.5px] text-[#75757d]">
+                    {typeof it.start_ms === "number" ? msToClock(it.start_ms) : "—"}
+                  </span>
+                  <span className="text-[12px] font-medium uppercase tracking-[0.03em] text-[#5a6370]">
+                    {role}
+                    {conf != null ? ` · ${conf}%` : ""}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="text-sm text-[#171719]">{rawText || "—"}</div>
+                    {desc && desc !== rawText ? (
+                      <div className="mt-0.5 text-[12px] text-[#6a7380]">{desc}</div>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (module.id === "music_ambiance") {
+    const profile = asRecord(data.profile);
+    const segments = asArray(data.segments);
+    return (
+      <div className="mt-4 grid gap-3">
+        <div className="flex flex-wrap gap-1.5">
+          {typeof (data.tempo_bpm ?? data.tempo_bpm) === "number"
+            ? chip(`~${Math.round(Number(data.tempo_bpm ?? data.tempo_bpm))} BPM`, "bpm")
+            : null}
+          {typeof (data.mean_rms ?? data.mean_rms) === "number"
+            ? chip(`RMS ${Number(data.mean_rms ?? data.mean_rms).toFixed(2)}`, "rms")
+            : null}
+          {typeof (data.mean_centroid_hz ?? data.mean_centroid_hz) === "number"
+            ? chip(
+                `centroide ${Math.round(Number(data.mean_centroid_hz ?? data.mean_centroid_hz))} Hz`,
+                "c"
+              )
+            : null}
+          {profile && typeof (profile.overall ?? profile.overall) === "string"
+            ? chip(String(profile.overall ?? profile.overall), "o")
+            : null}
+        </div>
+        {segments.length ? (
+          <div className="grid gap-0">
+            {segments.slice(0, 24).map((raw, i) => {
+              const s = asRecord(raw) || {};
+              return (
+                <div
+                  key={i}
+                  className="grid gap-0.5 border-b border-[#ececf0] py-2 last:border-b-0 sm:grid-cols-[7rem_minmax(0,1fr)] sm:gap-x-3"
+                >
+                  <span className="tabular-nums text-[12.5px] text-[#75757d]">
+                    {typeof s.start_ms === "number" ? msToClock(s.start_ms) : "—"}
+                  </span>
+                  <span className="text-sm text-[#171719]">
+                    {String(s.label ?? "pasaje")}
+                    {typeof s.energy === "string" ? ` · ${s.energy}` : ""}
+                    {typeof s.brightness === "string" ? ` · ${s.brightness}` : ""}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (module.id === "audio_events") {
+    const top = asArray(data.top_tags);
+    const events = asArray(data.events);
+    return (
+      <div className="mt-4 grid gap-3">
+        {top.length ? (
+          <div className="flex flex-wrap gap-1.5">
+            {top.slice(0, 10).map((raw, i) => {
+              const t = asRecord(raw) || {};
+              const label = String(t.label_es ?? t.label_es ?? t.label ?? "tag");
+              const score =
+                typeof t.score === "number" ? ` ${Math.round(t.score * 100)}%` : "";
+              return chip(`${label}${score}`, `t${i}`);
+            })}
+          </div>
+        ) : null}
+        {events.length ? (
+          <div className="grid gap-0">
+            {events.slice(0, 30).map((raw, i) => {
+              const e = asRecord(raw) || {};
+              const tags = asArray(e.tags)
+                .map((tr) => {
+                  const t = asRecord(tr) || {};
+                  const name = String(t.label_es ?? t.label ?? "");
+                  const score =
+                    typeof t.score === "number" ? ` ${Math.round(t.score * 100)}%` : "";
+                  return name ? `${name}${score}` : "";
+                })
+                .filter(Boolean)
+                .slice(0, 4)
+                .join(" · ");
+              return (
+                <div
+                  key={i}
+                  className="grid gap-0.5 border-b border-[#ececf0] py-2 last:border-b-0 sm:grid-cols-[7rem_minmax(0,1fr)] sm:gap-x-3"
+                >
+                  <span className="tabular-nums text-[12.5px] text-[#75757d]">
+                    {typeof e.start_ms === "number" ? msToClock(e.start_ms) : "—"}
+                  </span>
+                  <span className="text-sm text-[#171719]">{tags || "evento"}</span>
+                </div>
+              );
+            })}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (module.id === "visual_observation") {
+    const items = asArray(data.items);
+    if (!items.length) return null;
+    return (
+      <div className="mt-4 grid gap-3">
+        <div className="text-[12px] font-medium uppercase tracking-[0.04em] text-[#6a7380]">
+          Observaciones
+        </div>
+        {items.slice(0, 12).map((raw, i) => {
+          const it = asRecord(raw) || {};
+          const recreation = asRecord(it.recreation) || asRecord(it.recreation);
+          return (
+            <div key={i} className="rounded-xl border border-[#ececf0] bg-[#fafafb] p-3">
+              <div className="text-[12px] tabular-nums text-[#75757d]">
+                {typeof it.start_ms === "number" ? msToClock(it.start_ms) : "—"}
+              </div>
+              <p className="mt-1 m-0 text-sm leading-snug text-[#171719]">
+                {String(it.observation ?? it.caption ?? it.text ?? "")}
+              </p>
+              {recreation ? (
+                <div className="mt-2 grid gap-1 text-[12px] text-[#5a6370]">
+                  {Object.entries(recreation)
+                    .filter(([, v]) => typeof v === "string" && v.trim())
+                    .slice(0, 6)
+                    .map(([k, v]) => (
+                      <div key={k}>
+                        <span className="font-medium text-[#171719]">{k}: </span>
+                        {String(v)}
+                      </div>
+                    ))}
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  if (module.id === "summary") {
+    const based = asArray(data.based_on ?? data.based_on);
+    if (!based.length) return null;
+    return (
+      <div className="mt-4">
+        <div className="text-[12px] font-medium uppercase tracking-[0.04em] text-[#6a7380]">
+          Basado en
+        </div>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {based.map((raw, i) => {
+            const b = asRecord(raw) || {};
+            return chip(`${String(b.id ?? "?")} · ${String(b.status ?? "")}`, `b${i}`);
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
+
 function ModuleItemsList({ module }: { module: ExtractionModule }) {
   const took =
     typeof module.duration_ms === "number"
       ? formatModuleDuration(module.duration_ms)
       : null;
+  const data = asRecord(module.data);
+  // OCR ya tiene vista rica; evita duplicar la lista plana si hay items en data
+  const hideFlatItems =
+    (module.id === "on_screen_text" || module.id === "on_screen_text") &&
+    asArray(data?.items).length > 0;
 
   return (
     <section className="min-w-0 w-full">
@@ -1486,48 +2038,65 @@ function ModuleItemsList({ module }: { module: ExtractionModule }) {
               Este módulo tardó <span className="font-medium text-[#171719]">{took}</span>
             </p>
           ) : null}
+          <MetaChips module={module} />
         </div>
         <p className="text-[12.5px] text-[#75757d]">{module.summary}</p>
       </div>
       {module.error ? (
         <p className="mt-3 text-sm text-[#b42318]">{module.error}</p>
       ) : null}
-      {module.items.length === 0 ? (
-        <p className="mt-3 text-sm text-[#75757d]">
-          {module.error || "Este módulo no devolvió filas para este vídeo."}
-        </p>
-      ) : (
-        <div className="mt-1 grid min-w-0 gap-0">
-          {module.items.map((item, index) => {
-            const label = (item.label || "").trim();
-            const text = (item.text || "").trim();
-            const redundantLabel =
-              !label ||
-              label === module.id ||
-              label === module.title ||
-              label === text;
-            const line = redundantLabel ? text || label || "—" : `${label} · ${text || "—"}`;
-            const end =
-              typeof item.end_ms === "number" && item.end_ms !== item.start_ms
-                ? ` → ${msToClock(item.end_ms)}`
-                : "";
 
-            return (
-              <div
-                key={`${module.id}-${index}`}
-                className="grid min-w-0 grid-cols-1 items-baseline gap-y-0.5 border-b border-[#ececf0] py-2.5 last:border-b-0 sm:grid-cols-[9rem_minmax(0,1fr)] sm:gap-x-4"
-              >
-                <span className="shrink-0 tabular-nums text-[12.5px] text-[#75757d]">
-                  {typeof item.start_ms === "number" ? `${msToClock(item.start_ms)}${end}` : "—"}
-                </span>
-                <div className="min-w-0 text-sm leading-snug break-words text-[#171719]">
-                  {line}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      <ModuleRichExtras module={module} />
+
+      {!hideFlatItems ? (
+        module.items.length === 0 ? (
+          !asRecord(module.data) ? (
+            <p className="mt-3 text-sm text-[#75757d]">
+              {module.error || "Este módulo no devolvió filas para este vídeo."}
+            </p>
+          ) : null
+        ) : (
+          <div className="mt-4">
+            <div className="text-[12px] font-medium uppercase tracking-[0.04em] text-[#6a7380]">
+              Filas
+            </div>
+            <div className="mt-1 grid min-w-0 gap-0">
+              {module.items.map((item, index) => {
+                const label = (item.label || "").trim();
+                const text = (item.text || "").trim();
+                const redundantLabel =
+                  !label ||
+                  label === module.id ||
+                  label === module.title ||
+                  label === text;
+                const line = redundantLabel
+                  ? text || label || "—"
+                  : `${label} · ${text || "—"}`;
+                const end =
+                  typeof item.end_ms === "number" && item.end_ms !== item.start_ms
+                    ? ` → ${msToClock(item.end_ms)}`
+                    : "";
+
+                return (
+                  <div
+                    key={`${module.id}-${index}`}
+                    className="grid min-w-0 grid-cols-1 items-baseline gap-y-0.5 border-b border-[#ececf0] py-2.5 last:border-b-0 sm:grid-cols-[9rem_minmax(0,1fr)] sm:gap-x-4"
+                  >
+                    <span className="shrink-0 tabular-nums text-[12.5px] text-[#75757d]">
+                      {typeof item.start_ms === "number"
+                        ? `${msToClock(item.start_ms)}${end}`
+                        : "—"}
+                    </span>
+                    <div className="min-w-0 text-sm leading-snug break-words text-[#171719]">
+                      {line}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )
+      ) : null}
     </section>
   );
 }
