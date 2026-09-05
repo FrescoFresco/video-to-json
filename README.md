@@ -16,8 +16,10 @@ Guía corta y clara → **[INSTALL.md](./INSTALL.md)**
 2. Pega esto y pulsa Enter:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -Command "irm https://cdn.jsdelivr.net/gh/FrescoFresco/video-to-json@c9720a0/desktop/windows/bootstrap-from-web.ps1 | iex"
+powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/FrescoFresco/video-to-json/main/desktop/windows/bootstrap-from-web.ps1 | iex"
 ```
+
+Ese mismo comando sirve para **instalar** y para **actualizar**.
 
 ### Mac (un comando)
 
