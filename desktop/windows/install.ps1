@@ -185,11 +185,30 @@ if ($DoForce) {
   Write-Step "Construyendo y arrancando el Studio (la primera vez tarda)..."
 }
 
-docker compose up --build -d
-if ($LASTEXITCODE -ne 0) {
-  Write-Host "Fallo docker compose (codigo $LASTEXITCODE)."
-  Write-Host "No siempre es WSL. Revisa el mensaje de Docker arriba."
-  Write-Host "Si el motor no arranca o pide WSL2:"
+$prevEap = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
+$composeOut = docker compose up --build -d 2>&1 | Out-String
+$composeExit = $LASTEXITCODE
+$ErrorActionPreference = $prevEap
+Write-Host $composeOut
+if ($composeExit -ne 0) {
+  Write-Host "Fallo docker compose (codigo $composeExit)."
+  Write-Host "Revisa el mensaje de Docker arriba."
+  if ($composeOut -match "public|cache key|checksum|failed to solve|Dockerfile") {
+    Write-Host ""
+    Write-Host "Parece un error de build (no de WSL)."
+    Write-Host "Prueba: cierra esta ventana, ejecuta Update.bat, y vuelve a Launch.bat."
+    Write-Host "Si sigue fallando, en la carpeta VideoExtractionStudio ejecuta:"
+    Write-Host "  docker compose build --no-cache"
+    exit 1
+  }
+  if ($composeOut -match "WSL|wsl|Hardware assisted virtualization|virtualization") {
+    Show-DockerWslHelp
+    exit 1
+  }
+  Write-Host ""
+  Write-Host "Si Docker Desktop no tiene el motor en marcha, abrilo y espera a Engine running."
+  Write-Host "Solo si Docker pide WSL2:"
   Show-DockerWslHelp
   exit 1
 }
