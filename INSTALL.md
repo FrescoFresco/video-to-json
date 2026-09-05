@@ -12,12 +12,18 @@ Al terminar, se abre el navegador en **http://127.0.0.1:43141**
 2. Copia **toda** esta línea, pégala y pulsa **Enter**:
 
 ```powershell
-irm https://cdn.jsdelivr.net/gh/FrescoFresco/video-to-json@main/desktop/windows/bootstrap-from-web.ps1 | iex
+Set-ExecutionPolicy -Scope Process Bypass -Force; irm https://cdn.jsdelivr.net/gh/FrescoFresco/video-to-json@main/desktop/windows/bootstrap-from-web.ps1 | iex
 ```
 
 3. Espera (la primera vez puede tardar varios minutos).
 4. Si Windows pide permiso de administrador → **Sí**.
 5. Si pide reiniciar (WSL2) → reinicia y **vuelve a pegar el mismo comando**.
+
+Si ya se descargó pero falló al arrancar, pega esto:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File $env:USERPROFILE\VideoExtractionStudio\desktop\windows\install.ps1
+```
 
 Listo. El programa queda en:
 
