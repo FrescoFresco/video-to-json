@@ -13,6 +13,38 @@ $Root = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 Set-Location $Root
 $Url = "http://127.0.0.1:43141"
 $DoForce = $ForceRebuild -or ($env:VX_FORCE_REBUILD -eq "1")
+$SkipUpdate = ($env:VX_SKIP_UPDATE -eq "1")
+
+# Auto-update when opening the app (unless we are already inside an update).
+if (-not $SkipUpdate) {
+  try {
+    . (Join-Path $PSScriptRoot "update-helpers.ps1")
+    if (Test-UpdateAvailable) {
+      Write-Host ""
+      Write-Host "==> Hay una version nueva. Actualizando solo..."
+      Update-StudioFiles
+      # Re-run the NEW install.ps1 after files were replaced (avoid running stale script).
+      $env:VX_SKIP_UPDATE = "1"
+      $env:VX_FORCE_REBUILD = "1"
+      $newInstall = Join-Path $env:USERPROFILE "VideoExtractionStudio\desktop\windows\install.ps1"
+      $newRoot = Join-Path $env:USERPROFILE "VideoExtractionStudio"
+      if (Test-Path $newInstall) {
+        $p = Start-Process -FilePath "powershell.exe" -ArgumentList @(
+          "-NoProfile", "-ExecutionPolicy", "Bypass",
+          "-File", $newInstall, "-ForceRebuild"
+        ) -WorkingDirectory $newRoot -Wait -PassThru -NoNewWindow
+        exit $(if ($null -ne $p.ExitCode) { $p.ExitCode } else { 0 })
+      }
+      $DoForce = $true
+    } else {
+      # Refresh local sha if missing but already up to date path
+      $remote = Get-RemoteGitSha
+      if ($remote -and -not (Get-LocalGitSha)) { Save-LocalGitSha $remote }
+    }
+  } catch {
+    Write-Host "Aviso: no pude comprobar actualizaciones (sin internet?). Sigo arrancando."
+  }
+}
 
 function Write-Step([string]$msg) {
   Write-Host ""

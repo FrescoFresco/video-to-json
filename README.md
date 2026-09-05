@@ -16,7 +16,7 @@ Guía corta y clara → **[INSTALL.md](./INSTALL.md)**
 2. Instálalo (Siguiente → Listo)
 3. Abre el icono del escritorio
 
-**Actualizar:** usa `Update.bat` o el comando de PowerShell de abajo (abrir el icono solo arranca).
+**Actualizar:** al abrir el icono, la app comprueba sola si hay versión nueva. También puedes usar `Update.bat` o el comando de PowerShell.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/FrescoFresco/video-to-json/main/desktop/windows/bootstrap-from-web.ps1 | iex"

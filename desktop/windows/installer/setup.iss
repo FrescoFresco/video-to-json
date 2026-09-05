@@ -4,7 +4,7 @@
 ; Requires: VideoExtractionStudio.exe next to this file (built by build.ps1).
 
 #define MyAppName "Video Extraction Studio"
-#define MyAppVersion "0.1.1"
+#define MyAppVersion "0.1.2"
 #define MyAppPublisher "FrescoFresco"
 #define MyAppURL "https://github.com/FrescoFresco/video-to-json"
 #define MyAppExe "VideoExtractionStudio.exe"

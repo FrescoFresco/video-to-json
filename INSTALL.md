@@ -20,7 +20,8 @@ La primera vez puede tardar (Docker + descarga). Si Docker pide WSL: PowerShell 
 powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/FrescoFresco/video-to-json/main/desktop/windows/bootstrap-from-web.ps1 | iex"
 ```
 
-**Actualizar:** usa `Update.bat` o pega otra vez el comando de PowerShell. Abrir el icono solo arranca el Studio; no descarga la última versión.
+**Actualizar:** al abrir el icono, la app **comprueba sola** si hay versión nueva y se actualiza.
+También puedes usar `Update.bat` o volver a pegar el comando de PowerShell.
 
 **Parar:**
 
