@@ -10,6 +10,7 @@ import {
 } from "./job-persistence";
 import { processVideoFile } from "./process-video";
 import { withProcessSlot } from "./process-queue";
+import { uploadJsonToDrive } from "./google-drive";
 import { deliverWebhook } from "./webhook";
 import { buildVideoExtraction } from "@/lib/extraction";
 import {
@@ -475,6 +476,32 @@ async function runQueuedProcessing(
                     ? `Enviado a ${delivery.url} (HTTP ${delivery.status})`
                     : `Falló: ${delivery.error || "error"}`,
                   status: delivery.ok ? "ready" : "error",
+                },
+              ],
+            },
+            true
+          );
+        }
+
+        const driveUpload = await uploadJsonToDrive({
+          fileName: `${readyJob.id}-${readyJob.name.replace(/\.[^.]+$/, "")}.json`,
+          json: result.extraction ?? readyJob.extraction ?? result,
+        });
+        if (driveUpload) {
+          updateJob(
+            id,
+            {
+              activity: [
+                ...(getStore().jobs.get(id)?.activity ?? []),
+                {
+                  time: clock(),
+                  title: "Google Drive",
+                  detail: driveUpload.ok
+                    ? driveUpload.webViewLink
+                      ? `Subido: ${driveUpload.webViewLink}`
+                      : `Subido (${driveUpload.name || driveUpload.fileId})`
+                    : `Falló: ${driveUpload.error || "error"}`,
+                  status: driveUpload.ok ? "ready" : "error",
                 },
               ],
             },

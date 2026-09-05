@@ -37,13 +37,23 @@ FORCE_LOCAL=1 ./install.sh  # igual, fuerza local aunque haya Docker
 ```
 
 Si no pasas modo (`./install.sh` a secas) y Docker está disponible, usa Docker.
-## Google Drive (vídeo in → JSON out)
+## Google Drive (guardar JSON en la nube)
 
-Con **Google Drive para escritorio** (carpetas locales sincronizadas):
+### Opción 1 — API de Drive (recomendado)
 
-1. Carpeta de entrada + carpeta de salida en Drive.
-2. En **Ajustes** del Studio: activa vigilancia y pon las rutas locales.
-3. Deja el Studio encendido. Subes un vídeo a la entrada → el JSON aparece en la salida.
+En **Ajustes → Google Drive (nube)**:
+
+1. Crea una cuenta de servicio en Google Cloud (activa Drive API) y descarga el JSON.
+2. Crea una carpeta en Drive, copia el **ID** de la URL (`…/folders/ID`) y compártela con el email `…@…gserviceaccount.com` (editor).
+3. Pega el ID + el JSON en Ajustes, activa y pulsa **Probar Drive**.
+
+Cada extracción terminada se sube sola a esa carpeta. No hace falta Drive Desktop.
+
+### Opción 2 — Drive para escritorio (carpetas locales)
+
+1. Carpeta de entrada + carpeta de salida sincronizadas.
+2. En Ajustes: activa vigilancia y pon las rutas locales.
+3. Deja el Studio encendido. Vídeo a la entrada → JSON en la salida.
 
 También puedes usar webhook (Make/n8n) si prefieres otro destino.
 ## Qué hace hoy
@@ -78,7 +88,7 @@ También puedes usar webhook (Make/n8n) si prefieres otro destino.
 - Instalador firmado tipo App Store / `.dmg` / `.exe` empaquetado con modelos dentro (ahora: lanzadores nativos + Docker o local).
 - API key de acceso (el secreto del webhook es opcional).
 - Emoción facial / pose tracking (candidatos futuros).
-- Lectura directa de Google Drive en la nube sin Drive Desktop (hace falta sincronizar carpetas locales).
+- OAuth «Iniciar sesión con Google» (ahora: cuenta de servicio + ID de carpeta).
 
 ## Subir varios vídeos (API)
 
