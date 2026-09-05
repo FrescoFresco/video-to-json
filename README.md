@@ -17,9 +17,10 @@ La idea: cualquiera lo instala de un golpe, abre el navegador, mete un vídeo y 
 irm https://raw.githubusercontent.com/FrescoFresco/video-to-json/main/desktop/windows/bootstrap-from-web.ps1 | iex
 ```
 
-Eso descarga el programa en `Documents`/`VideoExtractionStudio` (carpeta del usuario), instala Docker si puede, arranca todo y abre el navegador.
+Eso descarga el programa en `%USERPROFILE%\VideoExtractionStudio`, instala Docker si puede, arranca todo y abre el navegador.
 
 Si ya tienes la carpeta del proyecto: doble clic en `desktop/windows/Launch.bat`.
+
 - **Linux:** `./desktop/launch.sh`
 
 Detalles: [desktop/README.md](desktop/README.md).
