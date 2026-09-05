@@ -2346,10 +2346,107 @@ function ModuleItemsList({ module }: { module: ExtractionModule }) {
 function DocsCode({ children }: { children: string }) {
   return (
     <div className="mt-3 min-w-0 max-w-full overflow-x-auto rounded-xl bg-[#151517]">
-      <pre className="m-0 min-w-0 p-3 text-[12px] leading-[1.55] text-[#e9e9ed] whitespace-pre-wrap break-words sm:p-4 sm:text-[12.5px] sm:whitespace-pre sm:break-normal">
+      <pre className="m-0 min-w-0 p-3 text-[12px] leading-[1.55] break-words whitespace-pre-wrap text-[#e9e9ed] sm:p-4 sm:text-[12.5px] sm:break-normal sm:whitespace-pre">
         <code>{children}</code>
       </pre>
     </div>
+  );
+}
+
+const WIN_INSTALL_CMD =
+  'powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/FrescoFresco/video-to-json/main/desktop/windows/bootstrap-from-web.ps1 | iex"';
+
+const MAC_INSTALL_CMD =
+  "curl -fsSL https://raw.githubusercontent.com/FrescoFresco/video-to-json/main/desktop/macos/bootstrap-from-web.sh | bash";
+
+function CopyCommand({ command }: { command: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(command);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      // ignore
+    }
+  }
+
+  return (
+    <div className="mt-3 min-w-0 rounded-xl bg-[#151517]">
+      <div className="flex items-start gap-2 p-3 sm:p-3.5">
+        <code className="min-w-0 flex-1 text-[12px] leading-relaxed break-all text-[#e9e9ed] sm:text-[12.5px]">
+          {command}
+        </code>
+        <Button
+          type="button"
+          variant="outline"
+          className="h-8 shrink-0 rounded-lg border-[#3a3a40] bg-transparent px-2.5 text-[12px] text-[#e9e9ed] hover:bg-[#2a2a30]"
+          onClick={() => void copy()}
+        >
+          {copied ? (
+            <>
+              <Check className="mr-1 size-3.5" />
+              Copiado
+            </>
+          ) : (
+            "Copiar"
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function InstallDocsSection() {
+  return (
+    <section className="min-w-0 rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
+      <div className="text-sm font-semibold">Instalar o actualizar</div>
+      <p className="mt-1 text-[12.5px] text-[#75757d]">Un comando. Vale para las dos cosas.</p>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <div className="min-w-0 rounded-xl bg-[#f5f5f7] p-4">
+          <div className="text-sm font-medium">Windows</div>
+          <ol className="mt-2 list-decimal space-y-1 pl-4 text-[13px] leading-relaxed text-[#171719]">
+            <li>Abre PowerShell</li>
+            <li>Pulsa Copiar</li>
+            <li>Pega y Enter</li>
+          </ol>
+          <CopyCommand command={WIN_INSTALL_CMD} />
+          <p className="mt-2 text-[12px] leading-relaxed text-[#75757d]">
+            Si pide permiso → Sí. Si pide reiniciar → reinicia y repite.
+          </p>
+        </div>
+
+        <div className="min-w-0 rounded-xl bg-[#f5f5f7] p-4">
+          <div className="text-sm font-medium">Mac</div>
+          <ol className="mt-2 list-decimal space-y-1 pl-4 text-[13px] leading-relaxed text-[#171719]">
+            <li>Abre Terminal</li>
+            <li>Pulsa Copiar</li>
+            <li>Pega y Enter</li>
+          </ol>
+          <CopyCommand command={MAC_INSTALL_CMD} />
+          <p className="mt-2 text-[12px] leading-relaxed text-[#75757d]">
+            Si pide contraseña o Docker → acepta y, si hace falta, repite.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-1 text-[12.5px] leading-relaxed text-[#75757d]">
+        <div>
+          <span className="font-medium text-[#171719]">Abrir otra vez:</span>{" "}
+          <code className="text-[12px]">Launch.bat</code> (Windows) ·{" "}
+          <code className="text-[12px]">desktop/macos/install.sh</code> (Mac)
+        </div>
+        <div>
+          <span className="font-medium text-[#171719]">Actualizar:</span> el mismo comando
+        </div>
+        <div>
+          <span className="font-medium text-[#171719]">Parar:</span>{" "}
+          <code className="text-[12px]">docker compose down</code>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -2359,9 +2456,11 @@ function DocsView({ onOpenConnections }: { onOpenConnections: () => void }) {
       <div className="min-w-0">
         <h1 className="text-[clamp(24px,2.4vw,32px)] font-semibold tracking-[-0.035em]">Docs</h1>
         <p className="mt-1 text-sm leading-relaxed text-[#75757d]">
-          Cómo conectar este programa con otras apps: meter vídeos y recibir el JSON.
+          Instalar el Studio y conectar salidas (Drive, webhook, carpetas).
         </p>
       </div>
+
+      <InstallDocsSection />
 
       <section className="min-w-0 rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
         <div className="text-sm font-semibold">Requisitos del ordenador</div>
