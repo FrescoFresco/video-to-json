@@ -6,9 +6,13 @@ import {
   BookOpen,
   Check,
   ChevronRight,
+  Cloud,
   Download,
+  FolderOpen,
   Home,
   Lightbulb,
+  Link2,
+  Plug,
   RotateCcw,
   Search,
   Settings,
@@ -26,6 +30,7 @@ import { useStudio } from "@/lib/store";
 import type { ExtractionModule, JobStatus, StoredVideo, TimelineEvent, ViewName } from "@/lib/types";
 import { isVideoFile } from "@/lib/video-file";
 import { IdeaView } from "@/components/studio/recreation-diagram";
+import { ConnectionsView } from "@/components/studio/connections-view";
 
 /** Config de coste del servidor (Whisper / VLM / max frames) para ETA realista. */
 function useCostConfig() {
@@ -219,6 +224,7 @@ export function StudioApp() {
           {nav("videos", <Video className="size-[17px]" />, "Vídeos")}
           {nav("docs", <BookOpen className="size-[17px]" />, "Docs")}
           {nav("idea", <Lightbulb className="size-[17px]" />, "La idea")}
+          {nav("connections", <Plug className="size-[17px]" />, "Conexiones")}
           {nav("settings", <Settings className="size-[17px]" />, "Ajustes")}
         </div>
       </aside>
@@ -229,20 +235,24 @@ export function StudioApp() {
           {s.view === "idea" && <IdeaView />}
           {s.view === "videos" && <VideosView />}
           {s.view === "video-detail" && activeVideo && <VideoDetail video={activeVideo} />}
-          {s.view === "docs" && <DocsView onOpenSettings={() => s.setView("settings")} />}
+          {s.view === "docs" && (
+            <DocsView onOpenConnections={() => s.setView("connections")} />
+          )}
+          {s.view === "connections" && <ConnectionsView />}
           {s.view === "settings" && <SettingsView />}
         </div>
       </main>
 
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-[#e7e7eb] bg-[#fbfbfc] px-1 pb-[calc(6px+env(safe-area-inset-bottom))] pt-1.5 md:hidden">
-        <div className="grid grid-cols-5 gap-0.5">
+        <div className="grid grid-cols-6 gap-0.5">
           {(
             [
               ["home", "Inicio", <Home key="h" className="size-[17px]" />],
               ["videos", "Vídeos", <Video key="v" className="size-[17px]" />],
               ["docs", "Docs", <BookOpen key="d" className="size-[17px]" />],
               ["idea", "Idea", <Lightbulb key="i" className="size-[17px]" />],
-              ["settings", "Ajustes", <Settings key="s" className="size-[17px]" />],
+              ["connections", "Conex.", <Plug key="c" className="size-[17px]" />],
+              ["settings", "Más", <Settings key="s" className="size-[17px]" />],
             ] as const
           ).map(([view, label, icon]) => {
             const active =
@@ -2111,7 +2121,7 @@ function DocsCode({ children }: { children: string }) {
   );
 }
 
-function DocsView({ onOpenSettings }: { onOpenSettings: () => void }) {
+function DocsView({ onOpenConnections }: { onOpenConnections: () => void }) {
   return (
     <div className="grid min-w-0 gap-4 sm:gap-5">
       <div className="min-w-0">
@@ -2214,18 +2224,18 @@ function DocsView({ onOpenSettings }: { onOpenSettings: () => void }) {
       <section className="min-w-0 overflow-hidden rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
         <div className="text-sm font-semibold">Google Drive (JSON en la nube)</div>
         <p className="mt-2 text-sm leading-relaxed text-[#75757d]">
-          En Ajustes pegas el ID de una carpeta de Drive y la clave de una cuenta de servicio:
+          En Conexiones pegas el ID de una carpeta de Drive y la clave de una cuenta de servicio:
           cada JSON se sube solo a la nube. También puedes usar carpetas locales con Drive
           Desktop si lo prefieres.
         </p>
         <ol className="mt-4 grid gap-2 text-sm text-[#171719]">
-          <li>1. Ajustes → Google Drive (nube): ID de carpeta + JSON de cuenta de servicio.</li>
+          <li>1. Conexiones → Google Drive: ID de carpeta + JSON de cuenta de servicio.</li>
           <li>2. Comparte la carpeta con el email de esa cuenta (permiso editor).</li>
           <li>3. Activa, guarda y pulsa «Probar Drive». Cada extracción se copia ahí.</li>
         </ol>
         <div className="mt-4">
-          <Button className="rounded-xl" onClick={onOpenSettings}>
-            Ir a Ajustes
+          <Button className="rounded-xl" onClick={onOpenConnections}>
+            Ir a Conexiones
           </Button>
         </div>
       </section>
@@ -2233,16 +2243,16 @@ function DocsView({ onOpenSettings }: { onOpenSettings: () => void }) {
       <section className="min-w-0 overflow-hidden rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
         <div className="text-sm font-semibold">Webhook</div>
         <p className="mt-2 text-sm leading-relaxed text-[#75757d]">
-          Configura la URL en Ajustes. Sirve para Make, n8n, Zapier o tu backend.
+          Configura la URL en Conexiones. Sirve para Make, n8n, Zapier o tu backend.
         </p>
         <ol className="mt-4 grid gap-2 text-sm text-[#171719]">
-          <li>1. Abre Ajustes y pega tu URL de webhook.</li>
+          <li>1. Abre Conexiones y pega tu URL de webhook.</li>
           <li>2. Guarda y pulsa «Probar webhook».</li>
           <li>3. Procesa un vídeo: al terminar recibirás un POST automático.</li>
         </ol>
         <div className="mt-4">
-          <Button className="rounded-xl" onClick={onOpenSettings}>
-            Ir a Ajustes
+          <Button className="rounded-xl" onClick={onOpenConnections}>
+            Ir a Conexiones
           </Button>
         </div>
         <p className="mt-4 text-[12.5px] text-[#75757d]">Ejemplo de lo que recibe la otra app:</p>
@@ -2368,416 +2378,30 @@ curl http://localhost:43141/api/jobs/JOB_ID/result`}</DocsCode>
 }
 
 function SettingsView() {
-  const [webhookUrl, setWebhookUrl] = useState("");
-  const [webhookSecret, setWebhookSecret] = useState("");
-  const [secretSet, setSecretSet] = useState(false);
-  const [inboxEnabled, setInboxEnabled] = useState(false);
-  const [inboxPath, setInboxPath] = useState("");
-  const [outboxPath, setOutboxPath] = useState("");
-  const [driveEnabled, setDriveEnabled] = useState(false);
-  const [driveFolderId, setDriveFolderId] = useState("");
-  const [driveServiceAccountJson, setDriveServiceAccountJson] = useState("");
-  const [driveCredentialsSet, setDriveCredentialsSet] = useState(false);
-  const [driveClientEmail, setDriveClientEmail] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [testing, setTesting] = useState(false);
-  const [testingDrive, setTestingDrive] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  type SettingsPayload = {
-    webhookUrl?: string;
-    webhookSecretSet?: boolean;
-    inboxEnabled?: boolean;
-    inboxPath?: string;
-    outboxPath?: string;
-    driveEnabled?: boolean;
-    driveFolderId?: string;
-    driveCredentialsSet?: boolean;
-    driveClientEmail?: string | null;
-    error?: string;
-  };
-
-  function applySettings(data: SettingsPayload) {
-    setWebhookUrl(data.webhookUrl || "");
-    setSecretSet(Boolean(data.webhookSecretSet));
-    setInboxEnabled(Boolean(data.inboxEnabled));
-    setInboxPath(data.inboxPath || "");
-    setOutboxPath(data.outboxPath || "");
-    setDriveEnabled(Boolean(data.driveEnabled));
-    setDriveFolderId(data.driveFolderId || "");
-    setDriveCredentialsSet(Boolean(data.driveCredentialsSet));
-    setDriveClientEmail(data.driveClientEmail || null);
-  }
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const res = await fetch("/api/settings", { cache: "no-store" });
-        const data = (await res.json()) as SettingsPayload;
-        if (!res.ok) throw new Error(data.error || "No se pudo cargar ajustes");
-        if (cancelled) return;
-        applySettings(data);
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "No se pudo cargar ajustes");
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  async function save() {
-    setSaving(true);
-    setMessage(null);
-    setError(null);
-    try {
-      const res = await fetch("/api/settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          webhookUrl,
-          ...(webhookSecret.trim() ? { webhookSecret: webhookSecret.trim() } : {}),
-          inboxEnabled,
-          inboxPath,
-          outboxPath,
-          driveEnabled,
-          driveFolderId,
-          ...(driveServiceAccountJson.trim()
-            ? { driveServiceAccountJson: driveServiceAccountJson.trim() }
-            : {}),
-        }),
-      });
-      const data = (await res.json()) as SettingsPayload;
-      if (!res.ok) throw new Error(data.error || "No se pudo guardar");
-      applySettings(data);
-      setWebhookSecret("");
-      setDriveServiceAccountJson("");
-      setMessage("Ajustes guardados.");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo guardar");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function clearSecret() {
-    setSaving(true);
-    setMessage(null);
-    setError(null);
-    try {
-      const res = await fetch("/api/settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clearWebhookSecret: true }),
-      });
-      const data = (await res.json()) as SettingsPayload;
-      if (!res.ok) throw new Error(data.error || "No se pudo quitar el secreto");
-      setSecretSet(Boolean(data.webhookSecretSet));
-      setWebhookSecret("");
-      setMessage("Secreto del webhook eliminado.");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo quitar el secreto");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function clearDriveCredentials() {
-    setSaving(true);
-    setMessage(null);
-    setError(null);
-    try {
-      const res = await fetch("/api/settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clearDriveCredentials: true }),
-      });
-      const data = (await res.json()) as SettingsPayload;
-      if (!res.ok) throw new Error(data.error || "No se pudo quitar la clave de Drive");
-      setDriveCredentialsSet(Boolean(data.driveCredentialsSet));
-      setDriveClientEmail(data.driveClientEmail || null);
-      setDriveServiceAccountJson("");
-      setMessage("Clave de Google Drive eliminada.");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo quitar la clave de Drive");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function testWebhook() {
-    setTesting(true);
-    setMessage(null);
-    setError(null);
-    try {
-      const res = await fetch("/api/settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ webhookUrl }),
-      });
-      const data = (await res.json()) as { ok?: boolean; error?: string; status?: number };
-      if (!res.ok || !data.ok) throw new Error(data.error || "La prueba falló");
-      setMessage(`Prueba OK (HTTP ${data.status ?? 200}). Tu otra app recibió el evento.`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "La prueba falló");
-    } finally {
-      setTesting(false);
-    }
-  }
-
-  async function testDrive() {
-    setTestingDrive(true);
-    setMessage(null);
-    setError(null);
-    try {
-      const res = await fetch("/api/settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "test_drive" }),
-      });
-      const data = (await res.json()) as {
-        ok?: boolean;
-        error?: string;
-        webViewLink?: string;
-        name?: string;
-      };
-      if (!res.ok || !data.ok) throw new Error(data.error || "No se pudo subir a Drive");
-      setMessage(
-        data.webViewLink
-          ? `Drive OK. Archivo de prueba: ${data.webViewLink}`
-          : `Drive OK. Subido: ${data.name || "prueba"}`
-      );
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo probar Drive");
-    } finally {
-      setTestingDrive(false);
-    }
-  }
-
+  const s = useStudio();
   return (
     <div className="grid min-w-0 gap-4">
       <div className="min-w-0">
         <h1 className="text-[clamp(24px,2.4vw,32px)] font-semibold tracking-[-0.035em]">Ajustes</h1>
-        <p className="text-sm leading-relaxed text-[#75757d]">
-          Google Drive en la nube, carpeta local y webhook.
+        <p className="mt-1 text-sm leading-relaxed text-[#75757d]">
+          Preferencias generales del Studio.
         </p>
       </div>
-
       <section className="min-w-0 overflow-hidden rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
-        <div className="text-sm font-semibold">Google Drive (nube)</div>
-        <p className="mt-1 text-[12.5px] leading-relaxed text-[#75757d]">
-          Cada JSON terminado se sube solo a una carpeta de Drive. Pegas el ID de la carpeta y
-          la clave JSON de una cuenta de servicio de Google Cloud (una sola vez).
+        <div className="text-sm font-semibold">Conexiones</div>
+        <p className="mt-2 text-sm leading-relaxed text-[#75757d]">
+          Drive, webhook y carpeta local están en la pestaña Conexiones, para tener todos los
+          enchufes juntos.
         </p>
-        <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-[12.5px] leading-relaxed text-[#5c5c66]">
-          <li>
-            En Google Cloud: crea un proyecto → activa «Google Drive API» → crea una{" "}
-            <strong>cuenta de servicio</strong> → descarga el JSON de clave.
-          </li>
-          <li>
-            En Drive, crea una carpeta (ej. <code>VX-json</code>), ábrela y copia el ID de la
-            URL: <code>…/folders/<strong>ESTE_ID</strong></code>.
-          </li>
-          <li>
-            Comparte esa carpeta con el email de la cuenta de servicio (termina en{" "}
-            <code>@…gserviceaccount.com</code>) con permiso de editor.
-          </li>
-          <li>Pega aquí el ID y el JSON, activa y guarda. Usa «Probar Drive».</li>
-        </ol>
-        {loading ? (
-          <p className="mt-4 text-sm text-[#75757d]">Cargando…</p>
-        ) : (
-          <div className="mt-4 grid min-w-0 gap-3">
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={driveEnabled}
-                onChange={(e) => setDriveEnabled(e.target.checked)}
-                className="size-4 rounded border-[#d7d7dc]"
-              />
-              <span>Subir automáticamente cada JSON a Drive</span>
-            </label>
-            <label className="grid min-w-0 gap-1.5 text-sm">
-              <span className="text-[#75757d]">ID de la carpeta de Drive</span>
-              <input
-                value={driveFolderId}
-                onChange={(e) => setDriveFolderId(e.target.value)}
-                placeholder="1AbCDefGhijKLmnopQRsTUVwxyz"
-                className="h-10 w-full min-w-0 rounded-xl border border-[#d7d7dc] bg-[#fbfbfc] px-3 font-mono text-[13px] outline-none focus:border-[#9e9ea5]"
-              />
-            </label>
-            <label className="grid min-w-0 gap-1.5 text-sm">
-              <span className="text-[#75757d]">
-                JSON de la cuenta de servicio{" "}
-                {driveCredentialsSet
-                  ? `(guardada${driveClientEmail ? `: ${driveClientEmail}` : ""})`
-                  : ""}
-              </span>
-              <textarea
-                value={driveServiceAccountJson}
-                onChange={(e) => setDriveServiceAccountJson(e.target.value)}
-                rows={5}
-                placeholder={
-                  driveCredentialsSet
-                    ? "Dejar vacío para no cambiar la clave ya guardada"
-                    : '{ "type": "service_account", "client_email": "...", "private_key": "..." }'
-                }
-                className="w-full min-w-0 resize-y rounded-xl border border-[#d7d7dc] bg-[#fbfbfc] px-3 py-2 font-mono text-[12px] outline-none focus:border-[#9e9ea5]"
-              />
-            </label>
-            <div className="grid grid-cols-1 gap-2 pt-1 sm:flex sm:flex-wrap">
-              <Button
-                className="w-full rounded-xl sm:w-auto"
-                disabled={saving}
-                onClick={() => void save()}
-              >
-                {saving ? "Guardando…" : "Guardar Drive"}
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full rounded-xl sm:w-auto"
-                disabled={testingDrive || saving}
-                onClick={() => void testDrive()}
-              >
-                {testingDrive ? "Probando…" : "Probar Drive"}
-              </Button>
-              {driveCredentialsSet ? (
-                <Button
-                  variant="outline"
-                  className="w-full rounded-xl sm:w-auto"
-                  disabled={saving}
-                  onClick={() => void clearDriveCredentials()}
-                >
-                  Quitar clave
-                </Button>
-              ) : null}
-            </div>
-          </div>
-        )}
+        <div className="mt-4">
+          <Button className="rounded-xl" onClick={() => s.setView("connections")}>
+            Abrir Conexiones
+          </Button>
+        </div>
       </section>
-
-      <section className="min-w-0 overflow-hidden rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
-        <div className="text-sm font-semibold">Carpeta local (opcional)</div>
-        <p className="mt-1 text-[12.5px] leading-relaxed text-[#75757d]">
-          Si también usas Google Drive para escritorio: vigila una carpeta local de entrada y
-          escribe JSON en otra de salida.
-        </p>
-        {loading ? (
-          <p className="mt-4 text-sm text-[#75757d]">Cargando…</p>
-        ) : (
-          <div className="mt-4 grid min-w-0 gap-3">
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={inboxEnabled}
-                onChange={(e) => setInboxEnabled(e.target.checked)}
-                className="size-4 rounded border-[#d7d7dc]"
-              />
-              <span>Activar vigilancia de carpeta</span>
-            </label>
-            <label className="grid min-w-0 gap-1.5 text-sm">
-              <span className="text-[#75757d]">Carpeta de entrada (vídeos)</span>
-              <input
-                value={inboxPath}
-                onChange={(e) => setInboxPath(e.target.value)}
-                placeholder="/Users/tú/Google Drive/VX-entrada"
-                className="h-10 w-full min-w-0 rounded-xl border border-[#d7d7dc] bg-[#fbfbfc] px-3 outline-none focus:border-[#9e9ea5]"
-              />
-            </label>
-            <label className="grid min-w-0 gap-1.5 text-sm">
-              <span className="text-[#75757d]">Carpeta de salida (JSON)</span>
-              <input
-                value={outboxPath}
-                onChange={(e) => setOutboxPath(e.target.value)}
-                placeholder="/Users/tú/Google Drive/VX-salida"
-                className="h-10 w-full min-w-0 rounded-xl border border-[#d7d7dc] bg-[#fbfbfc] px-3 outline-none focus:border-[#9e9ea5]"
-              />
-            </label>
-            <div className="pt-1">
-              <Button
-                className="w-full rounded-xl sm:w-auto"
-                disabled={saving}
-                onClick={() => void save()}
-              >
-                {saving ? "Guardando…" : "Guardar carpeta"}
-              </Button>
-            </div>
-          </div>
-        )}
-      </section>
-
-      <section className="min-w-0 overflow-hidden rounded-2xl border border-[#e7e7eb] bg-white p-4 sm:p-5">
-        <div className="text-sm font-semibold">Webhook</div>
-        <p className="mt-1 text-[12.5px] text-[#75757d]">
-          Pon la URL de Make, n8n, Zapier, tu backend, etc. Recibirá un POST con el resultado.
-        </p>
-        {loading ? (
-          <p className="mt-4 text-sm text-[#75757d]">Cargando…</p>
-        ) : (
-          <div className="mt-4 grid min-w-0 gap-3">
-            <label className="grid min-w-0 gap-1.5 text-sm">
-              <span className="text-[#75757d]">URL del webhook</span>
-              <input
-                value={webhookUrl}
-                onChange={(e) => setWebhookUrl(e.target.value)}
-                placeholder="https://hooks.ejemplo.com/vx"
-                className="h-10 w-full min-w-0 rounded-xl border border-[#d7d7dc] bg-[#fbfbfc] px-3 outline-none focus:border-[#9e9ea5]"
-              />
-            </label>
-            <label className="grid min-w-0 gap-1.5 text-sm">
-              <span className="text-[#75757d]">
-                Secreto opcional {secretSet ? "(ya hay uno guardado)" : ""}
-              </span>
-              <input
-                value={webhookSecret}
-                onChange={(e) => setWebhookSecret(e.target.value)}
-                placeholder={secretSet ? "Dejar vacío para no cambiarlo" : "Bearer token o clave"}
-                className="h-10 w-full min-w-0 rounded-xl border border-[#d7d7dc] bg-[#fbfbfc] px-3 outline-none focus:border-[#9e9ea5]"
-              />
-            </label>
-            <div className="grid grid-cols-1 gap-2 pt-1 sm:flex sm:flex-wrap">
-              <Button
-                className="w-full rounded-xl sm:w-auto"
-                disabled={saving}
-                onClick={() => void save()}
-              >
-                {saving ? "Guardando…" : "Guardar"}
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full rounded-xl sm:w-auto"
-                disabled={testing || !webhookUrl.trim()}
-                onClick={() => void testWebhook()}
-              >
-                {testing ? "Probando…" : "Probar webhook"}
-              </Button>
-              {secretSet ? (
-                <Button
-                  variant="outline"
-                  className="w-full rounded-xl sm:w-auto"
-                  disabled={saving}
-                  onClick={() => void clearSecret()}
-                >
-                  Quitar secreto
-                </Button>
-              ) : null}
-            </div>
-            {message ? <p className="text-sm text-[#177245]">{message}</p> : null}
-            {error ? <p className="text-sm text-[#b42318]">{error}</p> : null}
-          </div>
-        )}
-      </section>
-
       <EmptyCard
-        title="Copia en la nube"
-        body="Con Google Drive (nube) activado, cada extracción se guarda en tu carpeta de Drive aunque el PC se formatee. La carpeta local sigue siendo opcional si prefieres Drive Desktop."
+        title="Más opciones"
+        body="Cuando haya preferencias de interfaz o rendimiento, aparecerán aquí. Lo de guardar y enviar JSON vive en Conexiones."
       />
     </div>
   );
