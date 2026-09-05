@@ -2466,9 +2466,9 @@ function InstallDocsSection() {
           (Windows) · <code className="text-[12px]">desktop/macos/install.sh</code> (Mac)
         </div>
         <div>
-          <span className="font-medium text-[#171719]">Actualizar:</span>{" "}
-          <code className="text-[12px]">Update.bat</code> o el mismo comando de arriba (abrir el
-          icono solo arranca, no actualiza)
+          <span className="font-medium text-[#171719]">Actualizar:</span> al abrir el icono se
+          actualiza sola si hay versión nueva (también{" "}
+          <code className="text-[12px]">Update.bat</code>)
         </div>
         <div>
           <span className="font-medium text-[#171719]">Parar:</span>{" "}
